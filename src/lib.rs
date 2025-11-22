@@ -724,6 +724,9 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
                             // Filter words that started in the overlap region
                             // Use a small margin (0.1s) to avoid dropping words right on the boundary
                             if seg.start >= (overlap_sec - 0.1).max(0.0) {
+                                if !new_text.is_empty() {
+                                    new_text.push(' ');
+                                }
                                 new_text.push_str(&seg.text);
                             }
                         }
