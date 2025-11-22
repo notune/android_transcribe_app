@@ -87,7 +87,7 @@ impl TranscribeApp {
         {
             let has_perm = check_permission("android.permission.RECORD_AUDIO").unwrap_or(false);
             if has_perm {
-                self.step = OnboardingStep::ImeSetup;
+                self.step = OnboardingStep::AssetExtraction;
                 self.start_asset_extraction();
             } else {
                 self.step = OnboardingStep::Permissions;
@@ -150,7 +150,7 @@ impl eframe::App for TranscribeApp {
                 },
                 UiUpdate::PermissionGranted => {
                     if self.step == OnboardingStep::Permissions {
-                        self.step = OnboardingStep::ImeSetup;
+                        self.step = OnboardingStep::AssetExtraction;
                         self.start_asset_extraction();
                     }
                 }
@@ -176,26 +176,8 @@ impl eframe::App for TranscribeApp {
                         }
                     }
                     OnboardingStep::ImeSetup => {
+                        // Deprecated step, but kept for enum compatibility
                         ui.label("Permissions Granted!");
-                        ui.add_space(10.0);
-                        ui.label("To use the Voice Keyboard in other apps:");
-                        ui.add_space(5.0);
-                        ui.label("1. Enable 'Offline Voice Input' in System Settings.");
-                        ui.label("2. Switch your keyboard when typing.");
-                        
-                        ui.add_space(20.0);
-                        #[cfg(target_os = "android")]
-                        if ui.button("Open Keyboard Settings").clicked() {
-                            let _ = open_ime_settings();
-                        }
-                        
-                        ui.add_space(20.0);
-                        ui.label("Once enabled, you can close this app and use the keyboard.");
-                        
-                        if ui.button("I have enabled it").clicked() {
-                             self.step = OnboardingStep::AssetExtraction;
-                             self.start_asset_extraction();
-                        }
                     }
                     OnboardingStep::AssetExtraction => {
                         ui.spinner();
@@ -205,11 +187,6 @@ impl eframe::App for TranscribeApp {
                     OnboardingStep::Ready => {
                         ui.label("Setup Complete.");
                         ui.add_space(10.0);
-                        ui.label("The Offline Voice Input keyboard is ready to use.");
-                        ui.label("You can close this app now.");
-                        
-                        ui.add_space(20.0);
-                        ui.separator();
                         
                         if ui.button("Start Live Subtitles").clicked() {
                             #[cfg(target_os = "android")]
@@ -220,6 +197,17 @@ impl eframe::App for TranscribeApp {
                         
                         ui.add_space(20.0);
                         ui.separator();
+                        ui.heading("Keyboard Setup (Optional)");
+                        ui.label("To use Voice Input in other apps:");
+                        ui.label("1. Enable 'Offline Voice Input' in Settings.");
+                        ui.label("2. Switch keyboard when typing.");
+                        
+                        #[cfg(target_os = "android")]
+                        if ui.button("Open Keyboard Settings").clicked() {
+                            let _ = open_ime_settings();
+                        }
+
+                        ui.add_space(10.0);
                         ui.label("Status:");
                         ui.label(&self.status_msg);
                     }
@@ -479,18 +467,8 @@ struct ImeState {
     service_ref: jni::objects::GlobalRef,
 }
 
-// --- Live Subtitles JNI ---
-
-#[cfg(target_os = "android")]
-struct LiveSubtitleState {
-    buffer: Arc<Mutex<Vec<f32>>>,
-    worker_tx: crossbeam_channel::Sender<Vec<f32>>,
-}
-
 #[cfg(target_os = "android")]
 static IME_STATE: Mutex<Option<ImeState>> = Mutex::new(None);
-#[cfg(target_os = "android")]
-static LIVE_STATE: Mutex<Option<LiveSubtitleState>> = Mutex::new(None);
 #[cfg(target_os = "android")]
 static GLOBAL_ENGINE: Mutex<Option<Arc<Mutex<ParakeetEngine>>>> = Mutex::new(None);
 
@@ -675,6 +653,19 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
     });
 }
 
+// --- Live Subtitles JNI ---
+
+use transcribe_rs::engines::parakeet::{ParakeetInferenceParams, TimestampGranularity};
+
+#[cfg(target_os = "android")]
+struct LiveSubtitleState {
+    buffer: Arc<Mutex<Vec<f32>>>,
+    worker_tx: crossbeam_channel::Sender<(Vec<f32>, f32)>,
+}
+
+#[cfg(target_os = "android")]
+static LIVE_STATE: Mutex<Option<LiveSubtitleState>> = Mutex::new(None);
+
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_initNative(
@@ -713,21 +704,40 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
         };
         let service_obj = service_ref_worker.as_obj();
         
-        while let Ok(samples) = rx.recv() {
+        while let Ok((samples, overlap_sec)) = rx.recv() {
             let engine_arc_opt = GLOBAL_ENGINE.lock().unwrap().clone();
             if let Some(engine_arc) = engine_arc_opt {
+                let params = ParakeetInferenceParams {
+                    timestamp_granularity: TimestampGranularity::Word,
+                };
+
                 let res = {
                     let mut eng = engine_arc.lock().unwrap();
-                    eng.transcribe_samples(samples, None)
+                    eng.transcribe_samples(samples, Some(params))
                 };
                 
                 if let Ok(r) = res {
-                     let text_trim = r.text.trim();
-                     if !text_trim.is_empty() {
+                    let mut new_text = String::new();
+                    
+                    if let Some(segments) = r.segments {
+                        for seg in segments {
+                            // Filter words that started in the overlap region
+                            // Use a small margin (0.1s) to avoid dropping words right on the boundary
+                            if seg.start >= (overlap_sec - 0.1).max(0.0) {
+                                new_text.push_str(&seg.text);
+                            }
+                        }
+                    } else {
+                        // Fallback if no segments (shouldn't happen with granularity set)
+                        new_text = r.text;
+                    }
+
+                    let text_trim = new_text.trim();
+                    if !text_trim.is_empty() {
                         if let Ok(txt) = env.new_string(text_trim) {
                             let _ = env.call_method(service_obj, "onSubtitleText", "(Ljava/lang/String;)V", &[(&txt).into()]);
                         }
-                     }
+                    }
                 }
             }
         }
@@ -765,19 +775,36 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_pus
     env.get_float_array_region(&data, 0, &mut input).unwrap();
     buffer.extend_from_slice(&input);
 
-    // Threshold: 2.5 seconds (40000 samples)
-    // We send the whole buffer, then keep the last 0.5s (8000 samples) for context (overlap).
-    if buffer.len() >= 40000 {
-        let samples_to_transcribe = buffer.clone();
-        let _ = tx.send(samples_to_transcribe);
+    // Total buffer target: 4.5s (72000 samples)
+    // Overlap target: ~3s (48000 samples)
+    // Trigger threshold: 1.5s (24000 samples) of NEW data.
+    // Simplified Logic:
+    // If buffer len > 72000:
+    //   Send ALL (72000) with overlap = 48000 (3s).
+    //   Slide to keep last 48000.
+    
+    if buffer.len() >= 72000 {
+        // Simple RMS check on the *new* part (last 24000)
+        let new_part_start = buffer.len() - 24000;
+        let sum_sq: f32 = buffer[new_part_start..].iter().map(|&x| x * x).sum();
+        let rms = (sum_sq / 24000.0).sqrt();
         
-        // Overlap: Keep last 0.5s (8000 samples)
-        if buffer.len() > 8000 {
-             let new_start = buffer.len() - 8000;
-             let new_buf = buffer[new_start..].to_vec();
-             *buffer = new_buf;
-        } else {
-            buffer.clear();
+        if rms > 0.002 {
+            let samples_to_transcribe = buffer.clone();
+            // Overlap is the part BEFORE the new data
+            let overlap_sec = (buffer.len() - 24000) as f32 / 16000.0;
+            let _ = tx.send((samples_to_transcribe, overlap_sec));
         }
+        
+        // Slide: Keep last 48000 (3s)
+        let new_buf = buffer[new_part_start..].to_vec();
+        // Wait, if we keep just the new part, we lose context for NEXT turn.
+        // We want to keep [Context] + [New].
+        // We want next turn to have [Context=48000] + [New=24000].
+        // So we must keep 48000 samples.
+        let keep_len = 48000;
+        let start_idx = buffer.len() - keep_len;
+        let new_buf_vec = buffer[start_idx..].to_vec();
+        *buffer = new_buf_vec;
     }
 }

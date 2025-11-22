@@ -139,30 +139,39 @@ public class LiveSubtitleService extends Service {
     private void setupOverlay() {
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         
-        // Simple layout setup
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setBackgroundColor(0xAA000000); // Semi-transparent black
-        layout.setPadding(20, 20, 20, 20);
+        LinearLayout rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setBackgroundColor(0xAA000000);
+        rootLayout.setPadding(20, 20, 20, 20);
+
+        // Header with Stop button
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.END);
+        
+        Button stopBtn = new Button(this);
+        stopBtn.setText("Stop");
+        stopBtn.setTextSize(12);
+        stopBtn.setPadding(10, 0, 10, 0);
+        stopBtn.setBackgroundColor(0xFFFF0000);
+        stopBtn.setTextColor(0xFFFFFFFF);
+        stopBtn.setOnClickListener(v -> {
+            Intent stopIntent = new Intent(this, LiveSubtitleService.class);
+            stopIntent.setAction(ACTION_STOP);
+            startService(stopIntent);
+        });
+        
+        header.addView(stopBtn);
+        rootLayout.addView(header);
 
         mSubtitleText = new TextView(this);
         mSubtitleText.setText("Waiting for audio...");
         mSubtitleText.setTextColor(0xFFFFFFFF);
         mSubtitleText.setTextSize(18);
         mSubtitleText.setGravity(Gravity.CENTER);
-        layout.addView(mSubtitleText);
+        rootLayout.addView(mSubtitleText);
         
-        Button closeBtn = new Button(this);
-        closeBtn.setText("X");
-        closeBtn.setOnClickListener(v -> {
-            Intent stopIntent = new Intent(this, LiveSubtitleService.class);
-            stopIntent.setAction(ACTION_STOP);
-            startService(stopIntent);
-        });
-        // Add a small close button at top right or similar? For now, just append.
-        // Actually, let's keep it simple.
-        
-        mOverlayView = layout;
+        mOverlayView = rootLayout;
 
         int layoutFlag;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
