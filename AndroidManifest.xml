@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.notune.transcribe"
+    android:versionCode="2"
+    android:versionName="0.1.1">
+
+    <uses-sdk
+        android:minSdkVersion="26"
+        android:targetSdkVersion="35" />
+
+    <uses-feature android:glEsVersion="0x00030002" android:required="true" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:label="Offline Voice Input"
+        android:icon="@drawable/icon"
+        android:hasCode="true">
+
+        <!-- Main Activity -->
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="Offline Voice Input"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <meta-data android:name="android.app.lib_name" android:value="android_transcribe_app" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- IME Service -->
+        <service
+            android:name=".RustInputMethodService"
+            android:label="Offline Voice Input"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:process=":ime"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+
+    </application>
+</manifest>
