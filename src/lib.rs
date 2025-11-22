@@ -656,11 +656,15 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
 // --- Live Subtitles JNI ---
 
 use transcribe_rs::engines::parakeet::{ParakeetInferenceParams, TimestampGranularity};
+use jni::sys::jfloat;
 
 #[cfg(target_os = "android")]
 struct LiveSubtitleState {
     buffer: Arc<Mutex<Vec<f32>>>,
-    worker_tx: crossbeam_channel::Sender<(Vec<f32>, f32)>,
+    worker_tx: crossbeam_channel::Sender<(Vec<f32>, f64)>,
+    total_samples: u64,
+    last_process_sample: u64,
+    update_interval: usize,
 }
 
 #[cfg(target_os = "android")]
@@ -684,6 +688,9 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
     *state_guard = Some(LiveSubtitleState {
         buffer: Arc::new(Mutex::new(Vec::new())),
         worker_tx: tx,
+        total_samples: 0,
+        last_process_sample: 0,
+        update_interval: 32000, // Default 2.0s
     });
     drop(state_guard);
 
@@ -703,8 +710,9 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
             }
         };
         let service_obj = service_ref_worker.as_obj();
+        let mut last_committed_end = 0.0f64;
         
-        while let Ok((samples, overlap_sec)) = rx.recv() {
+        while let Ok((samples, start_time)) = rx.recv() {
             let engine_arc_opt = GLOBAL_ENGINE.lock().unwrap().clone();
             if let Some(engine_arc) = engine_arc_opt {
                 let params = ParakeetInferenceParams {
@@ -718,25 +726,41 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
                 
                 if let Ok(r) = res {
                     let mut new_text = String::new();
+                    let mut max_end_in_chunk = last_committed_end;
                     
                     if let Some(segments) = r.segments {
                         for seg in segments {
-                            // Filter words that started in the overlap region
-                            // Use a small margin (0.1s) to avoid dropping words right on the boundary
-                            if seg.start >= (overlap_sec - 0.1).max(0.0) {
+                            let abs_start = start_time + seg.start as f64;
+                            let abs_end = start_time + seg.end as f64;
+                            
+                            // Filter words that have already been committed.
+                            // Use a small tolerance (0.05s) to avoid skipping tight boundaries,
+                            // but ensuring we don't repeat words.
+                            if abs_start >= last_committed_end - 0.05 {
                                 if !new_text.is_empty() {
                                     new_text.push(' ');
                                 }
                                 new_text.push_str(&seg.text);
+                                
+                                if abs_end > max_end_in_chunk {
+                                    max_end_in_chunk = abs_end;
+                                }
                             }
                         }
                     } else {
-                        // Fallback if no segments (shouldn't happen with granularity set)
-                        new_text = r.text;
+                        // Fallback if no segments (shouldn't happen)
+                        if r.text.len() > 0 {
+                             new_text = r.text;
+                             // Blindly update time if we have no segments
+                             max_end_in_chunk = start_time + 2.0; 
+                        }
                     }
 
                     let text_trim = new_text.trim();
                     if !text_trim.is_empty() {
+                        // Only update committed time if we actually found new text
+                        last_committed_end = max_end_in_chunk;
+                        
                         if let Ok(txt) = env.new_string(text_trim) {
                             let _ = env.call_method(service_obj, "onSubtitleText", "(Ljava/lang/String;)V", &[(&txt).into()]);
                         }
@@ -758,56 +782,62 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_cle
 
 #[cfg(target_os = "android")]
 #[no_mangle]
+pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_setUpdateInterval(
+    _env: JNIEnv,
+    _class: JClass,
+    interval_seconds: jfloat,
+) {
+    let mut guard = LIVE_STATE.lock().unwrap();
+    if let Some(state) = guard.as_mut() {
+        state.update_interval = (interval_seconds * 16000.0) as usize;
+        log::info!("Update interval set to {} samples", state.update_interval);
+    }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_pushAudio(
     env: JNIEnv,
     _class: JClass,
     data: jni::objects::JFloatArray,
     length: jni::sys::jint,
 ) {
-    let (buffer_arc, tx) = {
-        let guard = LIVE_STATE.lock().unwrap();
-        if let Some(state) = guard.as_ref() {
-            (state.buffer.clone(), state.worker_tx.clone())
-        } else {
-            return;
-        }
-    };
-
-    let mut buffer = buffer_arc.lock().unwrap();
-    let mut input = vec![0.0f32; length as usize];
-    env.get_float_array_region(&data, 0, &mut input).unwrap();
-    buffer.extend_from_slice(&input);
-
-    // Total buffer target: 4.5s (72000 samples)
-    // Overlap target: ~3s (48000 samples)
-    // Trigger threshold: 1.5s (24000 samples) of NEW data.
-    // Simplified Logic:
-    // If buffer len > 72000:
-    //   Send ALL (72000) with overlap = 48000 (3s).
-    //   Slide to keep last 48000.
-    
-    if buffer.len() >= 72000 {
-        // Simple RMS check on the *new* part (last 24000)
-        let new_part_start = buffer.len() - 24000;
-        let sum_sq: f32 = buffer[new_part_start..].iter().map(|&x| x * x).sum();
-        let rms = (sum_sq / 24000.0).sqrt();
+    let mut guard = LIVE_STATE.lock().unwrap();
+    if let Some(state) = guard.as_mut() {
+        let mut buffer = state.buffer.lock().unwrap();
         
-        if rms > 0.002 {
-            let samples_to_transcribe = buffer.clone();
-            // Overlap is the part BEFORE the new data
-            let overlap_sec = (buffer.len() - 24000) as f32 / 16000.0;
-            let _ = tx.send((samples_to_transcribe, overlap_sec));
-        }
+        let len_usize = length as usize;
+        let mut input = vec![0.0f32; len_usize];
+        env.get_float_array_region(&data, 0, &mut input).unwrap();
+        buffer.extend_from_slice(&input);
         
-        // Slide: Keep last 48000 (3s)
-        let new_buf = buffer[new_part_start..].to_vec();
-        // Wait, if we keep just the new part, we lose context for NEXT turn.
-        // We want to keep [Context] + [New].
-        // We want next turn to have [Context=48000] + [New=24000].
-        // So we must keep 48000 samples.
-        let keep_len = 48000;
-        let start_idx = buffer.len() - keep_len;
-        let new_buf_vec = buffer[start_idx..].to_vec();
-        *buffer = new_buf_vec;
+        state.total_samples += len_usize as u64;
+        
+        // Check if it's time to process
+        if state.total_samples >= state.last_process_sample + state.update_interval as u64 {
+            // We process the *entire* current buffer.
+            // Calculate start time of this buffer in seconds.
+            // start_time = (total_samples - buffer_len) / 16000.0
+            let buffer_len = buffer.len();
+            let start_time = (state.total_samples as f64 - buffer_len as f64) / 16000.0;
+            
+            // RMS check for silence
+            let sum_sq: f32 = buffer.iter().map(|&x| x * x).sum();
+            let rms = (sum_sq / buffer_len as f32).sqrt();
+            
+            if rms > 0.002 {
+                let _ = state.worker_tx.send((buffer.clone(), start_time));
+            }
+            
+            state.last_process_sample = state.total_samples;
+            
+            // Maintain buffer size. 
+            // Keep last 3.0s (48000 samples) for context.
+            if buffer_len > 48000 {
+                let keep_idx = buffer_len - 48000;
+                let new_buf = buffer[keep_idx..].to_vec();
+                *buffer = new_buf;
+            }
+        }
     }
 }
