@@ -23,6 +23,11 @@ Ensure you have the `aarch64-linux-android` target for Rust:
 rustup target add aarch64-linux-android
 ```
 
+Download and extract the parakeet model
+```bash
+curl -L https://blob.handy.computer/parakeet-v3-int8.tar.gz | tar -xz -C assets
+```
+
 ### Android SDK Setup (Manual)
 
 Follow these steps to set up the SDK and NDK:
@@ -100,7 +105,11 @@ To upload to the Play Store, you must build an Android App Bundle (.aab). This p
         --adb=android-sdk/platform-tools/adb
     ```
 
-## Installation
+## Acknowledgments
+
+NVIDIA parakeet speech to text model: [https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)
+
+CJ Pais transcribe-rs library: [https://github.com/cjpais/transcribe-rs](https://github.com/cjpais/transcribe-rs)
 
 ## License
 
