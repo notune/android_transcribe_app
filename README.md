@@ -119,4 +119,4 @@ To upload to the Play Store, you must build an Android App Bundle (.aab). This p
 
 ## License of this Project
 
-GPLv3
+[MIT](LICENSE)
