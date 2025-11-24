@@ -242,7 +242,7 @@ impl eframe::App for TranscribeApp {
                         ui.add_space(30.0);
 
                         // 2. Live Translate
-                        ui.label(egui::RichText::new("Live Translate").size(24.0).strong());
+                        ui.label(egui::RichText::new("Live Subtitles").size(24.0).strong());
                         ui.label(egui::RichText::new("Get live subtitles for any video/audio on the phone.").size(16.0));
                         ui.label(egui::RichText::new("After starting, select 'Share entire screen' for best results.").size(16.0));
                         
