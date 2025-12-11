@@ -25,7 +25,9 @@ public class RustInputMethodService extends InputMethodService {
     }
 
     private TextView statusView;
-    private Button recordButton;
+    private TextView hintView;
+    private View recordContainer;
+    private android.widget.ImageView micIcon;
     private ProgressBar progressBar;
     private Handler mainHandler;
     private boolean isRecording = false;
@@ -47,41 +49,17 @@ public class RustInputMethodService extends InputMethodService {
     public View onCreateInputView() {
         Log.d(TAG, "onCreateInputView");
         try {
-            LinearLayout layout = new LinearLayout(this);
-            layout.setOrientation(LinearLayout.VERTICAL);
-            // Explicit height to prevent collapse
-            layout.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 
-                600
-            ));
-            layout.setPadding(30, 30, 30, 30);
-            layout.setBackgroundColor(0xFFF5F5F5); 
+            View view = getLayoutInflater().inflate(R.layout.ime_layout, null);
             
-            // Status Row
-            statusView = new TextView(this);
-            statusView.setText("Initializing...");
-            statusView.setTextSize(16);
-            statusView.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-            statusView.setPadding(0, 0, 0, 20);
-            statusView.setTextColor(0xFF333333);
+            statusView = view.findViewById(R.id.ime_status_text);
+            progressBar = view.findViewById(R.id.ime_progress);
+            recordContainer = view.findViewById(R.id.ime_record_container);
+            micIcon = view.findViewById(R.id.ime_mic_icon);
+            hintView = view.findViewById(R.id.ime_hint);
             
-            // Progress Bar (Visible by default until ready)
-            progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-            progressBar.setIndeterminate(true);
-            progressBar.setVisibility(View.VISIBLE);
-            
-            // Record Button
-            recordButton = new Button(this);
-            recordButton.setText("🎤 Tap to Speak");
-            recordButton.setBackgroundColor(0xFF2196F3); // Blue
-            recordButton.setTextColor(0xFFFFFFFF);
-            recordButton.setTextSize(18);
-            recordButton.setPadding(20, 20, 20, 20);
-            // Disable until ready
-            recordButton.setEnabled(false);
-            recordButton.setAlpha(0.5f);
-            
-            recordButton.setOnClickListener(v -> {
+            recordContainer.setOnClickListener(v -> {
+                if (!recordContainer.isEnabled()) return;
+                
                 if (isRecording) {
                     stopRecording();
                     updateRecordButtonUI(false);
@@ -91,21 +69,8 @@ public class RustInputMethodService extends InputMethodService {
                 }
             });
 
-            layout.addView(statusView);
-            layout.addView(progressBar);
-            layout.addView(recordButton);
-
-            // Spacer to avoid overlap with system navigation/keyboard switcher
-            View spacer = new View(this);
-            spacer.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 
-                150
-            ));
-            layout.addView(spacer);
-            
             updateUiState();
-
-            return layout;
+            return view;
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreateInputView", e);
             TextView errorView = new TextView(this);
@@ -117,13 +82,13 @@ public class RustInputMethodService extends InputMethodService {
     private void updateRecordButtonUI(boolean recording) {
         isRecording = recording;
         if (recording) {
-            recordButton.setText("Stop");
-            recordButton.setBackgroundColor(0xFFF44336); // Red
+            micIcon.setColorFilter(0xFFF44336); // Red
             statusView.setText("Listening...");
+            hintView.setText("Tap to Stop");
         } else {
-            recordButton.setText("🎤 Tap to Speak");
-            recordButton.setBackgroundColor(0xFF2196F3); // Blue
+            micIcon.setColorFilter(0xFF2196F3); // Blue
             statusView.setText("Processing...");
+            hintView.setText("Tap to Record");
         }
     }
     
@@ -153,15 +118,15 @@ public class RustInputMethodService extends InputMethodService {
 
         if (lastStatus.contains("Ready") || lastStatus.contains("Listening")) {
             if (progressBar != null) progressBar.setVisibility(View.GONE);
-            if (recordButton != null) {
-                recordButton.setEnabled(true);
-                recordButton.setAlpha(1.0f);
+            if (recordContainer != null) {
+                recordContainer.setEnabled(true);
+                recordContainer.setAlpha(1.0f);
             }
         } else if (lastStatus.contains("Initializing") || lastStatus.contains("Loading")) {
             if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
-            if (recordButton != null) {
-                recordButton.setEnabled(false);
-                recordButton.setAlpha(0.5f);
+            if (recordContainer != null) {
+                recordContainer.setEnabled(false);
+                recordContainer.setAlpha(0.5f);
             }
         }
     }

@@ -139,50 +139,19 @@ public class LiveSubtitleService extends Service {
     private void setupOverlay() {
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         
-        // Root layout - FrameLayout to stack text and close button comfortably
-        android.widget.FrameLayout rootLayout = new android.widget.FrameLayout(this);
-        rootLayout.setBackgroundColor(0x88000000); // Semi-transparent background
-        rootLayout.setPadding(30, 20, 30, 20);
-
-        // Subtitle Text
-        mSubtitleText = new TextView(this);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        mOverlayView = inflater.inflate(R.layout.service_subtitle, null);
+        
+        mSubtitleText = mOverlayView.findViewById(R.id.subs_text);
         mSubtitleText.setText("Waiting for audio...");
-        mSubtitleText.setTextColor(0xFFFFFFFF);
-        mSubtitleText.setTextSize(18);
-        mSubtitleText.setGravity(Gravity.CENTER_HORIZONTAL);
-        // Add margin to right to avoid overlap with close button if text is long
-        android.widget.FrameLayout.LayoutParams textParams = new android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT, 
-            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-        );
-        textParams.setMargins(0, 0, 60, 0); // Space for button
-        textParams.gravity = Gravity.CENTER_VERTICAL;
-        rootLayout.addView(mSubtitleText, textParams);
         
-        // Close Button (Small 'X')
-        Button closeBtn = new Button(this);
-        closeBtn.setText("×");
-        closeBtn.setTextSize(24);
-        closeBtn.setTextColor(0xFFFF5555); // Light Red
-        closeBtn.setBackgroundColor(0x00000000); // Transparent
-        closeBtn.setPadding(0, 0, 0, 0);
-        closeBtn.setIncludeFontPadding(false);
-        
+        View closeBtn = mOverlayView.findViewById(R.id.btn_close_subs);
         closeBtn.setOnClickListener(v -> {
             Intent stopIntent = new Intent(this, LiveSubtitleService.class);
             stopIntent.setAction(ACTION_STOP);
             startService(stopIntent);
         });
         
-        android.widget.FrameLayout.LayoutParams btnParams = new android.widget.FrameLayout.LayoutParams(
-            80, 
-            80
-        );
-        btnParams.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-        rootLayout.addView(closeBtn, btnParams);
-        
-        mOverlayView = rootLayout;
-
         int layoutFlag;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             layoutFlag = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
