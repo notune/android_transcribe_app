@@ -17,14 +17,20 @@ fi
 SDK="$ANDROID_HOME"
 
 if [ -z "$ANDROID_NDK_HOME" ]; then
-    # Try to find NDK in default side-by-side location
-    DETECTED_NDK=$(ls -d "$SDK/ndk/"* 2>/dev/null | sort -V | tail -n 1)
-    if [ -n "$DETECTED_NDK" ]; then
-        export ANDROID_NDK_HOME="$DETECTED_NDK"
-        echo "Auto-detected NDK: $ANDROID_NDK_HOME"
+    # We require NDK r28+ for 16KB page support (aligned libc++_shared.so)
+    if [ -d "$SDK/ndk/android-ndk-r28" ]; then
+        export ANDROID_NDK_HOME="$SDK/ndk/android-ndk-r28"
+        echo "Using NDK r28 (Required for 16KB page support): $ANDROID_NDK_HOME"
     else
-        echo "Error: ANDROID_NDK_HOME not set and NDK not found in $SDK/ndk/."
-        exit 1
+        # Fallback (Might fail 16KB check)
+        DETECTED_NDK=$(ls -d "$SDK/ndk/"* 2>/dev/null | sort -V | tail -n 1)
+        if [ -n "$DETECTED_NDK" ]; then
+            export ANDROID_NDK_HOME="$DETECTED_NDK"
+            echo "Warning: NDK r28 not found. Using $ANDROID_NDK_HOME. 16KB support might be incomplete."
+        else
+            echo "Error: ANDROID_NDK_HOME not set and NDK not found in $SDK/ndk/."
+            exit 1
+        fi
     fi
 fi
 
@@ -125,7 +131,7 @@ fi
 cat > .cargo/config.toml <<EOF
 [target.aarch64-linux-android]
 linker = "$CLANG_BIN/aarch64-linux-android28-clang"
-rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384", "-C", "link-arg=-lc++_shared"]
 
 [env]
 CC_aarch64_linux_android = "$CLANG_BIN/aarch64-linux-android28-clang"

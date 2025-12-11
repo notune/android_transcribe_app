@@ -12,7 +12,14 @@ elif [ -z "$ANDROID_HOME" ]; then
 fi
 
 SDK="$ANDROID_HOME"
-NDK="${ANDROID_NDK_HOME:-$SDK/ndk/26.1.10909125}"
+
+if [ -d "$SDK/ndk/android-ndk-r28" ]; then
+    NDK="$SDK/ndk/android-ndk-r28"
+    echo "Using NDK r28: $NDK"
+else
+    NDK="${ANDROID_NDK_HOME:-$SDK/ndk/26.1.10909125}"
+    echo "Warning: NDK r28 not explicitly found, using: $NDK"
+fi
 
 if [ ! -d "$SDK" ]; then
     echo "Error: Android SDK not found at $SDK"
@@ -84,7 +91,7 @@ fi
 cat > .cargo/config.toml <<EOF
 [target.aarch64-linux-android]
 linker = "$CLANG_BIN/aarch64-linux-android28-clang"
-rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384", "-C", "link-arg=-lc++_shared"]
 
 [env]
 CC_aarch64_linux_android = "$CLANG_BIN/aarch64-linux-android28-clang"

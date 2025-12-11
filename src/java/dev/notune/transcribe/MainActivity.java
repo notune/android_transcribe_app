@@ -18,6 +18,12 @@ public class MainActivity extends Activity {
     private static final int PERM_REQ_CODE = 101;
 
     static {
+        try {
+            System.loadLibrary("c++_shared");
+            System.loadLibrary("onnxruntime");
+        } catch (UnsatisfiedLinkError e) {
+            Log.w(TAG, "Failed to load dependencies (c++_shared or onnxruntime)", e);
+        }
         System.loadLibrary("android_transcribe_app");
     }
 
