@@ -11,9 +11,15 @@ An offline, privacy-focused voice input keyboard and live subtitle tool for Andr
 - **Live Subtitles:** Get real-time captions for any audio or video playing on your device (e.g., YouTube, Podcasts, Zoom).
 - **Privacy-First:** No audio data leaves your device.
 - **Rust Backend:** Efficient and safe native code using [transcribe-rs](https://github.com/cjpais/transcribe-rs) (included).
-- **Modern UI:** Built with `egui` and `eframe`.
+- **Native Android UI:** Clean Material Design interface.
 
-## Prerequisites (Linux)
+## Screenshots
+<p float="left">
+  <img src=".screenshots/screenshot_home.png" width="45%" />
+  <img src=".screenshots/screenshot_ime.png" width="45%" /> 
+</p>
+
+## Building Prerequisites (Linux)
 
 To build this app, you need the following system packages:
 
@@ -47,33 +53,46 @@ Follow these steps to set up the SDK and NDK:
     ```bash
     wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
     unzip -q cmdline-tools.zip
-    # Move to correct structure: cmdline-tools/latest/bin
     mkdir -p cmdline-tools/latest
     mv cmdline-tools/bin cmdline-tools/lib cmdline-tools/NOTICE.txt cmdline-tools/source.properties cmdline-tools/latest/
     rm cmdline-tools.zip
     ```
 
-3.  **Install Packages:**
+3.  **Install SDK Components:**
     ```bash
     export ANDROID_HOME=$(pwd)
     export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
     
     yes | sdkmanager --licenses
-    # Install Platform, Build Tools, and NDK (Version 26 is required)
-    sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" "ndk;26.1.10909125"
+    # Install Platform, Build Tools, and Platform Tools
+    sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
     ```
+
+4.  **Install NDK r28:**
+    ```bash
+    # Inside android-sdk/ndk/
+    mkdir -p ndk
+    cd ndk
+    wget https://dl.google.com/android/repository/android-ndk-r28-linux.zip
+    unzip -q android-ndk-r28-linux.zip
+    rm android-ndk-r28-linux.zip
+    ```
+    *Note: Ensure your `ANDROID_NDK_HOME` environment variable points to this directory (e.g., `.../android-sdk/ndk/android-ndk-r28`).*
 
 ## Building
 
-### APK
-You can build an APK with:
+### APK (Debug/Release)
+You can build a standalone APK for testing:
 ```bash
-ANDROID_HOME=$(pwd)/android-sdk/ ./build.sh
+# Ensure ANDROID_HOME and ANDROID_NDK_HOME are set
+export ANDROID_HOME=$(pwd)/android-sdk
+export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/android-ndk-r28
+
+./build.sh
 # Output: android_transcribe_app_release.apk
 ```
 
 ### Release AAB (Google Play Ready)
-To upload to the Play Store, you must build an Android App Bundle (.aab). This project uses **Play Asset Delivery** (Install-Time) to handle the large model files (>150MB).
 
 1.  **Run the AAB Build Script:**
     ```bash
@@ -84,7 +103,7 @@ To upload to the Play Store, you must build an Android App Bundle (.aab). This p
     - Create a `base` module for the app code.
     - Create a `model_assets` module for the large model files (Install-Time Asset Pack).
     - Generate `android_transcribe_app.aab`.
-    - Sign it with a generated `release.keystore` (password: `password`).
+    - Sign it with a generated `release.keystore`
 
     **Output:** `android_transcribe_app.aab`
 
