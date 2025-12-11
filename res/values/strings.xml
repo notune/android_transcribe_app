@@ -9,7 +9,7 @@
     <string name="btn_ime_settings">Open Keyboard Settings</string>
     
     <string name="section_subs">Live Subtitles</string>
-    <string name="desc_subs">Display subtitles for any audio playing on your device.</string>
+    <string name="desc_subs">Display subtitles for any audio playing on your device. After starting, select \'Share entire screen\' for best results.</string>
     <string name="btn_subs_start">Start Live Subtitles</string>
     
     <string name="status_label">Status:</string>
