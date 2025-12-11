@@ -105,26 +105,27 @@ if [ ! -d "libs/onnxruntime" ]; then
     echo "ONNX Runtime extracted."
 fi
 
-# Generate Cargo Config if missing
-if [ ! -f ".cargo/config.toml" ]; then
-    echo "Generating .cargo/config.toml..."
-    mkdir -p .cargo
-    
-    # Get absolute path to NDK and Project
-    NDK_ABS=$(cd "$NDK" && pwd)
-    PROJ_ABS=$(pwd)
-    ORT_ABS="$PROJ_ABS/libs/onnxruntime"
-    
-    # Verify NDK structure for clang
-    CLANG_BIN="$NDK_ABS/toolchains/llvm/prebuilt/linux-x86_64/bin"
-    if [ ! -d "$CLANG_BIN" ]; then
-        echo "Error: Could not find NDK toolchain binaries at $CLANG_BIN"
-        exit 1
-    fi
+# Generate Cargo Config
+# Always regenerate to ensure correct flags
+echo "Generating .cargo/config.toml..."
+mkdir -p .cargo
 
-    cat > .cargo/config.toml <<EOF
+# Get absolute path to NDK and Project
+NDK_ABS=$(cd "$NDK" && pwd)
+PROJ_ABS=$(pwd)
+ORT_ABS="$PROJ_ABS/libs/onnxruntime"
+
+# Verify NDK structure for clang
+CLANG_BIN="$NDK_ABS/toolchains/llvm/prebuilt/linux-x86_64/bin"
+if [ ! -d "$CLANG_BIN" ]; then
+    echo "Error: Could not find NDK toolchain binaries at $CLANG_BIN"
+    exit 1
+fi
+
+cat > .cargo/config.toml <<EOF
 [target.aarch64-linux-android]
 linker = "$CLANG_BIN/aarch64-linux-android28-clang"
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
 
 [env]
 CC_aarch64_linux_android = "$CLANG_BIN/aarch64-linux-android28-clang"
@@ -136,8 +137,7 @@ ANDROID_NDK_HOME = "$NDK_ABS"
 ANDROID_NDK = "$NDK_ABS"
 BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android = "--sysroot=$NDK_ABS/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
 EOF
-    echo ".cargo/config.toml generated."
-fi
+echo ".cargo/config.toml generated."
 
 # 1. Build Rust
 echo "--- Building Rust ---"
@@ -218,7 +218,7 @@ cd ../..
 
 # 6. Sign
 echo "--- Signing ---"
-$ZIPALIGN -f -v 4 build_manual/apk/unaligned.apk build_manual/apk/aligned.apk
+$ZIPALIGN -f -v 16384 build_manual/apk/unaligned.apk build_manual/apk/aligned.apk
 $APKSIGNER sign --ks "$KEYSTORE" \
     --ks-pass "$KEYSTORE_PASS" \
     --key-pass "$KEY_PASS" \

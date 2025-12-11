@@ -64,6 +64,40 @@ if [ ! -d "libs/onnxruntime" ]; then
     unzip -q -o libs/onnxruntime.aar -d libs/onnxruntime
 fi
 
+# Generate Cargo Config
+# Always regenerate to ensure correct flags for 16KB page size
+echo "Generating .cargo/config.toml..."
+mkdir -p .cargo
+
+# Get absolute path to NDK and Project
+NDK_ABS=$(cd "$NDK" && pwd)
+PROJ_ABS=$(pwd)
+ORT_ABS="$PROJ_ABS/libs/onnxruntime"
+
+# Verify NDK structure for clang
+CLANG_BIN="$NDK_ABS/toolchains/llvm/prebuilt/linux-x86_64/bin"
+if [ ! -d "$CLANG_BIN" ]; then
+    echo "Error: Could not find NDK toolchain binaries at $CLANG_BIN"
+    exit 1
+fi
+
+cat > .cargo/config.toml <<EOF
+[target.aarch64-linux-android]
+linker = "$CLANG_BIN/aarch64-linux-android28-clang"
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[env]
+CC_aarch64_linux_android = "$CLANG_BIN/aarch64-linux-android28-clang"
+CXX_aarch64_linux_android = "$CLANG_BIN/aarch64-linux-android28-clang++"
+AR_aarch64_linux_android = "$CLANG_BIN/llvm-ar"
+ORT_LIB_LOCATION = "$ORT_ABS/jni/arm64-v8a"
+ORT_INCLUDE_DIR = "$ORT_ABS/headers"
+ANDROID_NDK_HOME = "$NDK_ABS"
+ANDROID_NDK = "$NDK_ABS"
+BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android = "--sysroot=$NDK_ABS/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+EOF
+echo ".cargo/config.toml generated."
+
 # --- 1. Build Native (Rust) ---
 echo "--- Building Rust (Release) ---"
 export ANDROID_NDK_HOME="$NDK"
@@ -179,9 +213,22 @@ cd ../..
 
 # --- 6. Bundle ---
 echo "--- Bundling AAB ---"
+
+# Create Bundle Config to keep native libs uncompressed
+cat > build_aab/bundle_config.json <<EOF
+{
+  "compression": {
+    "uncompressed_glob": [
+      "lib/**/*.so"
+    ]
+  }
+}
+EOF
+
 java -jar "$BUNDLETOOL" build-bundle \
     --modules=build_aab/base.zip,build_aab/model_assets.zip \
     --output=android_transcribe_app.aab \
+    --config=build_aab/bundle_config.json \
     --overwrite
 
 # --- 7. Sign ---
