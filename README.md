@@ -15,8 +15,9 @@ An offline, privacy-focused voice input keyboard and live subtitle tool for Andr
 
 ## Screenshots
 <p float="left">
-  <img src=".screenshots/screenshot_home.png" width="45%" />
-  <img src=".screenshots/screenshot_ime.png" width="45%" /> 
+  <img src=".screenshots/screenshot_home.png" width="30%" />
+  <img src=".screenshots/screenshot_ime.png" width="30%" />
+  <img src=".screenshots/screenshot_subtitles.png" width="30%" /> 
 </p>
 
 ## Building Prerequisites (Linux)
