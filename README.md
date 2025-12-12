@@ -13,6 +13,7 @@ height="80">](https://play.google.com/store/apps/details?id=dev.notune.transcrib
 ## Features
 
 - **Offline Transcription:** Uses deep learning models (Parakeet TDT) to transcribe speech entirely on-device.
+- **Supported Languages:** Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian
 - **Voice Input Keyboard** Use your voice as a text field input method.
 - **Live Subtitles:** Get real-time captions for any audio or video playing on your device (e.g., YouTube, Podcasts, Zoom).
 - **Privacy-First:** No audio data leaves your device.
