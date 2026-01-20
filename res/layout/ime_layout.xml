@@ -60,13 +60,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end"
+        android:baselineAligned="false"
         android:paddingTop="8dp">
+
+        <ImageView
+            android:id="@+id/ime_space"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_space"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_backspace"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Space"/>
+
+        <ImageView
+            android:id="@+id/ime_enter"
+            android:layout_width="64dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_enter"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_backspace"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Enter"/>
 
         <TextView
             android:id="@+id/ime_backspace"
             android:layout_width="64dp"
-            android:layout_height="48dp"
+            android:layout_height="32dp"
             android:text="⌫"
             android:textSize="24sp"
             android:textColor="#333333"

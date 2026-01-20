@@ -33,6 +33,8 @@ public class RustInputMethodService extends InputMethodService {
     private android.widget.ImageView micIcon;
     private ProgressBar progressBar;
     private View backspaceButton;
+    private View spaceButton;
+    private View enterButton;
     private Handler mainHandler;
     private boolean isRecording = false;
     private String lastStatus = "Initializing...";
@@ -41,6 +43,7 @@ public class RustInputMethodService extends InputMethodService {
     private static final long REPEAT_INITIAL_DELAY = 400; // ms before repeat starts
     private static final long REPEAT_INTERVAL = 50; // ms between repeats
     private Runnable backspaceRepeatRunnable;
+    private Runnable spaceRepeatRunnable;
 
     @Override
     public void onCreate() {
@@ -66,13 +69,26 @@ public class RustInputMethodService extends InputMethodService {
             micIcon = view.findViewById(R.id.ime_mic_icon);
             hintView = view.findViewById(R.id.ime_hint);
             backspaceButton = view.findViewById(R.id.ime_backspace);
+            spaceButton = view.findViewById(R.id.ime_space);
+            enterButton = view.findViewById(R.id.ime_enter);
 
-            // Key repeat runnable
+            // Key repeat runnable for backspace
             backspaceRepeatRunnable = new Runnable() {
                 @Override
                 public void run() {
                     if (getCurrentInputConnection() != null) {
                         getCurrentInputConnection().deleteSurroundingText(1, 0);
+                    }
+                    mainHandler.postDelayed(this, REPEAT_INTERVAL);
+                }
+            };
+
+            // Key repeat runnable for space
+            spaceRepeatRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (getCurrentInputConnection() != null) {
+                        getCurrentInputConnection().commitText(" ", 1);
                     }
                     mainHandler.postDelayed(this, REPEAT_INTERVAL);
                 }
@@ -95,6 +111,31 @@ public class RustInputMethodService extends InputMethodService {
                         return true;
                 }
                 return false;
+            });
+
+            spaceButton.setOnTouchListener((v, event) -> {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        // Insert space immediately
+                        if (getCurrentInputConnection() != null) {
+                            getCurrentInputConnection().commitText(" ", 1);
+                        }
+                        // Schedule repeat after initial delay
+                        mainHandler.postDelayed(spaceRepeatRunnable, REPEAT_INITIAL_DELAY);
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        // Stop repeating
+                        mainHandler.removeCallbacks(spaceRepeatRunnable);
+                        return true;
+                }
+                return false;
+            });
+
+            enterButton.setOnClickListener(v -> {
+                if (getCurrentInputConnection() != null) {
+                    getCurrentInputConnection().commitText("\n", 1);
+                }
             });
 
             recordContainer.setOnClickListener(v -> {
