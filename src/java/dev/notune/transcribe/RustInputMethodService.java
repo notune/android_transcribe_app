@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.content.Context;
+import android.view.WindowInsets;
 import android.view.MotionEvent;
 
 public class RustInputMethodService extends InputMethodService {
@@ -64,6 +65,14 @@ public class RustInputMethodService extends InputMethodService {
         try {
             View view = getLayoutInflater().inflate(R.layout.ime_layout, null);
             
+            // Handle window insets for avoiding navigation bar overlap
+            view.setOnApplyWindowInsetsListener((v, insets) -> {
+                int paddingBottom = insets.getSystemWindowInsetBottom();
+                int originalPaddingBottom = v.getPaddingTop();
+                v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), originalPaddingBottom + paddingBottom);
+                return insets;
+            });
+
             statusView = view.findViewById(R.id.ime_status_text);
             progressBar = view.findViewById(R.id.ime_progress);
             recordContainer = view.findViewById(R.id.ime_record_container);
