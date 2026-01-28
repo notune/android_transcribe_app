@@ -241,9 +241,6 @@ cat > build_aab/bundle_config.json <<EOF
     ]
   },
   "optimizations": {
-    "storeArchive": {
-      "enable": true
-    },
     "uncompressNativeLibraries": {
       "enabled": true,
       "alignment": "PAGE_ALIGNMENT_16K"
