@@ -71,13 +71,13 @@ if [ ! -f "$BUNDLETOOL" ]; then
 fi
 
 # Download ONNX Runtime if missing or update needed
-if [ -d "libs/onnxruntime" ]; then
-    rm -rf libs/onnxruntime
-fi
-
+ORT_VERSION="1.22.0"
 if [ ! -d "libs/onnxruntime" ]; then
-    echo "Downloading ONNX Runtime 1.22.0..."
-    curl -L -o libs/onnxruntime.aar https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.22.0/onnxruntime-android-1.22.0.aar
+    if [ ! -f "libs/onnxruntime.aar" ]; then
+        echo "Downloading ONNX Runtime $ORT_VERSION..."
+        curl -L -o libs/onnxruntime.aar https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/${ORT_VERSION}/onnxruntime-android-${ORT_VERSION}.aar
+    fi
+    echo "Extracting ONNX Runtime..."
     unzip -q -o libs/onnxruntime.aar -d libs/onnxruntime
 fi
 
