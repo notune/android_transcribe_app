@@ -92,6 +92,10 @@ jobs:
         ./build_aab.sh
 
     - name: Verify 16KB Alignment
+      env:
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASS: ${{ secrets.KEY_PASS }}
+        STORE_PASS: ${{ secrets.STORE_PASS }}
       run: |
         echo "=== Verifying 16KB Page Size Compliance ==="
         
