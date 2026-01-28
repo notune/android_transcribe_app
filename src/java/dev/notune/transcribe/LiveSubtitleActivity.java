@@ -8,9 +8,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.widget.Toast;
 
 public class LiveSubtitleActivity extends Activity {
+    private static final String TAG = "LiveSubtitleActivity";
     private static final int PERMISSION_CODE = 1;
     private MediaProjectionManager mProjectionManager;
     private boolean mWaitingForOverlayPermission = false;

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dev.notune.transcribe"
-    android:versionCode="9"
-    android:versionName="0.1.8">
+    android:versionCode="10"
+    android:versionName="0.1.9">
 
     <uses-sdk
         android:minSdkVersion="26"
