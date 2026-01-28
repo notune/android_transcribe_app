@@ -206,9 +206,10 @@ cd build_manual/apk
 # Add classes.dex
 jar uf unaligned.apk classes.dex
 
-# Add Libs
+# Add Libs - store uncompressed for 16KB alignment compatibility
+# Using zip with -0 (store without compression) for native libs
 cp -r ../lib .
-jar uf unaligned.apk lib
+zip -r0 unaligned.apk lib
 
 # Add Assets
 if [ -d "../../assets" ]; then
@@ -219,8 +220,10 @@ fi
 cd ../..
 
 # 6. Sign
-echo "--- Signing ---"
-$ZIPALIGN -f -v 16384 build_manual/apk/unaligned.apk build_manual/apk/aligned.apk
+echo "--- Aligning and Signing ---"
+# -P 16 = 16KB page alignment for native libs (required for Android 15+ / Google Play Nov 2025)
+# -v = verbose, 4 = standard 4-byte alignment for other files
+$ZIPALIGN -f -P 16 -v 4 build_manual/apk/unaligned.apk build_manual/apk/aligned.apk
 $APKSIGNER sign --ks "$KEYSTORE" \
     --ks-pass "pass:$STORE_PASS" \
     --key-pass "pass:$KEY_PASS" \
@@ -228,4 +231,36 @@ $APKSIGNER sign --ks "$KEYSTORE" \
     --out android_transcribe_app_release.apk \
     build_manual/apk/aligned.apk
 
+# 7. Verify 16KB Alignment
+echo "--- Verifying 16KB Alignment ---"
+echo "Checking APK alignment..."
+if $ZIPALIGN -c -P 16 -v 4 android_transcribe_app_release.apk 2>&1 | tail -5; then
+    echo ""
+else
+    echo "WARNING: APK alignment verification had issues"
+fi
+
+# Check ELF alignment of native libraries
+echo ""
+echo "Checking ELF segment alignment..."
+LLVM_OBJDUMP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objdump"
+if [ -f "$LLVM_OBJDUMP" ]; then
+    rm -rf /tmp/apk_check && mkdir -p /tmp/apk_check
+    unzip -q android_transcribe_app_release.apk -d /tmp/apk_check
+    for so in /tmp/apk_check/lib/arm64-v8a/*.so; do
+        if [ -f "$so" ]; then
+            echo "  $(basename $so):"
+            ALIGN=$($LLVM_OBJDUMP -p "$so" 2>/dev/null | grep "LOAD" | head -1 | grep -o "align 2\*\*[0-9]*")
+            if echo "$ALIGN" | grep -q "2\*\*14"; then
+                echo "    ✓ ELF aligned to 16KB (2**14)"
+            else
+                echo "    ✗ WARNING: ELF alignment is $ALIGN (expected 2**14)"
+            fi
+        fi
+    done
+    rm -rf /tmp/apk_check
+fi
+
+echo ""
 echo "SUCCESS: android_transcribe_app_release.apk created"
+echo "The APK should now be compatible with 16KB page size devices."

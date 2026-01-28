@@ -54,10 +54,20 @@ mkdir -p build_aab/base/manifest build_aab/base/dex build_aab/base/res build_aab
 mkdir -p build_aab/model_assets/manifest build_aab/model_assets/assets
 mkdir -p libs
 
-# Download Bundletool
+# Download Bundletool (1.18.3+ required for 16KB page alignment)
+BUNDLETOOL_VERSION="1.18.3"
+if [ -f "$BUNDLETOOL" ]; then
+    # Check version and update if needed
+    CURRENT_VERSION=$(java -jar "$BUNDLETOOL" version 2>/dev/null || echo "0.0.0")
+    if [ "$CURRENT_VERSION" != "$BUNDLETOOL_VERSION" ]; then
+        echo "Updating Bundletool from $CURRENT_VERSION to $BUNDLETOOL_VERSION..."
+        rm -f "$BUNDLETOOL"
+    fi
+fi
+
 if [ ! -f "$BUNDLETOOL" ]; then
-    echo "Downloading Bundletool..."
-    curl -L -o "$BUNDLETOOL" https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar
+    echo "Downloading Bundletool $BUNDLETOOL_VERSION (required for 16KB page alignment)..."
+    curl -L -o "$BUNDLETOOL" https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar
 fi
 
 # Download ONNX Runtime if missing or update needed
@@ -221,13 +231,23 @@ cd ../..
 # --- 6. Bundle ---
 echo "--- Bundling AAB ---"
 
-# Create Bundle Config to keep native libs uncompressed
+# Create Bundle Config with 16KB page alignment for native libs
+# This is REQUIRED for Google Play 16KB device compatibility (Nov 2025+)
 cat > build_aab/bundle_config.json <<EOF
 {
   "compression": {
-    "uncompressed_glob": [
+    "uncompressedGlob": [
       "lib/**/*.so"
     ]
+  },
+  "optimizations": {
+    "storeArchive": {
+      "enable": true
+    },
+    "uncompressNativeLibraries": {
+      "enabled": true,
+      "alignment": "PAGE_ALIGNMENT_16K"
+    }
   }
 }
 EOF
@@ -246,4 +266,41 @@ jarsigner -keystore "$KEYSTORE" \
     android_transcribe_app.aab \
     "$KEY_ALIAS"
 
+# --- 8. Verify 16KB Alignment ---
+echo "--- Verifying 16KB Alignment ---"
+
+# Check bundle config
+echo "Bundle configuration:"
+java -jar "$BUNDLETOOL" dump config --bundle=android_transcribe_app.aab 2>&1 | grep -A5 -i "alignment\|uncompressNative" || echo "  (using bundletool defaults)"
+
+# Check ELF alignment of native libraries in the bundle
+echo ""
+echo "Checking ELF segment alignment in bundle..."
+LLVM_OBJDUMP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objdump"
+if [ -f "$LLVM_OBJDUMP" ]; then
+    rm -rf /tmp/aab_check && mkdir -p /tmp/aab_check
+    unzip -q android_transcribe_app.aab -d /tmp/aab_check
+    if [ -d "/tmp/aab_check/base/lib/arm64-v8a" ]; then
+        for so in /tmp/aab_check/base/lib/arm64-v8a/*.so; do
+            if [ -f "$so" ]; then
+                echo "  $(basename $so):"
+                ALIGN=$($LLVM_OBJDUMP -p "$so" 2>/dev/null | grep "LOAD" | head -1 | grep -o "align 2\*\*[0-9]*")
+                if echo "$ALIGN" | grep -q "2\*\*14"; then
+                    echo "    ✓ ELF aligned to 16KB (2**14)"
+                else
+                    echo "    ✗ WARNING: ELF alignment is $ALIGN (expected 2**14)"
+                fi
+            fi
+        done
+    fi
+    rm -rf /tmp/aab_check
+fi
+
+echo ""
 echo "SUCCESS: android_transcribe_app.aab created (Signed with release key)"
+echo "The AAB should now be compatible with 16KB page size devices."
+echo ""
+echo "To verify the APKs that Play Store will generate, run:"
+echo "  java -jar libs/bundletool.jar build-apks --bundle=android_transcribe_app.aab --output=test.apks --mode=universal"
+echo "  unzip test.apks universal.apk"
+echo "  ./android-sdk/build-tools/35.0.0/zipalign -c -P 16 -v 4 universal.apk"
