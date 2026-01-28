@@ -8,11 +8,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
 import android.widget.Toast;
 
 public class LiveSubtitleActivity extends Activity {
-    private static final String TAG = "LiveSubtitleActivity";
     private static final int PERMISSION_CODE = 1;
     private MediaProjectionManager mProjectionManager;
     private boolean mWaitingForOverlayPermission = false;
@@ -21,7 +19,6 @@ public class LiveSubtitleActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "onCreate - canDrawOverlays: " + Settings.canDrawOverlays(this));
         mProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
         if (!Settings.canDrawOverlays(this)) {
@@ -33,7 +30,6 @@ public class LiveSubtitleActivity extends Activity {
     }
 
     private void openOverlaySettings() {
-        Log.d(TAG, "Opening overlay settings");
         Toast.makeText(this, "Please grant 'Display over other apps' permission", Toast.LENGTH_LONG).show();
         
         try {
@@ -62,17 +58,12 @@ public class LiveSubtitleActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "onResume - waitingForOverlay: " + mWaitingForOverlayPermission + 
-                   ", projectionStarted: " + mProjectionStarted +
-                   ", canDrawOverlays: " + Settings.canDrawOverlays(this));
         
         if (mWaitingForOverlayPermission) {
             mWaitingForOverlayPermission = false;
             if (Settings.canDrawOverlays(this)) {
-                Log.d(TAG, "Overlay permission granted, starting projection");
                 startProjection();
             } else {
-                Log.d(TAG, "Overlay permission still not granted");
                 Toast.makeText(this, "Overlay permission required for subtitles", Toast.LENGTH_SHORT).show();
                 finish();
             }
@@ -81,8 +72,6 @@ public class LiveSubtitleActivity extends Activity {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityResult - requestCode: " + requestCode + ", resultCode: " + resultCode);
-        
         if (requestCode == PERMISSION_CODE) {
             if (resultCode != RESULT_OK) {
                 Toast.makeText(this, "Screen Capture denied", Toast.LENGTH_SHORT).show();
@@ -106,11 +95,9 @@ public class LiveSubtitleActivity extends Activity {
 
     private void startProjection() {
         if (mProjectionStarted) {
-            Log.d(TAG, "Projection already started, skipping");
             return;
         }
         mProjectionStarted = true;
-        Log.d(TAG, "Starting screen capture intent");
         startActivityForResult(mProjectionManager.createScreenCaptureIntent(), PERMISSION_CODE);
     }
 }
