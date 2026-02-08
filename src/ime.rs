@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use jni::JNIEnv;
 use jni::objects::{JClass, JObject, GlobalRef};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -7,6 +8,9 @@ use transcribe_rs::TranscriptionEngine;
 
 use crate::engine;
 use crate::assets;
+
+/// Tracks whether the model is currently being loaded (true = loading in progress)
+static MODEL_LOADING: AtomicBool = AtomicBool::new(false);
 
 struct SendStream(#[allow(dead_code)] cpal::Stream);
 unsafe impl Send for SendStream {}
@@ -47,10 +51,11 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
     
     std::thread::spawn(move || {
         if !engine::is_engine_loaded() {
+            MODEL_LOADING.store(true, Ordering::Release);
             if let Ok(mut env) = vm_clone.attach_current_thread() {
                  let srv = service_ref_clone.as_obj();
                  notify_status(&mut env, srv, "Loading model...");
-                 
+
                  // Attempt extraction/loading
                  match assets::extract_assets(&mut env, srv) {
                      Ok(path) => {
@@ -58,13 +63,22 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
                          match eng.load_model_with_params(&path, transcribe_rs::engines::parakeet::ParakeetModelParams::int8()) {
                              Ok(_) => {
                                  engine::set_engine(eng);
+                                 MODEL_LOADING.store(false, Ordering::Release);
                                  notify_status(&mut env, srv, "Ready");
                              },
-                             Err(e) => notify_status(&mut env, srv, &format!("Error: {}", e)),
+                             Err(e) => {
+                                 MODEL_LOADING.store(false, Ordering::Release);
+                                 notify_status(&mut env, srv, &format!("Error: {}", e));
+                             },
                          }
                      },
-                     Err(e) => notify_status(&mut env, srv, &format!("Error: {}", e)),
+                     Err(e) => {
+                         MODEL_LOADING.store(false, Ordering::Release);
+                         notify_status(&mut env, srv, &format!("Error: {}", e));
+                     },
                  }
+            } else {
+                MODEL_LOADING.store(false, Ordering::Release);
             }
         } else {
              if let Ok(mut env) = vm_clone.attach_current_thread() {
@@ -143,11 +157,24 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
     };
     
     notify_status(&mut env, service_ref.as_obj(), "Transcribing...");
-    
+
     std::thread::spawn(move || {
         let mut env = jvm.attach_current_thread().unwrap();
         let service_obj = service_ref.as_obj();
-        
+
+        // If engine not ready, wait for model to finish loading
+        if engine::get_engine().is_none() && MODEL_LOADING.load(Ordering::Acquire) {
+            notify_status(&mut env, service_obj, "Waiting for model...");
+            let start = std::time::Instant::now();
+            while engine::get_engine().is_none() && MODEL_LOADING.load(Ordering::Acquire) {
+                if start.elapsed() > std::time::Duration::from_secs(120) {
+                    notify_status(&mut env, service_obj, "Error: timeout waiting for model");
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(200));
+            }
+        }
+
         let engine_opt = engine::get_engine();
         if let Some(eng_arc) = engine_opt {
              let res = {
@@ -165,7 +192,7 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
                 Err(e) => notify_status(&mut env, service_obj, &format!("Error: {}", e)),
             }
         } else {
-            notify_status(&mut env, service_obj, "Engine not ready");
+            notify_status(&mut env, service_obj, "Error: model failed to load");
         }
     });
 }
