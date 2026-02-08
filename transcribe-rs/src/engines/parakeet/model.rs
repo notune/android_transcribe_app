@@ -28,7 +28,7 @@ pub struct TimestampedResult {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParakeetError {
-    #[error("ORT error")]
+    #[error("No Microphone access")]
     Ort(#[from] ort::Error),
     #[error("I/O error")]
     Io(#[from] std::io::Error),
