@@ -12,7 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.content.Context;
-import android.view.WindowInsets;
+import android.content.pm.PackageManager;
 import android.view.MotionEvent;
 
 public class RustInputMethodService extends InputMethodService {
@@ -171,7 +171,15 @@ public class RustInputMethodService extends InputMethodService {
 
             recordContainer.setOnClickListener(v -> {
                 if (!recordContainer.isEnabled()) return;
-                
+
+                // Check microphone permission
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    if (statusView != null) statusView.setText("No mic permission - grant in app");
+                    if (hintView != null) hintView.setText("Open the app to grant permission");
+                    return;
+                }
+
                 if (isRecording) {
                     stopRecording();
                     updateRecordButtonUI(false);
@@ -228,18 +236,26 @@ public class RustInputMethodService extends InputMethodService {
     private void updateUiState() {
         if (statusView != null) statusView.setText(lastStatus);
 
-        if (lastStatus.contains("Ready") || lastStatus.contains("Listening")) {
-            if (progressBar != null) progressBar.setVisibility(View.GONE);
-            if (recordContainer != null) {
-                recordContainer.setEnabled(true);
-                recordContainer.setAlpha(1.0f);
-            }
-        } else if (lastStatus.contains("Initializing") || lastStatus.contains("Loading")) {
-            if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
-            if (recordContainer != null) {
-                recordContainer.setEnabled(false);
-                recordContainer.setAlpha(0.5f);
-            }
+        boolean isLoading = lastStatus.contains("Loading") || lastStatus.contains("Initializing");
+        boolean isWaiting = lastStatus.contains("Waiting");
+        boolean isTranscribing = lastStatus.contains("Transcribing") || lastStatus.contains("Processing");
+        boolean isError = lastStatus.startsWith("Error");
+
+        // Show progress bar during loading or waiting for model
+        if (progressBar != null) {
+            progressBar.setVisibility(isLoading || isWaiting ? View.VISIBLE : View.GONE);
+        }
+
+        // Disable button only during transcription/processing/waiting or fatal errors
+        if (recordContainer != null) {
+            boolean disable = isTranscribing || isWaiting || isError;
+            recordContainer.setEnabled(!disable);
+            recordContainer.setAlpha(disable ? 0.5f : 1.0f);
+        }
+
+        // Update hint during loading to indicate recording is available
+        if (isLoading && hintView != null && !isRecording) {
+            hintView.setText("Tap to Record (model loading)");
         }
     }
     
