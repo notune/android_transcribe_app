@@ -37,6 +37,7 @@ public class RustInputMethodService extends InputMethodService {
     private View backspaceButton;
     private View spaceButton;
     private View enterButton;
+    private View switchKeyboardButton;
     private Handler mainHandler;
     private boolean isRecording = false;
     private String lastStatus = "Initializing...";
@@ -81,6 +82,11 @@ public class RustInputMethodService extends InputMethodService {
             backspaceButton = view.findViewById(R.id.ime_backspace);
             spaceButton = view.findViewById(R.id.ime_space);
             enterButton = view.findViewById(R.id.ime_enter);
+            switchKeyboardButton = view.findViewById(R.id.ime_switch_keyboard);
+
+            switchKeyboardButton.setOnClickListener(v -> {
+                switchToPreviousInputMethod();
+            });
 
             // Key repeat runnable for backspace
             backspaceRepeatRunnable = new Runnable() {
