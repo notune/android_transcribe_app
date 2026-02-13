@@ -42,6 +42,7 @@ public class RustInputMethodService extends InputMethodService {
     private View switchKeyboardButton;
     private Handler mainHandler;
     private boolean isRecording = false;
+    private boolean pendingSwitchBack = false;
     private String lastStatus = "Initializing...";
     // Key repeat settings
     private static final long REPEAT_INITIAL_DELAY = 400; // ms before repeat starts
@@ -86,7 +87,13 @@ public class RustInputMethodService extends InputMethodService {
             switchKeyboardButton = view.findViewById(R.id.ime_switch_keyboard);
 
             switchKeyboardButton.setOnClickListener(v -> {
-                switchToPreviousInputMethod();
+                if (isRecording) {
+                    pendingSwitchBack = true;
+                    stopRecording();
+                    updateRecordButtonUI(false);
+                } else {
+                    switchToPreviousInputMethod();
+                }
             });
 
             // Key repeat runnable for backspace
@@ -243,6 +250,10 @@ public class RustInputMethodService extends InputMethodService {
             Log.d(TAG, "Status: " + status);
             lastStatus = status;
             updateUiState();
+            if (pendingSwitchBack && status.startsWith("Error")) {
+                pendingSwitchBack = false;
+                switchToPreviousInputMethod();
+            }
         });
     }
 
@@ -289,6 +300,10 @@ public class RustInputMethodService extends InputMethodService {
             }
             updateRecordButtonUI(false);
             if (statusView != null) statusView.setText("Tap to Record");
+            if (pendingSwitchBack) {
+                pendingSwitchBack = false;
+                switchToPreviousInputMethod();
+            }
         });
     }
 }
