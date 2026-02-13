@@ -302,7 +302,7 @@ public class RustInputMethodService extends InputMethodService {
                 String committed = text + " ";
                 ic.commitText(committed, 1);
 
-                if (new File(getFilesDir(), "select_transcription").exists()) {
+                if (!pendingSwitchBack && new File(getFilesDir(), "select_transcription").exists()) {
                     android.view.inputmethod.ExtractedText et = ic.getExtractedText(
                         new android.view.inputmethod.ExtractedTextRequest(), 0);
                     if (et != null) {
