@@ -6,6 +6,7 @@ on:
       - 'v*'
     branches:
       - main
+      - move-to-gradle-build  # temporary: remove after CI is verified
 
 jobs:
   build:
@@ -23,6 +24,11 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+
+    - name: Fix gradle.properties for CI
+      run: |
+        # Remove local JDK path — CI uses JAVA_HOME from setup-java
+        sed -i '/org.gradle.java.home/d' gradle.properties
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
