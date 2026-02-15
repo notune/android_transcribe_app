@@ -6,7 +6,6 @@ on:
       - 'v*'
     branches:
       - main
-      - move-to-gradle-build  # temporary: remove after CI is verified
 
 jobs:
   build:
