@@ -15,6 +15,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -22,22 +24,48 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Fix gradle.properties for CI
+      run: |
+        # Remove local JDK path — CI uses JAVA_HOME from setup-java
+        sed -i '/org.gradle.java.home/d' gradle.properties
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Install Android NDK r28
+    - name: Install Android NDK
       run: |
-        # Download and install NDK r28 manually to ensure 16KB page support
-        cd $ANDROID_HOME/ndk
-        curl -L -O https://dl.google.com/android/repository/android-ndk-r28-linux.zip
-        unzip -q android-ndk-r28-linux.zip
-        rm android-ndk-r28-linux.zip
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/android-ndk-r28" >> $GITHUB_ENV
+        sdkmanager --install "ndk;28.0.13004108"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> $GITHUB_ENV
 
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         targets: aarch64-linux-android
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+          transcribe-rs/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache Gradle
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
 
     - name: Decode Keystore
       env:
@@ -45,103 +73,33 @@ jobs:
       run: |
         echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
-    - name: Download Model Assets
-      run: |
-        mkdir -p assets/parakeet-tdt-0.6b-v3-int8
-        cd assets/parakeet-tdt-0.6b-v3-int8
-        
-        echo "Downloading config.json..."
-        curl -L -o config.json "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/config.json?download=true"
-        
-        echo "Downloading vocab.txt..."
-        curl -L -o vocab.txt "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/vocab.txt?download=true"
-        
-        echo "Downloading encoder-model.int8.onnx..."
-        curl -L -o encoder-model.int8.onnx "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/encoder-model.int8.onnx?download=true"
-        
-        echo "Downloading decoder_joint-model.int8.onnx..."
-        curl -L -o decoder_joint-model.int8.onnx "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/decoder_joint-model.int8.onnx?download=true"
-        
-        echo "Downloading nemo128.onnx..."
-        curl -L -o nemo128.onnx "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/nemo128.onnx?download=true"
-        
-        echo "Verifying checksums..."
-        echo "6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09  encoder-model.int8.onnx" > checksums.txt
-        echo "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70  decoder_joint-model.int8.onnx" >> checksums.txt
-        echo "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f  nemo128.onnx" >> checksums.txt
-        
-        sha256sum -c checksums.txt
-        rm checksums.txt
-
-    - name: Build APK
+    - name: Build Release APK
       env:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASS: ${{ secrets.KEY_PASS }}
         STORE_PASS: ${{ secrets.STORE_PASS }}
       run: |
-        chmod +x build.sh
-        ./build.sh
+        ./gradlew assembleRelease
 
-    - name: Build AAB
+    - name: Build Release AAB
       env:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASS: ${{ secrets.KEY_PASS }}
         STORE_PASS: ${{ secrets.STORE_PASS }}
       run: |
-        chmod +x build_aab.sh
-        ./build_aab.sh
-
-    - name: Verify 16KB Alignment
-      env:
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASS: ${{ secrets.KEY_PASS }}
-        STORE_PASS: ${{ secrets.STORE_PASS }}
-      run: |
-        echo "=== Verifying 16KB Page Size Compliance ==="
-        
-        # Download bundletool if not already present
-        if [ ! -f libs/bundletool.jar ]; then
-          mkdir -p libs
-          curl -L -o libs/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
-        fi
-        
-        # Check bundle configuration
-        echo "Bundle configuration:"
-        java -jar libs/bundletool.jar dump config --bundle=android_transcribe_app.aab | grep -A5 "alignment\|uncompressNative" || echo "Using bundletool defaults (16KB)"
-        
-        # Generate a test APK and verify alignment
-        java -jar libs/bundletool.jar build-apks \
-          --bundle=android_transcribe_app.aab \
-          --output=test-alignment.apks \
-          --mode=universal \
-          --ks=release.keystore \
-          --ks-pass=pass:$STORE_PASS \
-          --ks-key-alias=$KEY_ALIAS \
-          --key-pass=pass:$KEY_PASS
-        
-        unzip -q test-alignment.apks universal.apk
-        
-        echo ""
-        echo "Verifying APK alignment with zipalign..."
-        $ANDROID_HOME/build-tools/35.0.0/zipalign -c -P 16 -v 4 universal.apk | tail -10
-        
-        # Clean up
-        rm -f test-alignment.apks universal.apk toc.pb
-        
-        echo ""
-        echo "✓ 16KB alignment verification complete"
+        ./gradlew bundleRelease
 
     - name: Extract Version Name
       id: extract_version
       run: |
-        VERSION_NAME=$(grep -oP 'android:versionName="\K[^"]+' AndroidManifest.xml)
+        VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | grep -oP '"[^"]*"' | tr -d '"')
         echo "Detected Version: $VERSION_NAME"
         echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
     - name: Rename Artifacts
       run: |
-        mv android_transcribe_app_release.apk android_transcribe_app_v${{ env.VERSION_NAME }}.apk
-        mv android_transcribe_app.aab android_transcribe_app_v${{ env.VERSION_NAME }}.aab
+        cp app/build/outputs/apk/release/app-release.apk android_transcribe_app_v${{ env.VERSION_NAME }}.apk
+        cp app/build/outputs/bundle/release/app-release.aab android_transcribe_app_v${{ env.VERSION_NAME }}.aab
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4

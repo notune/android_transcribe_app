@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#F0F0F0"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/ime_status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tap to speak"
+            android:textColor="#333333"
+            android:textSize="14sp"
+            android:paddingStart="8dp"/>
+            
+        <ProgressBar
+            android:id="@+id/ime_progress"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:visibility="gone"/>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/ime_record_container"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="@drawable/bg_card"
+        android:backgroundTint="#FFFFFF">
+        
+        <ImageView
+            android:id="@+id/ime_mic_icon"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:layout_gravity="center"
+            android:tint="@color/colorPrimary"/>
+            
+        <TextView
+            android:id="@+id/ime_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap to Record"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="24dp"
+            android:textColor="#888888"/>
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        android:paddingTop="8dp">
+
+        <ImageView
+            android:id="@+id/ime_switch_keyboard"
+            android:layout_width="48dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_keyboard_switch"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_backspace"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Switch keyboard"/>
+
+        <ImageView
+            android:id="@+id/ime_space"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_space"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_backspace"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Space"/>
+
+        <ImageView
+            android:id="@+id/ime_enter"
+            android:layout_width="64dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_enter"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_backspace"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Enter"/>
+
+        <TextView
+            android:id="@+id/ime_backspace"
+            android:layout_width="64dp"
+            android:layout_height="32dp"
+            android:text="⌫"
+            android:textSize="24sp"
+            android:textColor="#333333"
+            android:background="@drawable/bg_backspace"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Backspace"/>
+    </LinearLayout>
+
+</LinearLayout>

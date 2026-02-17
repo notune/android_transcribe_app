@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Enter/Return key symbol (↵) -->
+    <!-- Vertical line down, then horizontal left with arrowhead -->
+    <path
+        android:pathData="M18,6 L18,14 L7,14"
+        android:strokeWidth="2"
+        android:strokeColor="#333333"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Arrowhead pointing left -->
+    <path
+        android:pathData="M10,10 L6,14 L10,18"
+        android:strokeWidth="2"
+        android:strokeColor="#333333"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+</vector>

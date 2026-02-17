@@ -1,18 +1,40 @@
-/target
-/build_manual/
-/build_aab/
+# Gradle
+.gradle/
+build/
+app/build/
+
+# IDE
 /.idea/
-/android-sdk/
 *.iml
 .vscode/
-.cargo/config.toml
-*.apk
-*.idsig
+
+# Editor swap files
+*.kate-swp
+*~
+*.swp
+
+# Android
 local.properties
-.DS_Store
+
+# Keystore (sensitive)
 release.keystore
+
+# Rust build output
+/target/
+/transcribe-rs/target/
+
+# Native libs (built by cargo-ndk at build time)
+app/src/main/jniLibs/
+
+# Model files (downloaded at build time)
+*.onnx
+
+# Build outputs
+*.apk
 *.aab
 *.apks
-/libs/
-*.onnx
+*.idsig
+
+# macOS
+.DS_Store
 ._*

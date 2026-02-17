@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Space key symbol (⎵) -->
+    <!-- Open bracket shape: down, across, up -->
+    <path
+        android:pathData="M5,10 L5,16 L19,16 L19,10"
+        android:strokeWidth="2"
+        android:strokeColor="#333333"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+</vector>

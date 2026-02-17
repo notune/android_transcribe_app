@@ -1,0 +1,13 @@
+Offline Voice Input is a privacy-focused, fully offline speech-to-text keyboard for Android.
+
+It uses the NVIDIA Parakeet TDT 0.6B model (quantized to INT8) running locally on your device via ONNX Runtime — no internet connection required, no data leaves your phone.
+
+Features:
+• Fully offline — works without internet
+• Privacy-first — all processing happens on-device
+• IME keyboard with voice input
+• Live subtitles via screen audio capture
+• High accuracy with NVIDIA Parakeet TDT model
+• Open source (MIT License)
+
+The app downloads the AI model (~670 MB) on first launch. After that, everything runs entirely on your device.

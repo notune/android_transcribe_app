@@ -1,0 +1,7 @@
+# This file is auto-generated for the cargo-ndk Gradle build.
+# cargo-ndk handles the linker and CC/CXX automatically.
+# Only custom rustflags and env vars that cargo-ndk doesn't set go here.
+
+[target.aarch64-linux-android]
+# 16KB page alignment (required for Android 15+ / Google Play)
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384", "-C", "link-arg=-lc++_shared"]

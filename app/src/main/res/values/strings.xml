@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Offline Voice Input</string>
+    <string name="welcome_title">Voice Input &amp; Subtitles</string>
+    <string name="welcome_subtitle">Fully offline, private, and fast.</string>
+    
+    <string name="section_ime">Keyboard Input</string>
+    <string name="desc_ime">Enable the keyboard to use voice input in any app.</string>
+    <string name="btn_ime_settings">Open Keyboard Settings</string>
+    
+    <string name="section_subs">Live Subtitles</string>
+    <string name="desc_subs">Display subtitles for any audio playing on your device. After starting, select \'Share entire screen\' for best results.</string>
+    <string name="btn_subs_start">Start Live Subtitles</string>
+    
+    <string name="status_label">Status:</string>
+    <string name="status_checking">Checking assets...</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_error">Error</string>
+    
+    <string name="section_settings">Settings</string>
+    <string name="setting_auto_record">Auto-start recording</string>
+    <string name="setting_auto_record_desc">Automatically begin recording when the keyboard opens</string>
+
+    <string name="setting_select_transcription">Select transcription</string>
+    <string name="setting_select_transcription_desc">Highlight transcribed text so it can be deleted with a single backspace</string>
+
+    <string name="perm_mic_title">Microphone Access</string>
+    <string name="perm_mic_desc">Required for voice recognition.</string>
+    <string name="btn_grant">Grant Permission</string>
+</resources>

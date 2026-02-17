@@ -2,7 +2,6 @@
 
 An offline, privacy-focused voice input keyboard and live subtitle tool for Android, built with Rust.
 
-
 [<img src="https://i.ibb.co/q0mdc4Z/get-it-on-github.png"
 alt="Get it on GitHub"
 height="80">](https://github.com/notune/android_transcribe_app/releases/latest)
@@ -15,10 +14,9 @@ height="80">](https://play.google.com/store/apps/details?id=dev.notune.transcrib
 - **Offline Transcription:** Uses deep learning models (Parakeet TDT) to transcribe speech entirely on-device.
 - **Supported Languages:** Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian
 - **Voice Input Keyboard** Use your voice as a text field input method.
-- **Live Subtitles:** Get real-time captions for any audio or video playing on your device (e.g., YouTube, Podcasts, Zoom).
+- **Live Subtitles:** Real-time captions for any audio/video playing on your device.
 - **Privacy-First:** No audio data leaves your device.
-- **Rust Backend:** Efficient and safe native code using [transcribe-rs](https://github.com/cjpais/transcribe-rs) (included).
-- **Native Android UI:** Clean Material Design interface.
+- **Rust Backend:** Efficient and safe native code using [transcribe-rs](https://github.com/cjpais/transcribe-rs).
 
 ## Screenshots
 <p float="left">
@@ -27,124 +25,94 @@ height="80">](https://play.google.com/store/apps/details?id=dev.notune.transcrib
   <img src=".screenshots/screenshot_subtitles.png" width="30%" /> 
 </p>
 
-## Building Prerequisites (Linux)
+## Prerequisites
 
-To build this app, you need the following system packages:
+| Dependency | Installation |
+|---|---|
+| **JDK 17** | Android Studio (bundled) or `sudo pacman -S jdk17-openjdk` |
+| **Android SDK** | Via Android Studio or `sdkmanager` |
+| **Android NDK** | `sdkmanager "ndk;28.0.13004108"` |
+| **Rust** | [rustup.rs](https://rustup.rs) + `rustup target add aarch64-linux-android` |
+| **cargo-ndk** | `cargo install cargo-ndk` |
 
-```bash
-sudo pacman -Syu jdk-openjdk rustup unzip zip base-devel cmake
+### Local Configuration
+
+Create a `local.properties` file in the project root (this file is gitignored):
+
+```properties
+sdk.dir=/path/to/your/Android/Sdk
 ```
-*(Adjust for your distribution: e.g., `apt install openjdk-17-jdk build-essential cmake unzip` on Ubuntu)*
 
-Ensure you have the `aarch64-linux-android` target for Rust:
-```bash
-rustup target add aarch64-linux-android
+If your default Java is not JDK 17, uncomment and set `org.gradle.java.home` in `gradle.properties`:
+
+```properties
+org.gradle.java.home=/path/to/jdk17
+# Examples:
+#   /opt/android-studio/jbr          (Android Studio bundled JBR)
+#   /usr/lib/jvm/java-17-openjdk     (System JDK 17)
 ```
-
-Download and extract the parakeet model
-```bash
-curl -L https://blob.handy.computer/parakeet-v3-int8.tar.gz | tar -xz -C assets
-```
-
-### Android SDK Setup (Manual)
-
-Follow these steps to set up the SDK and NDK:
-
-1.  **Setup Directory:**
-    ```bash
-    mkdir -p android-sdk/cmdline-tools
-    cd android-sdk
-    ```
-
-2.  **Download Tools:**
-    Download the command-line tools from [Android Developers](https://developer.android.com/studio#command-tools) or use `wget`:
-    ```bash
-    wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-    unzip -q cmdline-tools.zip
-    mkdir -p cmdline-tools/latest
-    mv cmdline-tools/bin cmdline-tools/lib cmdline-tools/NOTICE.txt cmdline-tools/source.properties cmdline-tools/latest/
-    rm cmdline-tools.zip
-    ```
-
-3.  **Install SDK Components:**
-    ```bash
-    export ANDROID_HOME=$(pwd)
-    export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-    
-    yes | sdkmanager --licenses
-    # Install Platform, Build Tools, and Platform Tools
-    sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-    ```
-
-4.  **Install NDK r28:**
-    ```bash
-    # Inside android-sdk/ndk/
-    mkdir -p ndk
-    cd ndk
-    wget https://dl.google.com/android/repository/android-ndk-r28-linux.zip
-    unzip -q android-ndk-r28-linux.zip
-    rm android-ndk-r28-linux.zip
-    ```
-    *Note: Ensure your `ANDROID_NDK_HOME` environment variable points to this directory (e.g., `.../android-sdk/ndk/android-ndk-r28`).*
 
 ## Building
 
-### APK (Debug/Release)
-You can build a standalone APK for testing:
+### Debug APK
 ```bash
-# Ensure ANDROID_HOME and ANDROID_NDK_HOME are set
-export ANDROID_HOME=$(pwd)/android-sdk
-export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/android-ndk-r28
-
-./build.sh
-# Output: android_transcribe_app_release.apk
+./gradlew assembleDebug
+# Output: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Release AAB (Google Play Ready)
+### Release APK
+```bash
+./gradlew assembleRelease
+# Output: app/build/outputs/apk/release/app-release.apk
+```
 
-1.  **Run the AAB Build Script:**
-    ```bash
-    ./build_aab.sh
-    ```
-    This will:
-    - Build the Rust library in `release` mode.
-    - Create a `base` module for the app code.
-    - Create a `model_assets` module for the large model files (Install-Time Asset Pack).
-    - Generate `android_transcribe_app.aab`.
-    - Sign it with a generated `release.keystore`
+### Release AAB (Google Play)
+```bash
+./gradlew bundleRelease
+# Output: app/build/outputs/bundle/release/app-release.aab
+```
 
-    **Output:** `android_transcribe_app.aab`
+### Signing
 
-2.  **Testing the AAB on a Device:**
-    You cannot install an `.aab` directly. Use `bundletool` (downloaded to `libs/` by the script):
+For release builds, place a `release.keystore` in the project root and set these environment variables:
 
-    ```bash
-    # 1. Generate APKs from the bundle
-    java -jar libs/bundletool.jar build-apks \
-        --bundle=android_transcribe_app.aab \
-        --output=android_transcribe_app.apks \
-        --ks=release.keystore \
-        --ks-pass=pass:password \
-        --ks-key-alias=release \
-        --key-pass=pass:password \
-        --overwrite
+```bash
+export KEY_ALIAS=release
+export KEY_PASS=yourpassword
+export STORE_PASS=yourpassword
+```
 
-    # 2. Install to connected device
-    # Ensure ADB is in your PATH or provide it via --adb
-    java -jar libs/bundletool.jar install-apks \
-        --apks=android_transcribe_app.apks \
-        --adb=android-sdk/platform-tools/adb
-    ```
+### Model Assets
+
+The Parakeet TDT model files (~670 MB) are automatically downloaded from HuggingFace during the first build via a Gradle task. Checksums are verified with SHA-256. No manual download is needed.
+
+## Project Structure
+
+```
+├── app/
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── java/dev/notune/transcribe/   # Android Java code
+│       ├── res/                          # Resources (layouts, drawables, etc.)
+│       ├── assets/                       # Model files (downloaded at build time)
+│       └── jniLibs/                      # Native .so files (built by cargo-ndk)
+├── src/                                  # Rust source code (cdylib)
+├── transcribe-rs/                        # Rust transcription library (submodule)
+├── Cargo.toml                            # Rust workspace
+├── build.gradle.kts                      # Root Gradle config
+├── app/build.gradle.kts                  # App module config (AGP 8.7.3)
+├── settings.gradle.kts
+├── gradle.properties
+└── fastlane/metadata/android/            # F-Droid metadata
+```
 
 ## Acknowledgments
 
-  - **Speech Model:** [Parakeet TDT 0.6b v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) by NVIDIA.
+- **Speech Model:** [Parakeet TDT 0.6b v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) by NVIDIA.
+    - ONNX quantization by [istupakov](https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx).
+    - Licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **Inference Backend:** [transcribe-rs](https://github.com/cjpais/transcribe-rs) by CJ Pais.
 
-      - ONNX quantization provided by [istupakov](https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx).
-      - Licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-
-  - **Inference Backend:** [transcribe-rs](https://github.com/cjpais/transcribe-rs) by CJ Pais.
-
-## License of this Project
+## License
 
 [MIT](LICENSE)
