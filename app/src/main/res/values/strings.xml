@@ -27,4 +27,7 @@
     <string name="perm_mic_title">Microphone Access</string>
     <string name="perm_mic_desc">Required for voice recognition.</string>
     <string name="btn_grant">Grant Permission</string>
+
+    <string name="setting_pause_audio">Pause audio</string>
+    <string name="setting_pause_audio_desc">Pause audio while recording</string>
 </resources>

@@ -49,6 +49,8 @@ public class RustInputMethodService extends InputMethodService {
     private static final long REPEAT_INTERVAL = 50; // ms between repeats
     private Runnable backspaceRepeatRunnable;
     private Runnable spaceRepeatRunnable;
+    private final AudioFocusPauser audioPauser = new AudioFocusPauser();
+    private boolean pauseAudioActive = false;
 
     @Override
     public void onCreate() {
@@ -193,8 +195,16 @@ public class RustInputMethodService extends InputMethodService {
 
                 if (isRecording) {
                     stopRecording();
+                    if (pauseAudioActive) {
+                        audioPauser.abandon(this);
+                        pauseAudioActive = false;
+                    }
                     updateRecordButtonUI(false);
                 } else {
+                    if (isPauseAudioEnabled()) {
+                        audioPauser.request(this);
+                        pauseAudioActive = true;
+                    }
                     startRecording();
                     updateRecordButtonUI(true);
                 }
@@ -211,14 +221,36 @@ public class RustInputMethodService extends InputMethodService {
     }
 
     @Override
-    public void onStartInputView(EditorInfo info, boolean restarting) {
-        super.onStartInputView(info, restarting);
+    public void onWindowShown() {
+        super.onWindowShown();
         if (!isRecording && new File(getFilesDir(), "auto_record").exists()) {
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
                     == PackageManager.PERMISSION_GRANTED) {
+                if (isPauseAudioEnabled()) {
+                    audioPauser.request(this);
+                    pauseAudioActive = true;
+                }
                 startRecording();
                 updateRecordButtonUI(true);
             }
+        }
+    }
+
+    @Override
+    public void onWindowHidden() {
+        super.onWindowHidden();
+        if (isRecording) {
+            try {
+                cancelRecording();
+            } catch (Throwable t) {
+                Log.w(TAG, "cancelRecording failed, falling back to stopRecording", t);
+                try { stopRecording(); } catch (Throwable ignored) { }
+            }
+            updateRecordButtonUI(false);
+        }
+        if (pauseAudioActive) {
+            audioPauser.abandon(this);
+            pauseAudioActive = false;
         }
     }
 
@@ -234,11 +266,15 @@ public class RustInputMethodService extends InputMethodService {
             hintView.setText("Tap to Record");
         }
     }
-    
+
     @Override
     public void onDestroy() {
         super.onDestroy();
         cleanupNative();
+        if (pauseAudioActive) {
+            audioPauser.abandon(this);
+            pauseAudioActive = false;
+        }
     }
 
     // Native methods
@@ -246,7 +282,8 @@ public class RustInputMethodService extends InputMethodService {
     private native void cleanupNative();
     private native void startRecording();
     private native void stopRecording();
-    
+    private native void cancelRecording();
+
     // Called from Rust
     public void onStatusUpdate(String status) {
         mainHandler.post(() -> {
@@ -256,6 +293,10 @@ public class RustInputMethodService extends InputMethodService {
             if (pendingSwitchBack && status.startsWith("Error")) {
                 pendingSwitchBack = false;
                 switchToPreviousInputMethod();
+            }
+            if (pauseAudioActive && status != null && status.startsWith("Error")) {
+                audioPauser.abandon(this);
+                pauseAudioActive = false;
             }
         });
     }
@@ -294,7 +335,7 @@ public class RustInputMethodService extends InputMethodService {
             hintView.setText("Tap to Record");
         }
     }
-    
+
     // Called from Rust
     public void onTextTranscribed(String text) {
         mainHandler.post(() -> {
@@ -315,6 +356,10 @@ public class RustInputMethodService extends InputMethodService {
                     }
                 }
             }
+            if (pauseAudioActive) {
+                audioPauser.abandon(this);
+                pauseAudioActive = false;
+            }
             updateRecordButtonUI(false);
             if (statusView != null) statusView.setText("Tap to Record");
             if (pendingSwitchBack) {
@@ -324,4 +369,8 @@ public class RustInputMethodService extends InputMethodService {
         });
     }
     public void onAudioLevel(float level) { }
+
+    private boolean isPauseAudioEnabled() {
+        return new File(getFilesDir(), "pause_audio").exists();
+    }
 }

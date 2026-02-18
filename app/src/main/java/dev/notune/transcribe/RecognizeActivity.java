@@ -29,8 +29,8 @@ public class RecognizeActivity extends Activity {
     private TextView status;
     private boolean isRecording = false;
     private MicLevelView micLevel;
-
-
+    private final AudioFocusPauser audioPauser = new AudioFocusPauser();
+    private boolean pauseAudioActive = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +46,10 @@ public class RecognizeActivity extends Activity {
                 isRecording = false;
                 cancelRecording();   // new native method
             }
+            if (pauseAudioActive) {
+                audioPauser.abandon(this);
+                pauseAudioActive = false;
+            }
             setResult(Activity.RESULT_CANCELED);
             finish();
         });
@@ -56,6 +60,10 @@ public class RecognizeActivity extends Activity {
                 isRecording = false;
                 status.setText("Processing...");
                 stopRecording();
+                if (pauseAudioActive) {
+                    audioPauser.abandon(this);
+                    pauseAudioActive = false;
+                }
             }
         });
 
@@ -69,12 +77,20 @@ public class RecognizeActivity extends Activity {
         initNative(this);
         isRecording = true;
         status.setText("Listening... (Tap to stop)");
+        if (isPauseAudioEnabled()) {
+            audioPauser.request(this);
+            pauseAudioActive = true;
+        }
         startRecording();
-    }    
+    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (pauseAudioActive) {
+            audioPauser.abandon(this);
+            pauseAudioActive = false;
+        }
         try { cleanupNative(); } catch (Throwable t) { /* ignore */ }
     }
 
@@ -92,7 +108,6 @@ public class RecognizeActivity extends Activity {
         runOnUiThread(() -> status.setText(shown));
     }
 
-    
     // Called from Rust with 0..1
     public void onAudioLevel(float level) {
         runOnUiThread(() -> micLevel.setLevel(level));
@@ -111,7 +126,11 @@ public class RecognizeActivity extends Activity {
             finish();
         });
     }
-    
+
+    private boolean isPauseAudioEnabled() {
+        return new java.io.File(getFilesDir(), "pause_audio").exists();
+    }
+
     // Native methods
     private native void initNative(RecognizeActivity activity);
     private native void cleanupNative();

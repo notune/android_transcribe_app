@@ -88,6 +88,21 @@ public class MainActivity extends Activity {
             }
         });
 
+        Switch pauseAudioSwitch = findViewById(R.id.switch_pause_audio);
+        File pauseAudioFile = new File(getFilesDir(), "pause_audio");
+        pauseAudioSwitch.setChecked(pauseAudioFile.exists());
+        pauseAudioSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                try {
+                    pauseAudioFile.createNewFile();
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to create pause_audio file", e);
+                }
+            } else {
+                pauseAudioFile.delete();
+            }
+        });
+
         // Initial check
         updatePermissionUI();
         
