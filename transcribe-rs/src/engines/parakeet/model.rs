@@ -28,7 +28,7 @@ pub struct TimestampedResult {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParakeetError {
-    #[error("No Microphone access")]
+    #[error("ONNX Runtime error: {0}")]
     Ort(#[from] ort::Error),
     #[error("I/O error")]
     Io(#[from] std::io::Error),
@@ -53,7 +53,10 @@ pub struct ParakeetModel {
 
 impl Drop for ParakeetModel {
     fn drop(&mut self) {
-        log::debug!("Dropping ParakeetModel with {} vocab tokens", self.vocab.len());
+        log::debug!(
+            "Dropping ParakeetModel with {} vocab tokens",
+            self.vocab.len()
+        );
     }
 }
 
@@ -448,6 +451,15 @@ impl ParakeetModel {
         &mut self,
         samples: Vec<f32>,
     ) -> Result<TimestampedResult, ParakeetError> {
+        // Guard against empty audio — ORT crashes on zero-length inputs
+        if samples.is_empty() {
+            return Ok(TimestampedResult {
+                text: String::new(),
+                timestamps: Vec::new(),
+                tokens: Vec::new(),
+            });
+        }
+
         let batch_size = 1;
         let samples_len = samples.len();
 

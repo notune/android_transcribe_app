@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
-use jni::JNIEnv;
+use crossbeam_channel;
 use jni::objects::{JClass, JObject};
 use jni::sys::jfloat;
+use jni::JNIEnv;
 use once_cell::sync::Lazy;
-use crossbeam_channel;
+use std::sync::{Arc, Mutex};
 use transcribe_rs::engines::parakeet::{ParakeetInferenceParams, TimestampGranularity};
 use transcribe_rs::TranscriptionEngine;
 
@@ -25,7 +25,9 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
     _class: JClass,
     service: JObject,
 ) {
-    android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info));
+    android_logger::init_once(
+        android_logger::Config::default().with_max_level(log::LevelFilter::Info),
+    );
     let vm = env.get_java_vm().expect("Failed to get JavaVM");
     let vm_arc = Arc::new(vm);
     let service_ref = env.new_global_ref(&service).expect("Failed to ref service");
@@ -46,7 +48,7 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
     // Spawn Worker Thread
     let vm_worker = vm_arc.clone();
     let service_ref_worker = service_ref.clone();
-    
+
     std::thread::spawn(move || {
         let mut env = match vm_worker.attach_current_thread() {
             Ok(e) => e,
@@ -57,7 +59,7 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
         };
         let service_obj = service_ref_worker.as_obj();
         let mut last_committed_end = 0.0f64;
-        
+
         while let Ok((samples, start_time)) = rx.recv() {
             if let Some(engine_arc) = engine::get_engine() {
                 let params = ParakeetInferenceParams {
@@ -68,37 +70,42 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
                     let mut eng = engine_arc.lock().unwrap();
                     eng.transcribe_samples(samples, Some(params))
                 };
-                
+
                 if let Ok(r) = res {
                     let mut new_text = String::new();
                     let mut max_end_in_chunk = last_committed_end;
-                    
+
                     if let Some(segments) = r.segments {
                         for seg in segments {
                             let abs_start = start_time + seg.start as f64;
                             let abs_end = start_time + seg.end as f64;
-                            
+
                             if abs_start >= last_committed_end - 0.05 {
                                 if !new_text.is_empty() {
                                     new_text.push(' ');
                                 }
                                 new_text.push_str(&seg.text);
-                                
+
                                 if abs_end > max_end_in_chunk {
                                     max_end_in_chunk = abs_end;
                                 }
                             }
                         }
                     } else if r.text.len() > 0 {
-                         new_text = r.text;
-                         max_end_in_chunk = start_time + 2.0; 
+                        new_text = r.text;
+                        max_end_in_chunk = start_time + 2.0;
                     }
 
                     let text_trim = new_text.trim();
                     if !text_trim.is_empty() {
                         last_committed_end = max_end_in_chunk;
                         if let Ok(txt) = env.new_string(text_trim) {
-                            let _ = env.call_method(service_obj, "onSubtitleText", "(Ljava/lang/String;)V", &[(&txt).into()]);
+                            let _ = env.call_method(
+                                service_obj,
+                                "onSubtitleText",
+                                "(Ljava/lang/String;)V",
+                                &[(&txt).into()],
+                            );
                         }
                     }
                 }
@@ -142,18 +149,18 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_pus
         env.get_float_array_region(&data, 0, &mut input).unwrap();
         buffer.extend_from_slice(&input);
         state.total_samples += len_usize as u64;
-        
+
         if state.total_samples >= state.last_process_sample + state.update_interval as u64 {
             let buffer_len = buffer.len();
             let start_time = (state.total_samples as f64 - buffer_len as f64) / 16000.0;
             let sum_sq: f32 = buffer.iter().map(|&x| x * x).sum();
             let rms = (sum_sq / buffer_len as f32).sqrt();
-            
+
             if rms > 0.002 {
                 let _ = state.worker_tx.send((buffer.clone(), start_time));
             }
             state.last_process_sample = state.total_samples;
-            
+
             if buffer_len > 48000 {
                 let keep_idx = buffer_len - 48000;
                 let new_buf = buffer[keep_idx..].to_vec();

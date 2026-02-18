@@ -49,6 +49,29 @@
         </activity>
 
 
+        <!-- Transcribe shared audio file -->
+        <activity
+            android:name=".TranscribeFileActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+            <!-- Handle "Share" from other apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+
+            <!-- Handle "Open with" for audio files -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+        </activity>
+
         <!-- Live Subtitles Service -->
         <service
             android:name=".LiveSubtitleService"

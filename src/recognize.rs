@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
-use jni::JNIEnv;
 use jni::objects::{JClass, JObject};
+use jni::JNIEnv;
 use once_cell::sync::Lazy;
 
 use crate::voice_session::{self, VoiceSessionState};
@@ -58,4 +58,3 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_cance
         crate::voice_session::cancel_recording(env, state);
     }
 }
-
