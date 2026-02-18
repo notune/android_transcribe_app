@@ -16,6 +16,15 @@ const SUBSAMPLING_FACTOR: usize = 8;
 const WINDOW_SIZE: f32 = 0.01;
 const MAX_TOKENS_PER_STEP: usize = 10;
 
+/// Maximum audio chunk size in samples (16 kHz).
+/// The encoder's positional encoding supports ~824 time-steps.
+/// 60 seconds of audio ≈ 750 encoder frames, safely under the limit.
+const MAX_CHUNK_SAMPLES: usize = 60 * 16_000; // 60 seconds
+
+/// Overlap between consecutive chunks in samples (16 kHz).
+/// 1 second of overlap so words at chunk boundaries aren't cut.
+const CHUNK_OVERLAP_SAMPLES: usize = 1 * 16_000; // 1 second
+
 static DECODE_SPACE_RE: Lazy<Result<Regex, regex::Error>> =
     Lazy::new(|| Regex::new(r"\A\s|\s\B|(\s)\b"));
 
@@ -447,6 +456,25 @@ impl ParakeetModel {
         }
     }
 
+    /// Transcribe a single chunk that fits within the encoder's positional
+    /// encoding limit.
+    fn transcribe_chunk(&mut self, samples: Vec<f32>) -> Result<TimestampedResult, ParakeetError> {
+        let batch_size = 1;
+        let samples_len = samples.len();
+
+        let waveforms = Array2::from_shape_vec((batch_size, samples_len), samples)?.into_dyn();
+        let waveforms_lens = Array1::from_vec(vec![samples_len as i64]).into_dyn();
+
+        let results = self.recognize_batch(&waveforms.view(), &waveforms_lens.view())?;
+
+        results.into_iter().next().ok_or_else(|| {
+            ParakeetError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "No transcription result returned",
+            ))
+        })
+    }
+
     pub fn transcribe_samples(
         &mut self,
         samples: Vec<f32>,
@@ -460,26 +488,89 @@ impl ParakeetModel {
             });
         }
 
-        let batch_size = 1;
-        let samples_len = samples.len();
+        // Short audio: process in a single pass (no chunking overhead)
+        if samples.len() <= MAX_CHUNK_SAMPLES {
+            return self.transcribe_chunk(samples);
+        }
 
-        // Create waveforms array [batch_size, samples_len]
-        let waveforms = Array2::from_shape_vec((batch_size, samples_len), samples)?.into_dyn();
+        // Long audio: split into overlapping chunks to stay within the
+        // encoder's maximum positional-encoding length.
+        log::info!(
+            "Audio has {} samples ({:.1}s), chunking into ≤{:.0}s segments",
+            samples.len(),
+            samples.len() as f64 / 16_000.0,
+            MAX_CHUNK_SAMPLES as f64 / 16_000.0,
+        );
 
-        // Create waveforms_lens array [batch_size] with the actual length
-        let waveforms_lens = Array1::from_vec(vec![samples_len as i64]).into_dyn();
+        let step = MAX_CHUNK_SAMPLES - CHUNK_OVERLAP_SAMPLES;
+        let mut merged_text = String::new();
+        let mut merged_tokens: Vec<String> = Vec::new();
+        let mut merged_timestamps: Vec<f32> = Vec::new();
 
-        // Run recognition to get detailed results
-        let results = self.recognize_batch(&waveforms.view(), &waveforms_lens.view())?;
+        let mut offset: usize = 0;
+        while offset < samples.len() {
+            let end = (offset + MAX_CHUNK_SAMPLES).min(samples.len());
+            let chunk = samples[offset..end].to_vec();
+            let chunk_time_offset = offset as f32 / 16_000.0;
 
-        // Extract the first (and only) result
-        let timestamped_result = results.into_iter().next().ok_or_else(|| {
-            ParakeetError::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "No transcription result returned",
-            ))
-        })?;
+            log::info!(
+                "Processing chunk at {:.1}s–{:.1}s",
+                chunk_time_offset,
+                end as f32 / 16_000.0,
+            );
 
-        Ok(timestamped_result)
+            let result = self.transcribe_chunk(chunk)?;
+
+            if !result.text.is_empty() {
+                // For chunks after the first one we need to trim the overlap
+                // region to avoid duplicating words at the boundary.
+                if offset > 0 && !result.timestamps.is_empty() {
+                    let overlap_time = CHUNK_OVERLAP_SAMPLES as f32 / 16_000.0;
+                    // Find the first token whose timestamp is past the overlap
+                    let skip = result
+                        .timestamps
+                        .iter()
+                        .position(|&t| t >= overlap_time)
+                        .unwrap_or(0);
+
+                    if skip < result.tokens.len() {
+                        if !merged_text.is_empty() {
+                            merged_text.push(' ');
+                        }
+                        // Reconstruct text from the kept tokens
+                        let kept_tokens = &result.tokens[skip..];
+                        let kept_text: String = kept_tokens.join("");
+                        // Clean leading space from subword tokens
+                        merged_text.push_str(kept_text.trim_start());
+
+                        for (token, &ts) in result.tokens[skip..]
+                            .iter()
+                            .zip(result.timestamps[skip..].iter())
+                        {
+                            merged_tokens.push(token.clone());
+                            merged_timestamps.push(ts + chunk_time_offset);
+                        }
+                    }
+                } else {
+                    // First chunk — take everything
+                    merged_text.push_str(&result.text);
+                    for (token, &ts) in result.tokens.iter().zip(result.timestamps.iter()) {
+                        merged_tokens.push(token.clone());
+                        merged_timestamps.push(ts + chunk_time_offset);
+                    }
+                }
+            }
+
+            if end >= samples.len() {
+                break;
+            }
+            offset += step;
+        }
+
+        Ok(TimestampedResult {
+            text: merged_text,
+            timestamps: merged_timestamps,
+            tokens: merged_tokens,
+        })
     }
 }
