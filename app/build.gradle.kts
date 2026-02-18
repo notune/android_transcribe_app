@@ -57,6 +57,26 @@ android {
             keepDebugSymbols += "**/*.so"
         }
     }
+
+    // Play Asset Delivery: large model files go into a separate asset pack
+    // so the base module stays under the 200 MB Play Store limit.
+    assetPacks += listOf(":model_assets")
+}
+
+// For APK builds (assemble/install), asset packs are ignored by AGP so we
+// must include the asset-pack assets as an extra source directory.  For
+// bundle builds the asset pack module handles delivery and we must NOT add
+// the directory here (would cause duplicate-resource errors).
+val isBundle = gradle.startParameter.taskNames.any {
+    it.contains("bundle", ignoreCase = true)
+}
+if (!isBundle) {
+    android.sourceSets.getByName("main") {
+        assets.srcDirs(
+            "src/main/assets",
+            rootProject.file("model_assets/src/main/assets")
+        )
+    }
 }
 
 dependencies {
@@ -144,33 +164,60 @@ tasks.named("preBuild") {
 
 data class ModelFile(val name: String, val sha256: String)
 
-val modelFiles = listOf(
-    ModelFile("config.json", ""),                          // small config, no checksum needed
-    ModelFile("vocab.txt", ""),                            // small vocab, no checksum needed
+// Small metadata files stay in app/src/main/assets (always in base module)
+val appAssetFiles = listOf(
+    ModelFile("config.json", ""),
+    ModelFile("vocab.txt", ""),
+)
+
+// Large ONNX model files go into the model_assets asset pack so the base
+// module stays under the Play Store 200 MB compressed-download limit.
+val modelPackFiles = listOf(
     ModelFile("encoder-model.int8.onnx",
         "6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09"),
     ModelFile("decoder_joint-model.int8.onnx",
         "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"),
     ModelFile("nemo128.onnx",
-        "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f")
+        "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f"),
 )
 
 val huggingFaceRepo = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main"
 
-val downloadModels by tasks.registering {
-    description = "Download HuggingFace Parakeet model assets"
-    group = "build"
+fun downloadToDir(assetsDir: File, files: List<ModelFile>) {
+    assetsDir.mkdirs()
+    files.forEach { model ->
+        val destFile = File(assetsDir, model.name)
+        if (destFile.exists() && model.sha256.isNotEmpty()) {
+            val digest = MessageDigest.getInstance("SHA-256")
+            FileInputStream(destFile).use { fis ->
+                val buf = ByteArray(8192)
+                var read: Int
+                while (fis.read(buf).also { read = it } != -1) {
+                    digest.update(buf, 0, read)
+                }
+            }
+            val hash = digest.digest().joinToString("") { "%02x".format(it) }
+            if (hash == model.sha256) {
+                println("  ✓ ${model.name} already downloaded and verified")
+                return@forEach
+            } else {
+                println("  ✗ ${model.name} checksum mismatch, re-downloading...")
+                destFile.delete()
+            }
+        }
 
-    val assetsDir = project.file("src/main/assets/parakeet-tdt-0.6b-v3-int8")
-    outputs.dir(assetsDir)
+        if (!destFile.exists()) {
+            println("  ↓ Downloading ${model.name}...")
+            val downloadUrl = "$huggingFaceRepo/${model.name}?download=true"
+            val proc = ProcessBuilder("curl", "-L", "-f", "-o", destFile.absolutePath, downloadUrl)
+                .inheritIO()
+                .start()
+            val exitCode = proc.waitFor()
+            if (exitCode != 0) {
+                throw GradleException("Failed to download ${model.name} (curl exit code $exitCode)")
+            }
 
-    doLast {
-        assetsDir.mkdirs()
-
-        modelFiles.forEach { model ->
-            val destFile = File(assetsDir, model.name)
-            if (destFile.exists() && model.sha256.isNotEmpty()) {
-                // Verify existing file checksum
+            if (model.sha256.isNotEmpty()) {
                 val digest = MessageDigest.getInstance("SHA-256")
                 FileInputStream(destFile).use { fis ->
                     val buf = ByteArray(8192)
@@ -180,48 +227,34 @@ val downloadModels by tasks.registering {
                     }
                 }
                 val hash = digest.digest().joinToString("") { "%02x".format(it) }
-                if (hash == model.sha256) {
-                    println("  ✓ ${model.name} already downloaded and verified")
-                    return@forEach
-                } else {
-                    println("  ✗ ${model.name} checksum mismatch, re-downloading...")
-                    destFile.delete()
+                if (hash != model.sha256) {
+                    throw GradleException(
+                        "Checksum verification failed for ${model.name}:\n" +
+                        "  Expected: ${model.sha256}\n" +
+                        "  Got:      $hash"
+                    )
                 }
-            }
-
-            if (!destFile.exists()) {
-                println("  ↓ Downloading ${model.name}...")
-                val downloadUrl = "$huggingFaceRepo/${model.name}?download=true"
-                val proc = ProcessBuilder("curl", "-L", "-f", "-o", destFile.absolutePath, downloadUrl)
-                    .inheritIO()
-                    .start()
-                val exitCode = proc.waitFor()
-                if (exitCode != 0) {
-                    throw GradleException("Failed to download ${model.name} (curl exit code $exitCode)")
-                }
-
-                // Verify checksum if provided
-                if (model.sha256.isNotEmpty()) {
-                    val digest = MessageDigest.getInstance("SHA-256")
-                    FileInputStream(destFile).use { fis ->
-                        val buf = ByteArray(8192)
-                        var read: Int
-                        while (fis.read(buf).also { read = it } != -1) {
-                            digest.update(buf, 0, read)
-                        }
-                    }
-                    val hash = digest.digest().joinToString("") { "%02x".format(it) }
-                    if (hash != model.sha256) {
-                        throw GradleException(
-                            "Checksum verification failed for ${model.name}:\n" +
-                            "  Expected: ${model.sha256}\n" +
-                            "  Got:      $hash"
-                        )
-                    }
-                    println("  ✓ ${model.name} verified")
-                }
+                println("  ✓ ${model.name} verified")
             }
         }
+    }
+}
+
+val downloadModels by tasks.registering {
+    description = "Download HuggingFace Parakeet model assets"
+    group = "build"
+
+    // Small metadata -> app assets (base module)
+    val appAssetsDir = project.file("src/main/assets/parakeet-tdt-0.6b-v3-int8")
+    // Large ONNX models -> asset pack (separate install-time delivery)
+    val packAssetsDir = rootProject.file("model_assets/src/main/assets/parakeet-tdt-0.6b-v3-int8")
+
+    outputs.dir(appAssetsDir)
+    outputs.dir(packAssetsDir)
+
+    doLast {
+        downloadToDir(appAssetsDir, appAssetFiles)
+        downloadToDir(packAssetsDir, modelPackFiles)
     }
 }
 

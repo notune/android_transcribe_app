@@ -1,7 +1,8 @@
-pub mod engine;
 pub mod assets;
+pub mod engine;
 pub mod ime;
-pub mod subtitle;
 pub mod main_activity;
-pub mod voice_session;
 pub mod recognize;
+pub mod subtitle;
+pub mod transcribe_file;
+pub mod voice_session;

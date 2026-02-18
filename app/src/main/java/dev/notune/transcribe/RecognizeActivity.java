@@ -70,6 +70,11 @@ public class RecognizeActivity extends Activity {
         });
 
         // Permission check
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Microphone permission required.\nGrant it in the main app.");
+            return;
+        }
 
         initNative(this);
         isRecording = true;

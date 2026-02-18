@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "OfflineVoiceInput"
 include(":app")
+include(":model_assets")

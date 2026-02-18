@@ -7,6 +7,9 @@ app/build/
 /.idea/
 *.iml
 .vscode/
+.project
+.classpath
+.settings/
 
 # Editor swap files
 *.kate-swp
