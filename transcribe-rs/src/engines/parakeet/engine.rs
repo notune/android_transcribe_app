@@ -82,6 +82,9 @@ use crate::{
     TranscriptionEngine, TranscriptionResult,
 };
 use std::path::{Path, PathBuf};
+use once_cell::sync::Lazy;
+use regex::Regex;
+use text2num::{replace_numbers_in_text, Language};
 
 /// Granularity level for timestamp generation.
 ///
@@ -249,6 +252,263 @@ impl Drop for ParakeetEngine {
     }
 }
 
+// Matches alphabetic tokens (including German umlauts) for lightweight tokenization.
+// We intentionally keep punctuation and whitespace outside this regex.
+static WORD_TOKEN_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?iu)[[:alpha:]äöüß]+").expect("valid word token regex")
+});
+
+static GERMAN_UHR_TO_COLON_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(\d{1,2})\s*uhr\s*(\d{1,2})\b").expect("valid uhr-to-colon regex")
+});
+
+static GERMAN_MONTH_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?ix)\b(
+            januar|februar|maerz|märz|april|mai|juni|juli|august|
+            september|oktober|november|dezember
+        )\b"
+    )
+    .expect("valid german month regex")
+});
+
+static GERMAN_UHR_LOCAL_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b([[:alpha:]0-9äöüß\.\-]+)\s+uhr\s+([[:alpha:]0-9äöüß\.\-]+)\b")
+        .expect("valid local uhr regex")
+});
+
+static GERMAN_DOTTED_UHR_TIME_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(\d{1,2})\.(\d{1,2})\s*uhr\b").expect("valid dotted uhr time regex")
+});
+
+static GERMAN_MONTH_LOCAL_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?ix)\b((?:am|den)\s+)?([[:alpha:]0-9äöüß\.\-]+)\s+
+        (januar|februar|maerz|märz|april|mai|juni|juli|august|september|oktober|november|dezember)\b"
+    )
+    .expect("valid local month regex")
+});
+
+fn normalize_dotted_uhr_time(text: &str) -> String {
+    GERMAN_DOTTED_UHR_TIME_RE
+        .replace_all(text, |caps: &regex::Captures| {
+            let hour = caps.get(1).map(|m| m.as_str()).unwrap_or("0");
+            let minute = caps
+                .get(2)
+                .map(|m| m.as_str())
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(0);
+
+            format!("{hour}:{minute:02} Uhr")
+        })
+        .into_owned()
+}
+
+fn normalize_uhr_to_colon(text: &str) -> String {
+    GERMAN_UHR_TO_COLON_RE
+        .replace_all(text, |caps: &regex::Captures| {
+            let h = caps.get(1).map(|m| m.as_str()).unwrap_or("0");
+            let m = caps
+                .get(2)
+                .map(|m| m.as_str())
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(0);
+            format!("{h}:{m:02}")
+        })
+        .into_owned()
+}
+
+// German number word fragments used for joining ASR-split number expressions.
+// The goal is to merge whitespace between adjacent number fragments, e.g.
+// "Neunzehnhundert siebenundvierzig" -> "Neunzehnhundertsiebenundvierzig".
+fn is_german_number_fragment(token: &str) -> bool {
+    let t = token.to_lowercase();
+
+    matches!(
+        t.as_str(),
+        // basic numbers
+        "null"
+            | "eins"
+            | "ein"
+            | "eine"
+            | "einen"
+            | "einem"
+            | "einer"
+            | "zwei"
+            | "drei"
+            | "vier"
+            | "fuenf"
+            | "fünf"
+            | "sechs"
+            | "sieben"
+            | "acht"
+            | "neun"
+            | "zehn"
+            | "elf"
+            | "zwoelf"
+            | "zwölf"
+            // teens
+            | "dreizehn"
+            | "vierzehn"
+            | "fuenfzehn"
+            | "fünfzehn"
+            | "sechzehn"
+            | "siebzehn"
+            | "achtzehn"
+            | "neunzehn"
+            // tens
+            | "zwanzig"
+            | "dreissig"
+            | "dreißig"
+            | "vierzig"
+            | "fuenfzig"
+            | "fünfzig"
+            | "sechzig"
+            | "siebzig"
+            | "achtzig"
+            | "neunzig"
+            // scale words
+            | "hundert"
+            | "tausend"
+            | "million"
+            | "millionen"
+            | "milliarde"
+            | "milliarden"
+    ) || t.contains("und")
+        || t.contains("hundert")
+        || t.contains("tausend")
+}
+
+fn is_german_scale_fragment(token: &str) -> bool {
+    let t = token.to_lowercase();
+
+    t == "hundert"
+        || t == "tausend"
+        || t == "million"
+        || t == "millionen"
+        || t == "milliarde"
+        || t == "milliarden"
+        || t.contains("hundert")
+        || t.contains("tausend")
+}
+
+// Joins whitespace between adjacent German number fragments while preserving
+// punctuation and all non-number text unchanged.
+//
+// Examples:
+// - "Neunzehnhundert elf" -> "Neunzehnhundertelf"
+// - "Neunzehnhundert siebenundvierzig" -> "Neunzehnhundertsiebenundvierzig"
+// - "Siebenundvierzig Elf" -> "SiebenundvierzigElf"
+fn join_split_german_number_words(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut cursor = 0usize;
+
+    let mut pending_ws: Option<String> = None;
+    let mut prev_was_number_fragment = false;
+    let mut prev_word_token: Option<String> = None;
+
+    for m in WORD_TOKEN_RE.find_iter(text) {
+        let start = m.start();
+        let end = m.end();
+        let token = m.as_str();
+
+        // Emit any text before this token (punctuation/whitespace/etc.).
+        // We treat pure whitespace specially and may suppress it later if the
+        // surrounding tokens are number fragments.
+        if start > cursor {
+            let between = &text[cursor..start];
+            if between.chars().all(char::is_whitespace) {
+                pending_ws = Some(between.to_string());
+            } else {
+                if let Some(ws) = pending_ws.take() {
+                    out.push_str(&ws);
+                }
+                out.push_str(between);
+                prev_was_number_fragment = false;
+				prev_word_token = None;
+            }
+        }
+
+        let current_is_number_fragment = is_german_number_fragment(token);
+
+		if let Some(ws) = pending_ws.take() {
+			let should_join = if prev_was_number_fragment && current_is_number_fragment {
+				let prev_has_scale = prev_word_token
+					.as_deref()
+					.map(is_german_scale_fragment)
+					.unwrap_or(false);
+				let curr_has_scale = is_german_scale_fragment(token);
+
+				// Join only if at least one side contains a German scale marker
+				// (hundert/tausend/million/...). This keeps separate numbers like
+				// "siebenundvierzig elf" apart, but still fixes ASR splits like
+				// "neunzehnhundert siebenundvierzig".
+				prev_has_scale || curr_has_scale
+			} else {
+				false
+			};
+
+			if !should_join {
+				out.push_str(&ws);
+			}
+		}
+
+        out.push_str(token);
+        prev_was_number_fragment = current_is_number_fragment;
+		prev_word_token = Some(token.to_string());
+        cursor = end;
+    }
+
+    // Emit trailing remainder.
+    if cursor < text.len() {
+        if let Some(ws) = pending_ws.take() {
+            out.push_str(&ws);
+        }
+        out.push_str(&text[cursor..]);
+    } else if let Some(ws) = pending_ws.take() {
+        out.push_str(&ws);
+    }
+
+    out
+}
+
+fn normalize_german_numbers_conservative(text: &str) -> String {
+    if text.trim().is_empty() {
+        return text.to_string();
+    }
+
+    // First, merge ASR-split German number words (common with Parakeet output).
+    let joined = join_split_german_number_words(text);
+
+    let de = Language::german();
+
+    // Default behavior: keep isolated 1..12 as words, but convert larger numbers.
+    let mut normalized = replace_numbers_in_text(&joined, &de, 13.0);
+
+    // Only normalize small numbers locally in time context ("... uhr ..."),
+    // not in the entire sentence.
+    if normalized.to_lowercase().contains("uhr") {
+        normalized = GERMAN_UHR_LOCAL_RE
+            .replace_all(&normalized, |caps: &regex::Captures| {
+                let full = caps.get(0).map(|m| m.as_str()).unwrap_or_default();
+                replace_numbers_in_text(full, &de, 0.0)
+            })
+            .into_owned();
+    }
+
+    // Same idea for month/date context ("dritten märz", "am dritten märz", ...).
+    if GERMAN_MONTH_RE.is_match(&normalized) {
+        normalized = GERMAN_MONTH_LOCAL_RE
+            .replace_all(&normalized, |caps: &regex::Captures| {
+                let full = caps.get(0).map(|m| m.as_str()).unwrap_or_default();
+                replace_numbers_in_text(full, &de, 0.0)
+            })
+            .into_owned();
+    }
+
+    normalize_dotted_uhr_time(&normalize_uhr_to_colon(&normalized))
+}
+
 impl TranscriptionEngine for ParakeetEngine {
     type InferenceParams = ParakeetInferenceParams;
     type ModelParams = ParakeetModelParams;
@@ -289,13 +549,24 @@ impl TranscriptionEngine for ParakeetEngine {
         // Get the timestamped result from the model
         let timestamped_result = model.transcribe_samples(samples)?;
 
-        // Convert timestamps based on requested granularity
-        let segments =
-            convert_timestamps(&timestamped_result, parakeet_params.timestamp_granularity);
+		// Convert timestamps based on requested granularity
+		let mut segments =
+			convert_timestamps(&timestamped_result, parakeet_params.timestamp_granularity);
 
-        Ok(TranscriptionResult {
-            text: timestamped_result.text,
-            segments: Some(segments),
-        })
+		// Apply conservative German number normalization to Parakeet output.
+		// - Converts number words > 12 to digits
+		// - Keeps isolated 1..12 as words
+		// - Fixes common ASR split-number spacing before conversion
+		let text = normalize_german_numbers_conservative(&timestamped_result.text);
+
+		// Keep segment text aligned with the same normalization logic (best-effort).
+		for segment in &mut segments {
+			segment.text = normalize_german_numbers_conservative(&segment.text);
+		}
+
+		Ok(TranscriptionResult {
+			text,
+			segments: Some(segments),
+		})
     }
 }
