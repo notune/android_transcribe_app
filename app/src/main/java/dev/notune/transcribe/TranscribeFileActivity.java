@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
@@ -26,129 +27,172 @@ import java.util.List;
 
 public class TranscribeFileActivity extends Activity {
 
-    private static final String TAG = "OfflineVoiceInput";
-    private static final int TARGET_SAMPLE_RATE = 16000;
+    private static final String TAG              = "TranscribeFileActivity";
+    private static final int    TARGET_SAMPLE_RATE = 16_000;
 
-    static {
-        try {
-            System.loadLibrary("c++_shared");
-            System.loadLibrary("onnxruntime");
-            System.loadLibrary("android_transcribe_app");
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Failed to load native libraries", e);
-        }
-    }
-
-    private TextView statusText;
+    private TextView    statusText;
     private ProgressBar progressBar;
-    private View progressArea;
-    private ScrollView resultArea;
-    private TextView resultText;
-    private Button copyButton;
+    private View        progressArea;
+    private ScrollView  resultArea;
+    private TextView    resultText;
+    private Button      copyButton;
+    private Button      saveButton;
+    private Button      shareButton;
+    private Button      mailButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.transcribe_file_activity);
 
-        statusText = findViewById(R.id.txt_status);
-        progressBar = findViewById(R.id.progress_bar);
+        statusText   = findViewById(R.id.txt_status);
+        progressBar  = findViewById(R.id.progress_bar);
         progressArea = findViewById(R.id.progress_area);
-        resultArea = findViewById(R.id.result_area);
-        resultText = findViewById(R.id.txt_result);
-        copyButton = findViewById(R.id.btn_copy);
+        resultArea   = findViewById(R.id.result_area);
+        resultText   = findViewById(R.id.txt_result);
+        copyButton   = findViewById(R.id.btn_copy);
+        saveButton   = findViewById(R.id.btn_save);
+        shareButton  = findViewById(R.id.btn_share);
+        mailButton   = findViewById(R.id.btn_mail);
 
         findViewById(R.id.btn_close).setOnClickListener(v -> finish());
 
         copyButton.setOnClickListener(v -> {
             String text = resultText.getText().toString();
             if (!text.isEmpty()) {
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("Transcription", text);
-                clipboard.setPrimaryClip(clip);
-                Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show();
+                ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                cb.setPrimaryClip(ClipData.newPlainText("Transcription", text));
+                Toast.makeText(this, getString(R.string.transcript_copied), Toast.LENGTH_SHORT).show();
             }
         });
 
-        Uri audioUri = getAudioUri();
-        if (audioUri == null) {
-            statusText.setText("Error: No audio file received");
-            progressBar.setVisibility(View.GONE);
-            return;
-        }
+        saveButton.setOnClickListener(v -> saveTranscript());
 
-        statusText.setText("Loading model...");
-        initNative(this);
+        shareButton.setOnClickListener(v -> {
+            String text = resultText.getText().toString();
+            if (text.isEmpty()) return;
+            // Share as plain text via Android share sheet
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TEXT, text);
+            startActivity(Intent.createChooser(intent,
+                    getString(R.string.transcript_share_title)));
+        });
+
+        mailButton.setOnClickListener(v -> sendByEmail());
+
+        startDecodeAndTranscribe();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        try { cleanupNative(); } catch (Throwable t) { /* ignore */ }
+        cleanupNative();
     }
+
+    // ------------------------------------------------------------------
+    // E-mail
+    // ------------------------------------------------------------------
+
+    private void sendByEmail() {
+        String text = resultText.getText().toString();
+        if (text.isEmpty()) return;
+
+        SharedPreferences prefs = getSharedPreferences(
+                SettingsActivity.PREFS_NAME, MODE_PRIVATE);
+        String defaultEmail = prefs.getString(SettingsActivity.KEY_EMAIL_ADDRESS, "");
+
+        Intent intent = new Intent(Intent.ACTION_SENDTO);
+        intent.setData(Uri.parse("mailto:"));
+        if (!defaultEmail.isEmpty())
+            intent.putExtra(Intent.EXTRA_EMAIL, new String[]{defaultEmail});
+        intent.putExtra(Intent.EXTRA_SUBJECT,
+                getString(R.string.mail_subject_prefix) + " "
+                        + java.time.LocalDate.now());
+        intent.putExtra(Intent.EXTRA_TEXT, text);
+
+        if (intent.resolveActivity(getPackageManager()) != null)
+            startActivity(intent);
+        else
+            Toast.makeText(this, getString(R.string.mail_no_app), Toast.LENGTH_SHORT).show();
+    }
+
+    // ------------------------------------------------------------------
+    // Save
+    // ------------------------------------------------------------------
+
+    private void saveTranscript() {
+        String text = resultText.getText().toString();
+        if (text.isEmpty()) return;
+        new Thread(() -> {
+            String saved = TranscribeSaver.saveTranscript(this, text);
+            runOnUiThread(() -> {
+                if (saved != null)
+                    Toast.makeText(this,
+                            getString(R.string.transcript_saved, saved),
+                            Toast.LENGTH_LONG).show();
+                else
+                    Toast.makeText(this,
+                            getString(R.string.transcript_save_error),
+                            Toast.LENGTH_SHORT).show();
+            });
+        }).start();
+    }
+
+    // ------------------------------------------------------------------
+    // Transcription callbacks (called from Rust)
+    // ------------------------------------------------------------------
+
+    public void onStatusUpdate(String status) {
+        runOnUiThread(() -> statusText.setText(status));
+    }
+
+    public void onTextTranscribed(String text) {
+        runOnUiThread(() -> {
+            progressArea.setVisibility(View.GONE);
+            resultArea  .setVisibility(View.VISIBLE);
+            copyButton  .setVisibility(View.VISIBLE);
+            saveButton  .setVisibility(View.VISIBLE);
+            shareButton .setVisibility(View.VISIBLE);
+            mailButton  .setVisibility(View.VISIBLE);
+            resultText  .setText(text);
+
+            // Auto-copy
+            ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            cb.setPrimaryClip(ClipData.newPlainText("Transcription", text));
+            Toast.makeText(this, getString(R.string.transcript_copied), Toast.LENGTH_LONG).show();
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // Audio decoding
+    // ------------------------------------------------------------------
 
     private Uri getAudioUri() {
         Intent intent = getIntent();
         if (intent == null) return null;
-
         String action = intent.getAction();
-        if (Intent.ACTION_SEND.equals(action)) {
+        if (Intent.ACTION_SEND.equals(action))
             return intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        } else if (Intent.ACTION_VIEW.equals(action)) {
-            return intent.getData();
-        }
-        return null;
-    }
-
-    // Called from Rust when model is ready
-    public void onStatusUpdate(String status) {
-        runOnUiThread(() -> {
-            if ("Ready".equals(status)) {
-                statusText.setText("Decoding audio...");
-                startDecodeAndTranscribe();
-            } else {
-                statusText.setText(status);
-            }
-        });
-    }
-
-    // Called from Rust with transcription result
-    public void onTextTranscribed(String text) {
-        runOnUiThread(() -> {
-            // Hide progress, show result
-            progressArea.setVisibility(View.GONE);
-            resultArea.setVisibility(View.VISIBLE);
-            copyButton.setVisibility(View.VISIBLE);
-
-            resultText.setText(text);
-
-            // Auto-copy to clipboard
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("Transcription", text);
-            clipboard.setPrimaryClip(clip);
-
-            Toast.makeText(this, "Transcription copied to clipboard", Toast.LENGTH_LONG).show();
-        });
+        return intent.getData();
     }
 
     private void startDecodeAndTranscribe() {
         Uri audioUri = getAudioUri();
         if (audioUri == null) {
-            statusText.setText("Error: No audio file");
+            statusText.setText(getString(R.string.error_no_audio));
             return;
         }
-
+        initNative(this);
         new Thread(() -> {
             try {
                 float[] samples = decodeAudioToSamples(audioUri);
-                if (samples == null || samples.length == 0) {
+                if (samples == null) {
                     runOnUiThread(() -> statusText.setText("Error: Could not decode audio file"));
                     return;
                 }
-
-                runOnUiThread(() -> statusText.setText("Transcribing..."));
+                runOnUiThread(() -> statusText.setText("Transkribiere…"));
                 transcribeAudio(samples, samples.length);
-
             } catch (Exception e) {
                 Log.e(TAG, "Error decoding audio", e);
                 runOnUiThread(() -> statusText.setText("Error: " + e.getMessage()));
@@ -156,159 +200,114 @@ public class TranscribeFileActivity extends Activity {
         }).start();
     }
 
-    /**
-     * Decode audio from a Uri to 16kHz mono float samples using MediaExtractor/MediaCodec.
-     */
     private float[] decodeAudioToSamples(Uri uri) throws IOException {
         MediaExtractor extractor = new MediaExtractor();
         extractor.setDataSource(this, uri, null);
 
-        // Find audio track
         int audioTrackIndex = -1;
         MediaFormat inputFormat = null;
         for (int i = 0; i < extractor.getTrackCount(); i++) {
-            MediaFormat format = extractor.getTrackFormat(i);
-            String mime = format.getString(MediaFormat.KEY_MIME);
-            if (mime != null && mime.startsWith("audio/")) {
+            MediaFormat fmt = extractor.getTrackFormat(i);
+            if (fmt.getString(MediaFormat.KEY_MIME).startsWith("audio/")) {
                 audioTrackIndex = i;
-                inputFormat = format;
+                inputFormat = fmt;
                 break;
             }
         }
-
-        if (audioTrackIndex < 0 || inputFormat == null) {
-            Log.e(TAG, "No audio track found");
-            return null;
-        }
+        if (audioTrackIndex < 0) return null;
 
         extractor.selectTrack(audioTrackIndex);
-        String mime = inputFormat.getString(MediaFormat.KEY_MIME);
-        int sampleRate = inputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE);
+        int sampleRate  = inputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE);
         int channelCount = inputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
 
-        Log.i(TAG, "Audio: mime=" + mime + " rate=" + sampleRate + " channels=" + channelCount);
-
-        MediaCodec codec = MediaCodec.createDecoderByType(mime);
+        MediaCodec codec = MediaCodec.createDecoderByType(
+                inputFormat.getString(MediaFormat.KEY_MIME));
         codec.configure(inputFormat, null, null, 0);
         codec.start();
 
-        List<float[]> allChunks = new ArrayList<>();
+        List<float[]> allChunks  = new ArrayList<>();
         int totalSamples = 0;
-
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-        boolean inputDone = false;
+        boolean inputDone  = false;
         boolean outputDone = false;
-        long timeoutUs = 10000;
+        long timeoutUs = 10_000;
 
         while (!outputDone) {
-            // Feed input
             if (!inputDone) {
-                int inputBufferIndex = codec.dequeueInputBuffer(timeoutUs);
-                if (inputBufferIndex >= 0) {
-                    ByteBuffer inputBuffer = codec.getInputBuffer(inputBufferIndex);
-                    int bytesRead = extractor.readSampleData(inputBuffer, 0);
+                int idx = codec.dequeueInputBuffer(timeoutUs);
+                if (idx >= 0) {
+                    ByteBuffer buf = codec.getInputBuffer(idx);
+                    int bytesRead = extractor.readSampleData(buf, 0);
                     if (bytesRead < 0) {
-                        codec.queueInputBuffer(inputBufferIndex, 0, 0, 0,
+                        codec.queueInputBuffer(idx, 0, 0, 0,
                                 MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                         inputDone = true;
                     } else {
-                        long presentationTimeUs = extractor.getSampleTime();
-                        codec.queueInputBuffer(inputBufferIndex, 0, bytesRead,
-                                presentationTimeUs, 0);
+                        codec.queueInputBuffer(idx, 0, bytesRead,
+                                extractor.getSampleTime(), 0);
                         extractor.advance();
                     }
                 }
             }
-
-            // Drain output
-            int outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, timeoutUs);
-            if (outputBufferIndex >= 0) {
-                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+            int outIdx = codec.dequeueOutputBuffer(bufferInfo, timeoutUs);
+            if (outIdx >= 0) {
+                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0)
                     outputDone = true;
-                }
-
-                ByteBuffer outputBuffer = codec.getOutputBuffer(outputBufferIndex);
-                if (outputBuffer != null && bufferInfo.size > 0) {
-                    outputBuffer.position(bufferInfo.offset);
-                    outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
-
-                    // Decoded PCM is 16-bit signed. Convert to mono float.
-                    ShortBuffer shortBuf = outputBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
-                    int shortCount = shortBuf.remaining();
-                    int monoCount = shortCount / channelCount;
-
+                ByteBuffer outBuf = codec.getOutputBuffer(outIdx);
+                if (outBuf != null && bufferInfo.size > 0) {
+                    outBuf.position(bufferInfo.offset);
+                    outBuf.limit(bufferInfo.offset + bufferInfo.size);
+                    ShortBuffer sb = outBuf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+                    int monoCount = sb.remaining() / channelCount;
                     float[] chunk = new float[monoCount];
                     for (int i = 0; i < monoCount; i++) {
                         if (channelCount == 1) {
-                            chunk[i] = shortBuf.get() / 32768.0f;
+                            chunk[i] = sb.get() / 32768.0f;
                         } else {
-                            // Mix channels to mono
                             float sum = 0;
-                            for (int c = 0; c < channelCount; c++) {
-                                sum += shortBuf.get() / 32768.0f;
-                            }
+                            for (int c = 0; c < channelCount; c++) sum += sb.get() / 32768.0f;
                             chunk[i] = sum / channelCount;
                         }
                     }
-
                     allChunks.add(chunk);
                     totalSamples += monoCount;
                 }
-
-                codec.releaseOutputBuffer(outputBufferIndex, false);
+                codec.releaseOutputBuffer(outIdx, false);
             }
         }
-
-        codec.stop();
-        codec.release();
+        codec.stop(); codec.release();
         extractor.release();
 
-        // Resample to 16kHz if needed
-        float[] monoSamples = mergeChunks(allChunks, totalSamples);
-
-        if (sampleRate != TARGET_SAMPLE_RATE) {
-            Log.i(TAG, "Resampling from " + sampleRate + " to " + TARGET_SAMPLE_RATE);
-            monoSamples = resample(monoSamples, sampleRate, TARGET_SAMPLE_RATE);
-        }
-
-        Log.i(TAG, "Decoded " + monoSamples.length + " samples at 16kHz");
-        return monoSamples;
+        float[] mono = mergeChunks(allChunks, totalSamples);
+        if (sampleRate != TARGET_SAMPLE_RATE)
+            mono = resample(mono, sampleRate, TARGET_SAMPLE_RATE);
+        return mono;
     }
 
-    private float[] mergeChunks(List<float[]> chunks, int totalSamples) {
-        float[] result = new float[totalSamples];
+    private float[] mergeChunks(List<float[]> chunks, int total) {
+        float[] result = new float[total];
         int offset = 0;
-        for (float[] chunk : chunks) {
-            System.arraycopy(chunk, 0, result, offset, chunk.length);
-            offset += chunk.length;
+        for (float[] c : chunks) {
+            System.arraycopy(c, 0, result, offset, c.length);
+            offset += c.length;
         }
         return result;
     }
 
-    /**
-     * Simple linear interpolation resampling.
-     */
-    private float[] resample(float[] input, int fromRate, int toRate) {
-        double ratio = (double) fromRate / toRate;
-        int outputLength = (int) (input.length / ratio);
-        float[] output = new float[outputLength];
-
-        for (int i = 0; i < outputLength; i++) {
-            double srcIndex = i * ratio;
-            int idx = (int) srcIndex;
-            double frac = srcIndex - idx;
-
-            if (idx + 1 < input.length) {
-                output[i] = (float) (input[idx] * (1.0 - frac) + input[idx + 1] * frac);
-            } else if (idx < input.length) {
-                output[i] = input[idx];
-            }
+    private float[] resample(float[] input, int from, int to) {
+        double ratio = (double) from / to;
+        float[] output = new float[(int) (input.length / ratio)];
+        for (int i = 0; i < output.length; i++) {
+            double src  = i * ratio;
+            int    idx  = (int) src;
+            double frac = src - idx;
+            output[i] = (idx + 1 < input.length)
+                    ? (float) (input[idx] * (1 - frac) + input[idx + 1] * frac)
+                    : (idx < input.length ? input[idx] : 0);
         }
-
         return output;
     }
 
-    // Native methods
     private native void initNative(TranscribeFileActivity activity);
     private native void cleanupNative();
     private native void transcribeAudio(float[] samples, int length);

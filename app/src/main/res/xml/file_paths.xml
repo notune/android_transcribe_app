@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Allows FileProvider to share files from getFilesDir()/recordings/transkript/ -->
+    <files-path
+        name="transkript_recordings"
+        path="recordings/transkript/" />
+    <!-- Cache dir for temporary Opus encode -->
+    <cache-path
+        name="transkript_cache"
+        path="." />
+</paths>

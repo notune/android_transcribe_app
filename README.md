@@ -15,6 +15,7 @@ height="80">](https://play.google.com/store/apps/details?id=dev.notune.transcrib
 - **Supported Languages:** Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian
 - **Voice Input Keyboard** Use your voice as a text field input method.
 - **Live Subtitles:** Real-time captions for any audio/video playing on your device.
+- **Transcribe Audio Files:** Pick any audio file from your device and transcribe it offline — result is copied to clipboard automatically.
 - **Privacy-First:** No audio data leaves your device.
 - **Rust Backend:** Efficient and safe native code using [transcribe-rs](https://github.com/cjpais/transcribe-rs).
 

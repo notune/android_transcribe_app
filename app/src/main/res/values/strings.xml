@@ -1,33 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Offline Voice Input</string>
-    <string name="welcome_title">Voice Input &amp; Subtitles</string>
-    <string name="welcome_subtitle">Fully offline, private, and fast.</string>
-    
-    <string name="section_ime">Keyboard Input</string>
-    <string name="desc_ime">Enable the keyboard to use voice input in any app.</string>
-    <string name="btn_ime_settings">Open Keyboard Settings</string>
-    
-    <string name="section_subs">Live Subtitles</string>
-    <string name="desc_subs">Display subtitles for any audio playing on your device. After starting, select \'Share entire screen\' for best results.</string>
-    <string name="btn_subs_start">Start Live Subtitles</string>
-    
+    <string name="app_name">TRANSKRIPT</string>
+    <string name="welcome_title">TRANSKR!PT</string>
+    <string name="welcome_subtitle">Vollständig offline. Privat. Schnell.</string>
+
+    <string name="section_ime">Tastatur-Eingabe</string>
+    <string name="desc_ime">Aktiviere die Tastatur, um Spracheingabe in jeder App zu nutzen.</string>
+    <string name="btn_ime_settings">Tastatureinstellungen öffnen</string>
+
+    <string name="section_subs">Live-Untertitel</string>
+    <string name="desc_subs">Zeigt Untertitel für jedes Audio auf dem Gerät an. Nach dem Start \'Gesamten Bildschirm teilen\' wählen.</string>
+    <string name="btn_subs_start">Live-Untertitel starten</string>
+
     <string name="status_label">Status:</string>
-    <string name="status_checking">Checking assets...</string>
-    <string name="status_ready">Ready</string>
-    <string name="status_error">Error</string>
-    
-    <string name="section_settings">Settings</string>
-    <string name="setting_auto_record">Auto-start recording</string>
-    <string name="setting_auto_record_desc">Automatically begin recording when the keyboard opens</string>
+    <string name="status_checking">Lade Modell…</string>
+    <string name="status_ready">Bereit</string>
+    <string name="status_error">Fehler</string>
 
-    <string name="setting_select_transcription">Select transcription</string>
-    <string name="setting_select_transcription_desc">Highlight transcribed text so it can be deleted with a single backspace</string>
+    <string name="section_settings">Einstellungen</string>
+    <string name="setting_auto_record">Automatisch aufnehmen</string>
+    <string name="setting_auto_record_desc">Aufnahme beginnt automatisch, wenn die Tastatur geöffnet wird</string>
+    <string name="setting_select_transcription">Transkription markieren</string>
+    <string name="setting_select_transcription_desc">Transkribierten Text markieren, damit er mit einem Backspace gelöscht werden kann</string>
+    <string name="setting_pause_audio">Audio pausieren</string>
+    <string name="setting_pause_audio_desc">Audio während der Aufnahme pausieren</string>
+    <string name="setting_save_folder">Speicherordner</string>
+    <string name="setting_save_folder_default">recordings/transkript (app-intern)</string>
+    <string name="btn_save_settings">Ordner wählen</string>
 
-    <string name="perm_mic_title">Microphone Access</string>
-    <string name="perm_mic_desc">Required for voice recognition.</string>
-    <string name="btn_grant">Grant Permission</string>
+    <string name="perm_mic_title">Mikrofonzugriff</string>
+    <string name="perm_mic_desc">Wird für die Spracherkennung benötigt.</string>
+    <string name="btn_grant">Berechtigung erteilen</string>
 
-    <string name="setting_pause_audio">Pause audio</string>
-    <string name="setting_pause_audio_desc">Pause audio while recording</string>
+    <!-- Transkript-Aktionsbuttons -->
+    <string name="transcript_copy">Kopieren</string>
+    <string name="transcript_save">Speichern</string>
+    <string name="transcript_share">Teilen</string>
+    <string name="transcript_mail">E-Mail</string>
+    <string name="transcript_copied">In Zwischenablage kopiert</string>
+    <string name="transcript_saved">Gespeichert: %1$s</string>
+    <string name="transcript_save_error">Transkript konnte nicht gespeichert werden</string>
+    <string name="transcript_share_title">Transkript teilen</string>
+
+    <!-- E-Mail -->
+    <string name="mail_subject_prefix">Transkript vom</string>
+    <string name="mail_no_app">Keine E-Mail-App gefunden</string>
+
+    <!-- Einstellungen-Screen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="btn_settings">Einstellungen</string>
+    <string name="btn_close">Schließen</string>
+    <string name="settings_section_storage">Speicher</string>
+    <string name="settings_folder_label">Speicherort</string>
+    <string name="settings_folder_default">recordings/transkript (app-intern)</string>
+    <string name="settings_folder_choose">Ordner wählen</string>
+    <string name="settings_folder_reset_btn">Zurücksetzen</string>
+    <string name="settings_folder_saved">Speicherort geändert</string>
+    <string name="settings_folder_reset">Speicherort auf Standard zurückgesetzt</string>
+    <string name="settings_folder_hint">Transkripte (.txt) und Aufnahmen (.ogg) werden hier mit gleichem Basisnamen gespeichert.</string>
+    <string name="settings_section_email">E-Mail</string>
+    <string name="settings_email_label">Standard-Empfänger</string>
+    <string name="settings_email_hint">name@beispiel.ch</string>
+    <string name="settings_email_hint_desc">Beim Tippen auf „E-Mail“ wird diese Adresse automatisch eingetragen.</string>
+    <string name="settings_email_save">Speichern</string>
+    <string name="settings_email_saved">E-Mail-Adresse gespeichert</string>
+    <string name="settings_email_cleared">E-Mail-Adresse gelöscht</string>
+    <string name="error_no_audio">Keine Audiodatei übergeben</string>
 </resources>

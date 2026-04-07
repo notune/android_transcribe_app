@@ -1,68 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1F2937"
+    android:orientation="vertical"
+    android:background="#111827"
     android:fitsSystemWindows="true"
     android:padding="24dp">
 
-    <!-- Close button -->
     <ImageButton
         android:id="@+id/btn_close"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_gravity="top|end"
-        android:background="@android:color/transparent"
-        android:contentDescription="Close"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
-        android:tint="#FFFFFF" />
+        android:background="#1F2937"
+        android:tint="#9CA3AF"
+        android:contentDescription="Schließen"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center_horizontal"
         android:orientation="vertical"
         android:paddingTop="48dp"
         android:paddingBottom="16dp">
 
-        <!-- Progress area (shown during processing) -->
+        <!-- Progress area -->
         <LinearLayout
             android:id="@+id/progress_area"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:gravity="center"
+            android:padding="32dp">
 
             <ProgressBar
                 android:id="@+id/progress_bar"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginBottom="12dp"
-                android:indeterminate="true"
-                android:indeterminateTint="#60A5FA" />
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginBottom="16dp"
+                android:indeterminateTint="#3B82F6"/>
 
             <TextView
                 android:id="@+id/txt_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="Preparing..."
+                android:text="Lade…"
                 android:textColor="#9CA3AF"
                 android:textSize="15sp" />
         </LinearLayout>
 
-        <!-- Result area (shown after transcription) -->
+        <!-- Result area -->
         <ScrollView
             android:id="@+id/result_area"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:visibility="gone"
-            android:layout_marginBottom="12dp"
-            android:background="#111827"
-            android:padding="16dp">
+            android:visibility="gone">
 
             <TextView
                 android:id="@+id/txt_result"
@@ -70,22 +62,70 @@
                 android:layout_height="wrap_content"
                 android:textColor="#F3F4F6"
                 android:textSize="16sp"
-                android:lineSpacingMultiplier="1.4"
+                android:lineSpacingMultiplier="1.5"
+                android:padding="8dp"
                 android:textIsSelectable="true" />
         </ScrollView>
 
-        <!-- Copy button (shown after transcription) -->
-        <Button
-            android:id="@+id/btn_copy"
-            android:layout_width="wrap_content"
+        <!-- Action buttons: Copy | Save | Share | Mail -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Copy to clipboard"
-            android:visibility="gone"
-            android:backgroundTint="#3B82F6"
-            android:textColor="#FFFFFF"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp" />
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btn_copy"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="3dp"
+                android:text="@string/transcript_copy"
+                android:visibility="gone"
+                android:backgroundTint="#3B82F6"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"/>
+
+            <Button
+                android:id="@+id/btn_save"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:text="@string/transcript_save"
+                android:visibility="gone"
+                android:backgroundTint="#10B981"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"/>
+
+            <Button
+                android:id="@+id/btn_share"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:text="@string/transcript_share"
+                android:visibility="gone"
+                android:backgroundTint="#6366F1"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"/>
+
+            <Button
+                android:id="@+id/btn_mail"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:text="@string/transcript_mail"
+                android:visibility="gone"
+                android:backgroundTint="#F59E0B"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"/>
+
+        </LinearLayout>
 
     </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>
