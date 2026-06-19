@@ -123,6 +123,18 @@ public class RustInputMethodService extends InputMethodService {
             enterButton = view.findViewById(R.id.ime_enter);
             switchKeyboardButton = view.findViewById(R.id.ime_switch_keyboard);
 
+            if (new File(getFilesDir(), "accessible_layout").exists()) {
+                LinearLayout bottomRow = (LinearLayout) switchKeyboardButton.getParent();
+                bottomRow.removeView(switchKeyboardButton);
+                LinearLayout statusRow = view.findViewById(R.id.ime_status_row);
+                float dp = view.getResources().getDisplayMetrics().density;
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (44 * dp));
+                lp.weight = 1;
+                lp.setMarginStart((int) (8 * dp));
+                switchKeyboardButton.setLayoutParams(lp);
+                statusRow.addView(switchKeyboardButton);
+            }
+
             switchKeyboardButton.setOnClickListener(v -> {
                 if (isRecording) {
                     pendingSwitchBack = true;

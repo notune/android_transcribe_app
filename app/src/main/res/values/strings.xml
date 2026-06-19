@@ -33,6 +33,9 @@
     <string name="setting_auto_stop">Auto-stop after silence</string>
     <string name="setting_auto_stop_desc">End the voice input popup automatically ~2 seconds after you stop speaking</string>
 
+    <string name="setting_accessible_layout">Accessible keyboard layout</string>
+    <string name="setting_accessible_layout_desc">Move the keyboard-switch button to the top right for easier one-handed access</string>
+
     <string name="setting_subtitle_lines">Subtitle length</string>
     <string name="setting_subtitle_lines_desc">How many lines the live subtitles show; older text scrolls away</string>
     <string name="subtitle_lines_2">2 lines</string>
