@@ -84,6 +84,34 @@
     <string name="models_threads_desc">Threads used for transcription. “Automatic” picks a value based on this device\'s CPU. If transcription is slow, try different values; more threads is not always faster.</string>
     <string name="models_threads_auto">Automatic</string>
 
+    <!-- Custom words (Whisper recognition bias) -->
+    <string name="btn_custom_words">Custom words</string>
+    <string name="custom_words_title">Custom words</string>
+    <string name="custom_words_desc">Add names, technical terms, or unusual words to bias recognition. Whisper models receive them as a hint toward these words; other models ignore them.</string>
+    <string name="custom_words_active_model">Active model: %1$s</string>
+    <string name="custom_words_builtin">built-in</string>
+    <string name="custom_words_not_whisper">The active model isn\'t a Whisper model, so it may ignore custom words.</string>
+    <string name="custom_words_help_title">How it works</string>
+    <string name="custom_words_help_body">Custom words are passed to Whisper models as an initial prompt, biasing recognition toward your names and terms. They have no effect on other models.\n\nPrivacy: the list is stored only in this app\'s private storage and is used solely on this device to guide the offline model. It is never uploaded or shared.</string>
+    <string name="custom_words_empty">No custom words yet</string>
+    <string name="custom_words_add">Add word</string>
+    <string name="custom_words_add_hint">Word or phrase</string>
+    <string name="custom_words_edit">Edit word</string>
+    <string name="custom_words_delete">Delete word</string>
+    <string name="custom_words_import">Import list</string>
+    <string name="custom_words_import_hint">One word per line</string>
+    <string name="custom_words_saved">Saved</string>
+    <string name="custom_words_duplicate">Already in the list</string>
+    <string name="custom_words_empty_input">Enter a word</string>
+    <string name="custom_words_too_long">Too long (max %1$d characters)</string>
+    <string name="custom_words_limit">List is full (max %1$d words)</string>
+    <string name="custom_words_import_done">Imported %1$d words</string>
+    <string name="custom_words_import_none">Nothing new to import</string>
+    <plurals name="custom_words_count">
+        <item quantity="one">%1$d word</item>
+        <item quantity="other">%1$d words</item>
+    </plurals>
+
     <string name="section_benchmark">Benchmark</string>
     <string name="desc_benchmark">Measures how fast the active model transcribes on this device, using a built-in English test recording (11 s).</string>
     <string name="btn_benchmark">Run benchmark</string>
@@ -110,5 +138,74 @@
     <string name="voice_test_failed">Couldn\'t start voice input on this device.</string>
 
     <string name="voice_help_title">Voice input setup</string>
-    <string name="voice_help_body">How to use it\n• Open any app and tap the microphone on a supported keyboard/app. A small panel slides up, you speak, tap to stop, and the text is inserted. (Enable “Auto-stop after silence” in the settings to have it stop by itself.)\n\nWhich keyboards open the voice panel\n• Microsoft SwiftKey (not open source) and website voice search open the panel directly.\n• AnySoftKeyboard is the open-source way to get the panel: its mic key opens it as long as no voice keyboard is enabled on your system.\n\nOther open-source keyboards\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard and Unexpected Keyboard don\'t open the panel: their mic key switches to the “Offline Voice Input” keyboard instead. Enable it once (see “Alternative: Voice keyboard”), speak there, and use its keyboard-switch key to go back. FUTO Keyboard ships its own voice input.\n• Gboard only uses Google\'s own voice typing and can\'t use this app at all.\n\nIf SwiftKey\'s own voice typing opens instead\n• Settings → Rich input → turn off “Multi-modal voice typing”.\n• Then tap the mic again and pick “Offline Voice Input”.\n\nIf Android asks which app to use\n• Choose “Offline Voice Input” and tap “Always”.\n\nIf another app always opens instead\n• Open Settings → Apps → that app → “Open by default” → Clear defaults, then try again.</string>
+    <string name="voice_help_body">How to use it\n• Open any app and tap the microphone on a supported keyboard/app. A small panel slides up, you speak, tap to stop, and the text is inserted. (Enable "Auto-stop after silence" in the settings to have it stop by itself.)\n\nWhich keyboards open the voice panel\n• Microsoft SwiftKey (not open source) and website voice search open the panel directly.\n• AnySoftKeyboard is the open-source way to get the panel: its mic key opens it as long as no voice keyboard is enabled on your system.\n\nOther open-source keyboards\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard and Unexpected Keyboard don\'t open the panel: their mic key switches to the "Offline Voice Input" keyboard instead. Enable it once (see "Alternative: Voice keyboard"), speak there, and use its keyboard-switch key to go back. FUTO Keyboard ships its own voice input.\n• Gboard only uses Google\'s own voice typing and can\'t use this app at all.\n\nIf SwiftKey\'s own voice typing opens instead\n• Settings → Rich input → turn off "Multi-modal voice typing".\n• Then tap the mic again and pick "Offline Voice Input".\n\nIf Android asks which app to use\n• Choose "Offline Voice Input" and tap "Always".\n\nIf another app always opens instead\n• Open Settings → Apps → that app → "Open by default" → Clear defaults, then try again.</string>
+
+    <!-- Floating mic bubble -->
+    <string name="section_bubble">Floating mic bubble</string>
+    <string name="desc_bubble">Show a draggable microphone bubble on screen. Tap it to record; the transcription is copied to your clipboard and saved to history.</string>
+    <string name="bubble_enable">Show mic bubble</string>
+    <string name="bubble_need_overlay">Please allow display over other apps first.</string>
+    <string name="bubble_need_mic">Microphone permission required.</string>
+    <string name="bubble_idle">Mic bubble – tap to record</string>
+    <string name="bubble_recording">Recording – tap to stop</string>
+    <string name="bubble_processing">Processing…</string>
+    <string name="bubble_copied">Copied to clipboard</string>
+    <string name="bubble_inserted">Inserted into text field</string>
+    <string name="bubble_channel_name">Mic bubble</string>
+    <string name="bubble_notification_title">Mic bubble active</string>
+    <string name="bubble_notification_text">Tap the bubble to record speech</string>
+    <string name="bubble_stop_recording">Stop recording</string>
+    <string name="bubble_hide">Hide bubble</string>
+    <string name="bubble_loading">Loading model…</string>
+    <string name="bubble_load_failed">Couldn\'t load the model. Please try again.</string>
+    <string name="bubble_unload_title">Unload when idle</string>
+    <string name="bubble_unload_desc">To save memory and battery, unload the model once the bubble has sat idle for a while. The bubble stays visible and usable; the next recording may take a moment to reload the model.</string>
+    <string name="bubble_unload_never">Never</string>
+    <string name="bubble_unload_5">5 min</string>
+    <string name="bubble_unload_15">15 min</string>
+    <string name="bubble_unload_30">30 min</string>
+    <string name="bubble_size_title">Bubble size</string>
+    <string name="bubble_size_desc">How large the floating bubble appears on screen.</string>
+    <string name="bubble_size_small">Small</string>
+    <string name="bubble_size_medium">Medium</string>
+    <string name="bubble_size_large">Large</string>
+
+    <!-- Accessibility direct insertion -->
+    <string name="section_a11y">Direct text insertion (optional)</string>
+    <string name="desc_a11y">When enabled, transcriptions from the mic bubble are inserted directly into the focused text field via an accessibility service. If insertion fails, the text is copied to your clipboard instead. This service only writes to the focused editable field; it never reads or stores field content, and skips password fields.</string>
+    <string name="a11y_enable">Enable direct insertion</string>
+    <string name="a11y_consent_title">Accessibility permission</string>
+    <string name="a11y_consent_body">Direct insertion uses an Android accessibility service to type transcribed text into the focused text field.\n\nWhat it does:\n• Writes transcribed text to the currently focused, visible editable field\n• Skips password and sensitive fields\n\nWhat it does NOT do:\n• Read or store any field content\n• Overwrite existing text (it appends at the cursor)\n• Access fields that are not focused\n\nYou will be taken to Accessibility Settings to enable the service.</string>
+    <string name="a11y_consent_accept">I understand, continue</string>
+    <string name="a11y_service_description">Inserts transcribed speech into the focused text field. Only writes text; never reads field content.</string>
+    <string name="a11y_not_enabled">Accessibility service not enabled. Open Accessibility Settings to turn it on.</string>
+
+    <!-- Transcription history -->
+    <string name="section_history">Transcription history</string>
+    <string name="history_title">History</string>
+    <string name="history_empty">No transcriptions yet</string>
+    <string name="history_clear_all">Clear all</string>
+    <string name="history_clear_title">Clear history?</string>
+    <string name="history_clear_body">All saved transcriptions will be permanently deleted.</string>
+    <string name="history_clear_confirm">Delete all</string>
+    <string name="history_copied">Copied</string>
+    <string name="history_copy">Copy</string>
+    <string name="history_delete">Delete</string>
+    <string name="history_meta">%1$s · %2$s</string>
+    <string name="history_source_bubble">Bubble</string>
+    <string name="history_source_popup">Voice popup</string>
+    <string name="history_source_ime">Voice keyboard</string>
+    <string name="history_source_file">Audio file</string>
+    <string name="history_source_service">Speech service</string>
+    <string name="btn_history">View history</string>
+
+    <!-- History retention -->
+    <string name="setting_history_retention">History retention</string>
+    <string name="setting_history_retention_desc">How many transcriptions to keep. Older entries are deleted automatically.</string>
+    <string name="retention_off">Off</string>
+    <string name="retention_10">10</string>
+    <string name="retention_25">25</string>
+    <string name="retention_50">50</string>
+    <string name="retention_100">100</string>
+    <string name="retention_unlimited">Unlimited</string>
 </resources>

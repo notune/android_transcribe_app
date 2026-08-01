@@ -44,6 +44,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     // Source sets — the Rust-built .so files land in jniLibs via cargo-ndk
     sourceSets {
         getByName("main") {
@@ -92,6 +98,10 @@ dependencies {
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")
     }
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.5.0")
 }
 
 // ---------------------------------------------------------------------------

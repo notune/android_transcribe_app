@@ -79,6 +79,34 @@
     <string name="models_threads_desc">Hilos usados para la transcripción. «Automático» elige un valor según la CPU de este dispositivo. Si la transcripción es lenta, prueba otros valores; más hilos no siempre es más rápido.</string>
     <string name="models_threads_auto">Automático</string>
 
+    <!-- Custom words (Whisper recognition bias) -->
+    <string name="btn_custom_words">Palabras personalizadas</string>
+    <string name="custom_words_title">Palabras personalizadas</string>
+    <string name="custom_words_desc">Añade nombres, términos técnicos o palabras poco comunes para mejorar el reconocimiento. Los modelos Whisper las reciben como una pista; otros modelos las ignoran.</string>
+    <string name="custom_words_active_model">Modelo activo: %1$s</string>
+    <string name="custom_words_builtin">integrado</string>
+    <string name="custom_words_not_whisper">El modelo activo no es un modelo Whisper, por lo que puede ignorar las palabras personalizadas.</string>
+    <string name="custom_words_help_title">Cómo funciona</string>
+    <string name="custom_words_help_body">Las palabras personalizadas se pasan a los modelos Whisper como un prompt inicial, sesgando el reconocimiento hacia tus nombres y términos. No tienen efecto en otros modelos.\n\nPrivacidad: la lista se almacena solo en el almacenamiento privado de esta app y se usa únicamente en este dispositivo para guiar el modelo sin conexión. Nunca se sube ni se comparte.</string>
+    <string name="custom_words_empty">Aún no hay palabras personalizadas</string>
+    <string name="custom_words_add">Añadir palabra</string>
+    <string name="custom_words_add_hint">Palabra o frase</string>
+    <string name="custom_words_edit">Editar palabra</string>
+    <string name="custom_words_delete">Eliminar palabra</string>
+    <string name="custom_words_import">Importar lista</string>
+    <string name="custom_words_import_hint">Una palabra por línea</string>
+    <string name="custom_words_saved">Guardado</string>
+    <string name="custom_words_duplicate">Ya está en la lista</string>
+    <string name="custom_words_empty_input">Escribe una palabra</string>
+    <string name="custom_words_too_long">Demasiado largo (máx. %1$d caracteres)</string>
+    <string name="custom_words_limit">La lista está llena (máx. %1$d palabras)</string>
+    <string name="custom_words_import_done">%1$d palabras importadas</string>
+    <string name="custom_words_import_none">Nada nuevo que importar</string>
+    <plurals name="custom_words_count">
+        <item quantity="one">%1$d palabra</item>
+        <item quantity="other">%1$d palabras</item>
+    </plurals>
+
     <string name="section_benchmark">Prueba de rendimiento</string>
     <string name="desc_benchmark">Mide la velocidad de transcripción del modelo activo en este dispositivo usando una grabación de prueba en inglés integrada (11 s).</string>
     <string name="btn_benchmark">Iniciar prueba</string>
@@ -105,4 +133,68 @@
 
     <string name="voice_help_title">Configuración de la entrada de voz</string>
     <string name="voice_help_body">Cómo usarlo\n• Abre cualquier app y toca el micrófono de un teclado/una app compatible. Aparece un panel pequeño, hablas, tocas para detener y el texto se inserta. (Activa «Parada automática tras silencio» en los ajustes para que se detenga solo.)\n\nQué teclados abren el panel de voz\n• Microsoft SwiftKey (no es de código abierto) y la búsqueda por voz de los sitios web abren el panel directamente.\n• AnySoftKeyboard es la vía de código abierto al panel: su tecla de micrófono lo abre mientras no haya ningún teclado de voz activado en tu sistema.\n\nOtros teclados de código abierto\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard y Unexpected Keyboard no abren el panel: su tecla de micrófono cambia al teclado «Offline Voice Input». Actívalo una vez (mira «Alternativa: teclado de voz»), habla allí y vuelve con su tecla de cambio de teclado. FUTO Keyboard trae su propia entrada de voz.\n• Gboard solo usa la entrada de voz de Google y no puede usar esta app en absoluto.\n\nSi se abre la entrada de voz propia de SwiftKey\n• Ajustes → Entrada enriquecida → desactiva «Entrada de voz multimodal».\n• Luego toca de nuevo el micrófono y elige «Offline Voice Input».\n\nSi Android pregunta qué app usar\n• Elige «Offline Voice Input» y toca «Siempre».\n\nSi siempre se abre otra app\n• Abre Ajustes → Aplicaciones → esa app → «Abrir de forma predeterminada» → Borrar valores predeterminados, e inténtalo de nuevo.</string>
+
+    <string name="section_bubble">Burbuja de micrófono flotante</string>
+    <string name="desc_bubble">Muestra una burbuja de micrófono arrastrable en pantalla. Tócala para grabar; la transcripción se copia al portapapeles y se guarda en el historial.</string>
+    <string name="bubble_enable">Mostrar burbuja de micrófono</string>
+    <string name="bubble_need_overlay">Primero permite mostrar sobre otras aplicaciones.</string>
+    <string name="bubble_need_mic">Se requiere permiso de micrófono.</string>
+    <string name="bubble_idle">Burbuja de micrófono – toca para grabar</string>
+    <string name="bubble_recording">Grabando – toca para detener</string>
+    <string name="bubble_processing">Procesando…</string>
+    <string name="bubble_copied">Copiado al portapapeles</string>
+    <string name="bubble_inserted">Insertado en el campo de texto</string>
+    <string name="bubble_channel_name">Burbuja de micrófono</string>
+    <string name="bubble_notification_title">Burbuja de micrófono activa</string>
+    <string name="bubble_notification_text">Toca la burbuja para grabar voz</string>
+    <string name="bubble_stop_recording">Detener grabación</string>
+    <string name="bubble_hide">Ocultar burbuja</string>
+    <string name="bubble_loading">Cargando modelo…</string>
+    <string name="bubble_load_failed">No se pudo cargar el modelo. Inténtalo de nuevo.</string>
+    <string name="bubble_unload_title">Descargar en inactividad</string>
+    <string name="bubble_unload_desc">Para ahorrar memoria y batería, descarga el modelo cuando la burbuja lleva un rato inactiva. La burbuja sigue visible y usable; la próxima grabación puede tardar un momento en recargar el modelo.</string>
+    <string name="bubble_unload_never">Nunca</string>
+    <string name="bubble_unload_5">5 min</string>
+    <string name="bubble_unload_15">15 min</string>
+    <string name="bubble_unload_30">30 min</string>
+    <string name="bubble_size_title">Tamaño de la burbuja</string>
+    <string name="bubble_size_desc">Qué tan grande aparece la burbuja flotante en pantalla.</string>
+    <string name="bubble_size_small">Pequeño</string>
+    <string name="bubble_size_medium">Mediano</string>
+    <string name="bubble_size_large">Grande</string>
+
+    <string name="section_a11y">Inserción directa (opcional)</string>
+    <string name="desc_a11y">Cuando está activado, las transcripciones de la burbuja se insertan directamente en el campo de texto enfocado mediante un servicio de accesibilidad. Si falla, el texto se copia al portapapeles. Este servicio solo escribe en el campo editable enfocado; nunca lee ni almacena contenido de campos y omite campos de contraseña.</string>
+    <string name="a11y_enable">Activar inserción directa</string>
+    <string name="a11y_consent_title">Permiso de accesibilidad</string>
+    <string name="a11y_consent_body">La inserción directa usa un servicio de accesibilidad de Android para escribir el texto transcrito en el campo de texto enfocado.\n\nLo que hace:\n• Escribe el texto transcrito en el campo editable visible y enfocado\n• Omite campos de contraseña y sensibles\n\nLo que NO hace:\n• Leer o almacenar contenido de campos\n• Sobrescribir texto existente (añade en el cursor)\n• Acceder a campos no enfocados\n\nSerás redirigido a los ajustes de accesibilidad para activar el servicio.</string>
+    <string name="a11y_consent_accept">Entendido, continuar</string>
+    <string name="a11y_service_description">Inserta voz transcrita en el campo de texto enfocado. Solo escribe; nunca lee contenido.</string>
+    <string name="a11y_not_enabled">Servicio de accesibilidad no activado. Abre los ajustes de accesibilidad para activarlo.</string>
+
+    <string name="section_history">Historial de transcripciones</string>
+    <string name="history_title">Historial</string>
+    <string name="history_empty">Aún no hay transcripciones</string>
+    <string name="history_clear_all">Borrar todo</string>
+    <string name="history_clear_title">¿Borrar historial?</string>
+    <string name="history_clear_body">Todas las transcripciones guardadas se eliminarán permanentemente.</string>
+    <string name="history_clear_confirm">Eliminar todo</string>
+    <string name="history_copied">Copiado</string>
+    <string name="history_copy">Copiar</string>
+    <string name="history_delete">Eliminar</string>
+    <string name="history_meta">%1$s · %2$s</string>
+    <string name="history_source_bubble">Burbuja</string>
+    <string name="history_source_popup">Panel de voz</string>
+    <string name="history_source_ime">Teclado de voz</string>
+    <string name="history_source_file">Archivo de audio</string>
+    <string name="btn_history">Ver historial</string>
+
+    <string name="setting_history_retention">Retención del historial</string>
+    <string name="setting_history_retention_desc">Cuántas transcripciones conservar. Las entradas antiguas se eliminan automáticamente.</string>
+    <string name="retention_off">Desactivado</string>
+    <string name="retention_10">10</string>
+    <string name="retention_25">25</string>
+    <string name="retention_50">50</string>
+    <string name="retention_100">100</string>
+    <string name="retention_unlimited">Ilimitado</string>
 </resources>

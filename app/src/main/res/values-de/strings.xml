@@ -79,6 +79,34 @@
     <string name="models_threads_desc">Threads für die Transkription. „Automatisch“ wählt einen Wert passend zur CPU dieses Geräts. Ist die Transkription langsam, probiere andere Werte; mehr Threads sind nicht immer schneller.</string>
     <string name="models_threads_auto">Automatisch</string>
 
+    <!-- Custom words (Whisper recognition bias) -->
+    <string name="btn_custom_words">Benutzerdefinierte Wörter</string>
+    <string name="custom_words_title">Benutzerdefinierte Wörter</string>
+    <string name="custom_words_desc">Füge Namen, Fachbegriffe oder ungewöhnliche Wörter hinzu, um die Erkennung zu verbessern. Whisper-Modelle erhalten sie als Hinweis; andere Modelle ignorieren sie.</string>
+    <string name="custom_words_active_model">Aktives Modell: %1$s</string>
+    <string name="custom_words_builtin">integriert</string>
+    <string name="custom_words_not_whisper">Das aktive Modell ist kein Whisper-Modell und ignoriert möglicherweise benutzerdefinierte Wörter.</string>
+    <string name="custom_words_help_title">So funktioniert es</string>
+    <string name="custom_words_help_body">Benutzerdefinierte Wörter werden an Whisper-Modelle als Anfangs-Prompt übergeben und lenken die Erkennung in Richtung deiner Namen und Begriffe. Auf andere Modelle haben sie keine Wirkung.\n\nPrivatsphäre: Die Liste wird nur im privaten Speicher der App gespeichert und ausschließlich auf diesem Gerät verwendet, um das Offline-Modell zu steuern. Sie wird nie hochgeladen oder geteilt.</string>
+    <string name="custom_words_empty">Noch keine benutzerdefinierten Wörter</string>
+    <string name="custom_words_add">Wort hinzufügen</string>
+    <string name="custom_words_add_hint">Wort oder Phrase</string>
+    <string name="custom_words_edit">Wort bearbeiten</string>
+    <string name="custom_words_delete">Wort löschen</string>
+    <string name="custom_words_import">Liste importieren</string>
+    <string name="custom_words_import_hint">Ein Wort pro Zeile</string>
+    <string name="custom_words_saved">Gespeichert</string>
+    <string name="custom_words_duplicate">Bereits in der Liste</string>
+    <string name="custom_words_empty_input">Gib ein Wort ein</string>
+    <string name="custom_words_too_long">Zu lang (max. %1$d Zeichen)</string>
+    <string name="custom_words_limit">Liste ist voll (max. %1$d Wörter)</string>
+    <string name="custom_words_import_done">%1$d Wörter importiert</string>
+    <string name="custom_words_import_none">Nichts Neues zu importieren</string>
+    <plurals name="custom_words_count">
+        <item quantity="one">%1$d Wort</item>
+        <item quantity="other">%1$d Wörter</item>
+    </plurals>
+
     <string name="section_benchmark">Benchmark</string>
     <string name="desc_benchmark">Misst, wie schnell das aktive Modell auf diesem Gerät transkribiert, anhand einer integrierten englischen Testaufnahme (11 s).</string>
     <string name="btn_benchmark">Benchmark starten</string>
@@ -104,5 +132,69 @@
     <string name="voice_test_failed">Spracheingabe konnte auf diesem Gerät nicht gestartet werden.</string>
 
     <string name="voice_help_title">Einrichtung der Spracheingabe</string>
-    <string name="voice_help_body">So funktioniert es\n• Öffne eine beliebige App und tippe auf das Mikrofon einer unterstützten Tastatur/App. Ein kleines Panel erscheint, du sprichst, tippst zum Stoppen, und der Text wird eingefügt. (Aktiviere „Auto-Stopp bei Stille“ in den Einstellungen, damit es von selbst stoppt.)\n\nWelche Tastaturen öffnen das Sprach-Panel\n• Microsoft SwiftKey (nicht Open Source) und die Sprachsuche auf Websites öffnen das Panel direkt.\n• AnySoftKeyboard ist der Open-Source-Weg zum Panel: Seine Mikrofontaste öffnet es, solange auf deinem System keine Sprach-Tastatur aktiviert ist.\n\nAndere Open-Source-Tastaturen\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard und Unexpected Keyboard öffnen das Panel nicht: Ihre Mikrofontaste wechselt stattdessen zur „Offline Voice Input“-Tastatur. Aktiviere sie einmal (siehe „Alternative: Sprach-Tastatur“), sprich dort und kehre über deren Tastaturwechsel-Taste zurück. FUTO Keyboard bringt eine eigene Spracheingabe mit.\n• Gboard nutzt nur Googles eigene Spracheingabe und kann diese App gar nicht verwenden.\n\nFalls SwiftKeys eigene Spracheingabe öffnet\n• Einstellungen → Rich-Eingabe → „Multimodale Spracheingabe“ deaktivieren.\n• Tippe dann erneut auf das Mikrofon und wähle „Offline Voice Input“.\n\nFalls Android fragt, welche App verwendet werden soll\n• Wähle „Offline Voice Input“ und tippe auf „Immer“.\n\nFalls immer eine andere App öffnet\n• Öffne Einstellungen → Apps → diese App → „Standardmäßig öffnen“ → Standardeinstellungen löschen, und versuche es erneut.</string>
+    <string name="voice_help_body">So funktioniert es\n• Öffne eine beliebige App und tippe auf das Mikrofon einer unterstützten Tastatur/App. Ein kleines Panel erscheint, du sprichst, tippst zum Stoppen, und der Text wird eingefügt. (Aktiviere „Auto-Stopp bei Stille" in den Einstellungen, damit es von selbst stoppt.)\n\nWelche Tastaturen öffnen das Sprach-Panel\n• Microsoft SwiftKey (nicht Open Source) und die Sprachsuche auf Websites öffnen das Panel direkt.\n• AnySoftKeyboard ist der Open-Source-Weg zum Panel: Seine Mikrofontaste öffnet es, solange auf deinem System keine Sprach-Tastatur aktiviert ist.\n\nAndere Open-Source-Tastaturen\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard und Unexpected Keyboard öffnen das Panel nicht: Ihre Mikrofontaste wechselt stattdessen zur „Offline Voice Input"-Tastatur. Aktiviere sie einmal (siehe „Alternative: Sprach-Tastatur"), sprich dort und kehre über deren Tastaturwechsel-Taste zurück. FUTO Keyboard bringt eine eigene Spracheingabe mit.\n• Gboard nutzt nur Googles eigene Spracheingabe und kann diese App gar nicht verwenden.\n\nFalls SwiftKeys eigene Spracheingabe öffnet\n• Einstellungen → Rich-Eingabe → „Multimodale Spracheingabe" deaktivieren.\n• Tippe dann erneut auf das Mikrofon und wähle „Offline Voice Input".\n\nFalls Android fragt, welche App verwendet werden soll\n• Wähle „Offline Voice Input" und tippe auf „Immer".\n\nFalls immer eine andere App öffnet\n• Öffne Einstellungen → Apps → diese App → „Standardmäßig öffnen" → Standardeinstellungen löschen, und versuche es erneut.</string>
+
+    <string name="section_bubble">Schwebende Mikrofon-Blase</string>
+    <string name="desc_bubble">Zeigt eine verschiebbare Mikrofon-Blase auf dem Bildschirm. Tippe darauf, um aufzunehmen; die Transkription wird in die Zwischenablage kopiert und im Verlauf gespeichert.</string>
+    <string name="bubble_enable">Mikrofon-Blase anzeigen</string>
+    <string name="bubble_need_overlay">Bitte zuerst „Über anderen Apps einblenden" erlauben.</string>
+    <string name="bubble_need_mic">Mikrofonberechtigung erforderlich.</string>
+    <string name="bubble_idle">Mikrofon-Blase – tippen zum Aufnehmen</string>
+    <string name="bubble_recording">Aufnahme – tippen zum Stoppen</string>
+    <string name="bubble_processing">Verarbeitung…</string>
+    <string name="bubble_copied">In die Zwischenablage kopiert</string>
+    <string name="bubble_inserted">In Textfeld eingefügt</string>
+    <string name="bubble_channel_name">Mikrofon-Blase</string>
+    <string name="bubble_notification_title">Mikrofon-Blase aktiv</string>
+    <string name="bubble_notification_text">Tippe auf die Blase, um Sprache aufzunehmen</string>
+    <string name="bubble_stop_recording">Aufnahme stoppen</string>
+    <string name="bubble_hide">Blase ausblenden</string>
+    <string name="bubble_loading">Modell wird geladen…</string>
+    <string name="bubble_load_failed">Modell konnte nicht geladen werden. Bitte erneut versuchen.</string>
+    <string name="bubble_unload_title">Bei Inaktivität entladen</string>
+    <string name="bubble_unload_desc">Um Speicher und Akku zu sparen, wird das Modell entladen, wenn die Blase eine Weile inaktiv war. Die Blase bleibt sichtbar und nutzbar; die nächste Aufnahme muss das Modell eventuell kurz neu laden.</string>
+    <string name="bubble_unload_never">Nie</string>
+    <string name="bubble_unload_5">5 Min</string>
+    <string name="bubble_unload_15">15 Min</string>
+    <string name="bubble_unload_30">30 Min</string>
+    <string name="bubble_size_title">Blasengröße</string>
+    <string name="bubble_size_desc">Wie groß die schwebende Blase auf dem Bildschirm erscheint.</string>
+    <string name="bubble_size_small">Klein</string>
+    <string name="bubble_size_medium">Mittel</string>
+    <string name="bubble_size_large">Groß</string>
+
+    <string name="section_a11y">Direktes Einfügen (optional)</string>
+    <string name="desc_a11y">Wenn aktiviert, werden Transkriptionen der Mikrofon-Blase direkt in das fokussierte Textfeld über einen Bedienungshilfe-Dienst eingefügt. Schlägt das Einfügen fehl, wird der Text stattdessen in die Zwischenablage kopiert. Dieser Dienst schreibt nur in das fokussierte bearbeitbare Feld; er liest oder speichert niemals Feldinhalte und überspringt Passwortfelder.</string>
+    <string name="a11y_enable">Direktes Einfügen aktivieren</string>
+    <string name="a11y_consent_title">Bedienungshilfe-Berechtigung</string>
+    <string name="a11y_consent_body">Das direkte Einfügen nutzt einen Android-Bedienungshilfe-Dienst, um transkribierten Text in das fokussierte Textfeld einzugeben.\n\nWas er tut:\n• Schreibt transkribierten Text in das aktuell fokussierte, sichtbare bearbeitbare Feld\n• Überspringt Passwort- und sensible Felder\n\nWas er NICHT tut:\n• Feldinhalte lesen oder speichern\n• Vorhandenen Text überschreiben (er fügt am Cursor an)\n• Auf nicht fokussierte Felder zugreifen\n\nDu wirst zu den Bedienungshilfe-Einstellungen weitergeleitet, um den Dienst zu aktivieren.</string>
+    <string name="a11y_consent_accept">Verstanden, fortfahren</string>
+    <string name="a11y_service_description">Fügt transkribierte Sprache in das fokussierte Textfeld ein. Schreibt nur Text; liest niemals Feldinhalte.</string>
+    <string name="a11y_not_enabled">Bedienungshilfe-Dienst nicht aktiviert. Öffne die Bedienungshilfe-Einstellungen, um ihn einzuschalten.</string>
+
+    <string name="section_history">Transkriptionsverlauf</string>
+    <string name="history_title">Verlauf</string>
+    <string name="history_empty">Noch keine Transkriptionen</string>
+    <string name="history_clear_all">Alle löschen</string>
+    <string name="history_clear_title">Verlauf löschen?</string>
+    <string name="history_clear_body">Alle gespeicherten Transkriptionen werden dauerhaft gelöscht.</string>
+    <string name="history_clear_confirm">Alle löschen</string>
+    <string name="history_copied">Kopiert</string>
+    <string name="history_copy">Kopieren</string>
+    <string name="history_delete">Löschen</string>
+    <string name="history_meta">%1$s · %2$s</string>
+    <string name="history_source_bubble">Blase</string>
+    <string name="history_source_popup">Sprach-Popup</string>
+    <string name="history_source_ime">Sprach-Tastatur</string>
+    <string name="history_source_file">Audiodatei</string>
+    <string name="btn_history">Verlauf anzeigen</string>
+
+    <string name="setting_history_retention">Verlaufsaufbewahrung</string>
+    <string name="setting_history_retention_desc">Wie viele Transkriptionen behalten werden. Ältere Einträge werden automatisch gelöscht.</string>
+    <string name="retention_off">Aus</string>
+    <string name="retention_10">10</string>
+    <string name="retention_25">25</string>
+    <string name="retention_50">50</string>
+    <string name="retention_100">100</string>
+    <string name="retention_unlimited">Unbegrenzt</string>
 </resources>

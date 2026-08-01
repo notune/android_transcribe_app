@@ -79,6 +79,36 @@
     <string name="models_threads_desc">Потоки, используемые для распознавания. «Автоматически» подбирает значение под процессор этого устройства. Если распознавание медленное, попробуйте другие значения; больше потоков не всегда быстрее.</string>
     <string name="models_threads_auto">Автоматически</string>
 
+    <!-- Custom words (Whisper recognition bias) -->
+    <string name="btn_custom_words">Пользовательские слова</string>
+    <string name="custom_words_title">Пользовательские слова</string>
+    <string name="custom_words_desc">Добавляйте имена, технические термины или необычные слова, чтобы улучшить распознавание. Модели Whisper получают их как подсказку; другие модели их игнорируют.</string>
+    <string name="custom_words_active_model">Активная модель: %1$s</string>
+    <string name="custom_words_builtin">встроенная</string>
+    <string name="custom_words_not_whisper">Активная модель не является моделью Whisper, поэтому может игнорировать пользовательские слова.</string>
+    <string name="custom_words_help_title">Как это работает</string>
+    <string name="custom_words_help_body">Пользовательские слова передаются моделям Whisper как начальная подсказка, направляя распознавание на ваши имена и термины. На другие модели они не влияют.\n\nКонфиденциальность: список хранится только в закрытом хранилище приложения и используется исключительно на этом устройстве для управления офлайн-моделью. Он никогда не загружается и не передаётся.</string>
+    <string name="custom_words_empty">Пока нет пользовательских слов</string>
+    <string name="custom_words_add">Добавить слово</string>
+    <string name="custom_words_add_hint">Слово или фраза</string>
+    <string name="custom_words_edit">Изменить слово</string>
+    <string name="custom_words_delete">Удалить слово</string>
+    <string name="custom_words_import">Импортировать список</string>
+    <string name="custom_words_import_hint">По одному слову в строке</string>
+    <string name="custom_words_saved">Сохранено</string>
+    <string name="custom_words_duplicate">Уже есть в списке</string>
+    <string name="custom_words_empty_input">Введите слово</string>
+    <string name="custom_words_too_long">Слишком длинное (макс. %1$d символов)</string>
+    <string name="custom_words_limit">Список заполнен (макс. %1$d слов)</string>
+    <string name="custom_words_import_done">Импортировано слов: %1$d</string>
+    <string name="custom_words_import_none">Нечего импортировать</string>
+    <plurals name="custom_words_count">
+        <item quantity="one">%1$d слово</item>
+        <item quantity="few">%1$d слова</item>
+        <item quantity="many">%1$d слов</item>
+        <item quantity="other">%1$d слов</item>
+    </plurals>
+
     <string name="section_benchmark">Тест скорости</string>
     <string name="desc_benchmark">Измеряет скорость распознавания активной модели на этом устройстве по встроенной тестовой записи на английском (11 с).</string>
     <string name="btn_benchmark">Запустить тест</string>
@@ -105,4 +135,68 @@
 
     <string name="voice_help_title">Настройка голосового ввода</string>
     <string name="voice_help_body">Как использовать\n• Откройте любое приложение и нажмите микрофон на поддерживаемой клавиатуре/в приложении. Появится небольшая панель, вы говорите, нажимаете для остановки, и текст вставляется. (Включите «Автостоп при тишине» в настройках, чтобы она останавливалась сама.)\n\nКакие клавиатуры открывают голосовую панель\n• Microsoft SwiftKey (не с открытым кодом) и голосовой поиск на сайтах открывают панель напрямую.\n• AnySoftKeyboard — путь к панели с открытым кодом: его клавиша микрофона открывает её, пока в системе не включена ни одна голосовая клавиатура.\n\nДругие клавиатуры с открытым кодом\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard и Unexpected Keyboard панель не открывают: их клавиша микрофона переключает на клавиатуру «Offline Voice Input». Включите её один раз (см. «Альтернатива: голосовая клавиатура»), говорите там и возвращайтесь клавишей переключения клавиатур. FUTO Keyboard содержит собственный голосовой ввод.\n• Gboard использует только голосовой ввод Google и вообще не может использовать это приложение.\n\nЕсли открывается собственный голосовой ввод SwiftKey\n• Настройки → Расширенный ввод → отключите «Мультимодальный голосовой ввод».\n• Затем снова нажмите микрофон и выберите «Offline Voice Input».\n\nЕсли Android спрашивает, какое приложение использовать\n• Выберите «Offline Voice Input» и нажмите «Всегда».\n\nЕсли всегда открывается другое приложение\n• Откройте Настройки → Приложения → это приложение → «Открывать по умолчанию» → Очистить настройки по умолчанию, и попробуйте снова.</string>
+
+    <string name="section_bubble">Плавающий пузырь микрофона</string>
+    <string name="desc_bubble">Показывает перетаскиваемый пузырь микрофона на экране. Нажмите для записи; транскрипция копируется в буфер обмена и сохраняется в истории.</string>
+    <string name="bubble_enable">Показать пузырь микрофона</string>
+    <string name="bubble_need_overlay">Сначала разрешите отображение поверх других приложений.</string>
+    <string name="bubble_need_mic">Требуется разрешение микрофона.</string>
+    <string name="bubble_idle">Пузырь микрофона – нажмите для записи</string>
+    <string name="bubble_recording">Запись – нажмите для остановки</string>
+    <string name="bubble_processing">Обработка…</string>
+    <string name="bubble_copied">Скопировано в буфер обмена</string>
+    <string name="bubble_inserted">Вставлено в текстовое поле</string>
+    <string name="bubble_channel_name">Пузырь микрофона</string>
+    <string name="bubble_notification_title">Пузырь микрофона активен</string>
+    <string name="bubble_notification_text">Нажмите на пузырь для записи речи</string>
+    <string name="bubble_stop_recording">Остановить запись</string>
+    <string name="bubble_hide">Скрыть пузырь</string>
+    <string name="bubble_loading">Загрузка модели…</string>
+    <string name="bubble_load_failed">Не удалось загрузить модель. Попробуйте ещё раз.</string>
+    <string name="bubble_unload_title">Выгрузка при простое</string>
+    <string name="bubble_unload_desc">Чтобы экономить память и заряд батареи, выгружать модель, когда пузырь долго простаивает. Пузырь остаётся видимым и доступным; следующая запись может потребовать немного времени на перезагрузку модели.</string>
+    <string name="bubble_unload_never">Никогда</string>
+    <string name="bubble_unload_5">5 мин</string>
+    <string name="bubble_unload_15">15 мин</string>
+    <string name="bubble_unload_30">30 мин</string>
+    <string name="bubble_size_title">Размер пузыря</string>
+    <string name="bubble_size_desc">Насколько большим отображается плавающий пузырь на экране.</string>
+    <string name="bubble_size_small">Маленький</string>
+    <string name="bubble_size_medium">Средний</string>
+    <string name="bubble_size_large">Большой</string>
+
+    <string name="section_a11y">Прямая вставка (необязательно)</string>
+    <string name="desc_a11y">При включении транскрипции из пузыря вставляются непосредственно в фокусированное текстовое поле через службу специальных возможностей. При неудаче текст копируется в буфер обмена. Служба только записывает в фокусированное редактируемое поле; никогда не читает и не хранит содержимое полей и пропускает поля паролей.</string>
+    <string name="a11y_enable">Включить прямую вставку</string>
+    <string name="a11y_consent_title">Разрешение специальных возможностей</string>
+    <string name="a11y_consent_body">Прямая вставка использует службу специальных возможностей Android для ввода транскрибированного текста в фокусированное текстовое поле.\n\nЧто она делает:\n• Записывает транскрибированный текст в видимое фокусированное редактируемое поле\n• Пропускает поля паролей и конфиденциальные поля\n\nЧего она НЕ делает:\n• Не читает и не хранит содержимое полей\n• Не перезаписывает существующий текст (добавляет у курсора)\n• Не обращается к нефокусированным полям\n\nВы будете перенаправлены в настройки специальных возможностей для включения службы.</string>
+    <string name="a11y_consent_accept">Понятно, продолжить</string>
+    <string name="a11y_service_description">Вставляет транскрибированную речь в фокусированное текстовое поле. Только записывает; никогда не читает содержимое.</string>
+    <string name="a11y_not_enabled">Служба специальных возможностей не включена. Откройте настройки специальных возможностей для включения.</string>
+
+    <string name="section_history">История транскрипций</string>
+    <string name="history_title">История</string>
+    <string name="history_empty">Транскрипций пока нет</string>
+    <string name="history_clear_all">Очистить всё</string>
+    <string name="history_clear_title">Очистить историю?</string>
+    <string name="history_clear_body">Все сохранённые транскрипции будут безвозвратно удалены.</string>
+    <string name="history_clear_confirm">Удалить всё</string>
+    <string name="history_copied">Скопировано</string>
+    <string name="history_copy">Копировать</string>
+    <string name="history_delete">Удалить</string>
+    <string name="history_meta">%1$s · %2$s</string>
+    <string name="history_source_bubble">Пузырь</string>
+    <string name="history_source_popup">Голосовая панель</string>
+    <string name="history_source_ime">Голосовая клавиатура</string>
+    <string name="history_source_file">Аудиофайл</string>
+    <string name="btn_history">Просмотр истории</string>
+
+    <string name="setting_history_retention">Хранение истории</string>
+    <string name="setting_history_retention_desc">Сколько транскрипций хранить. Старые записи удаляются автоматически.</string>
+    <string name="retention_off">Выкл</string>
+    <string name="retention_10">10</string>
+    <string name="retention_25">25</string>
+    <string name="retention_50">50</string>
+    <string name="retention_100">100</string>
+    <string name="retention_unlimited">Без ограничений</string>
 </resources>

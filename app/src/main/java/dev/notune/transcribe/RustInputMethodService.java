@@ -470,15 +470,14 @@ public class RustInputMethodService extends InputMethodService {
                 }
                 return;
             }
+
+            TranscriptionHistory.get(this).insert(text, TranscriptionHistory.SOURCE_IME);
+
             String committed = text + " ";
             InputConnection ic = getCurrentInputConnection();
             if (inputActive && ic != null) {
                 commitTranscribedText(ic, committed);
             } else {
-                // No editor is focused right now (common on long transcribes where
-                // a web field in Firefox/Gemini dropped focus while we processed
-                // audio). Committing now would be silently dropped, so defer the
-                // text until a field is focused again instead of losing it.
                 pendingCommitText = committed;
             }
             if (pauseAudioActive) {

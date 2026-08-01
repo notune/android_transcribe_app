@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubble_root"
+    android:layout_width="56dp"
+    android:layout_height="56dp"
+    android:background="@drawable/bg_bubble_idle"
+    android:contentDescription="@string/bubble_idle">
+
+    <ImageView
+        android:id="@+id/bubble_icon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_mic"
+        android:importantForAccessibility="no"
+        android:tint="@android:color/white" />
+
+    <ProgressBar
+        android:id="@+id/bubble_progress"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:indeterminateTint="@android:color/white"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+</FrameLayout>

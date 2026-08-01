@@ -209,36 +209,49 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_LiveSubtitleService_ini
                     );
                     gap_pending = true;
                 }
-            } else if let Some(engine_arc) = engine::get_engine() {
-                let audio_secs = job.samples.len() as f64 / SAMPLE_RATE as f64;
-                let started = std::time::Instant::now();
-                let res = engine::transcribe_shared(&engine_arc, job.samples);
-                let elapsed = started.elapsed().as_secs_f64();
-                log::info!(
-                    "Subtitle {} job: {:.1}s audio in {:.2}s (lag {:.1}s)",
-                    if job.is_final { "final" } else { "partial" },
-                    audio_secs,
-                    elapsed,
-                    lag as f64 / SAMPLE_RATE as f64,
-                );
-
-                // Track transcription speed (EMA) so the pusher can predict
-                // job costs; also reflects thermal throttling over time.
-                let sample = (elapsed / audio_secs * 1000.0) as u32;
-                let old = rtf_milli.load(Ordering::SeqCst);
-                let ema = if old == 0 { sample } else { (old * 7 + sample * 3) / 10 };
-                rtf_milli.store(ema, Ordering::SeqCst);
-
-                if let Ok(r) = res {
-                    let text = r.trim();
-                    if !text.is_empty() && gap_pending {
-                        // Mark the dropped stretch so the transcript doesn't
-                        // silently glue unrelated sentences together.
-                        deliver(&mut env, "…", true);
-                        gap_pending = false;
+            } else {
+                // The shared engine may have been unloaded while idle (e.g. the
+                // mic bubble's battery saver cleared it between jobs). Reload
+                // on demand instead of dropping the job, so live subtitles are
+                // never interrupted by an unload.
+                let engine_arc = match engine::get_engine() {
+                    Some(arc) => Some(arc),
+                    None => {
+                        let _ = engine::ensure_loaded(&mut env, service_obj);
+                        engine::get_engine()
                     }
-                    if !text.is_empty() || job.is_final {
-                        deliver(&mut env, text, job.is_final);
+                };
+                if let Some(engine_arc) = engine_arc {
+                    let audio_secs = job.samples.len() as f64 / SAMPLE_RATE as f64;
+                    let started = std::time::Instant::now();
+                    let res = engine::transcribe_shared(&engine_arc, job.samples);
+                    let elapsed = started.elapsed().as_secs_f64();
+                    log::info!(
+                        "Subtitle {} job: {:.1}s audio in {:.2}s (lag {:.1}s)",
+                        if job.is_final { "final" } else { "partial" },
+                        audio_secs,
+                        elapsed,
+                        lag as f64 / SAMPLE_RATE as f64,
+                    );
+
+                    // Track transcription speed (EMA) so the pusher can predict
+                    // job costs; also reflects thermal throttling over time.
+                    let sample = (elapsed / audio_secs * 1000.0) as u32;
+                    let old = rtf_milli.load(Ordering::SeqCst);
+                    let ema = if old == 0 { sample } else { (old * 7 + sample * 3) / 10 };
+                    rtf_milli.store(ema, Ordering::SeqCst);
+
+                    if let Ok(r) = res {
+                        let text = r.trim();
+                        if !text.is_empty() && gap_pending {
+                            // Mark the dropped stretch so the transcript doesn't
+                            // silently glue unrelated sentences together.
+                            deliver(&mut env, "…", true);
+                            gap_pending = false;
+                        }
+                        if !text.is_empty() || job.is_final {
+                            deliver(&mut env, text, job.is_final);
+                        }
                     }
                 }
             }

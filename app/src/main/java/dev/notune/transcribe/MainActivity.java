@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
@@ -15,6 +16,7 @@ import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -83,6 +85,18 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_models).setOnClickListener(v ->
                 startActivity(new Intent(this, ModelsActivity.class)));
+
+        findViewById(R.id.btn_custom_words).setOnClickListener(v ->
+                startActivity(new Intent(this, CustomWordsActivity.class)));
+
+        findViewById(R.id.btn_history).setOnClickListener(v ->
+                startActivity(new Intent(this, HistoryActivity.class)));
+
+        setupBubbleSwitch();
+        setupA11ySwitch();
+        setupRetentionRadio();
+        setupBubbleUnloadRadio();
+        setupBubbleSizeRadio();
 
         benchButton = findViewById(R.id.btn_benchmark);
         benchResultText = findViewById(R.id.text_bench_result);
@@ -304,6 +318,120 @@ public class MainActivity extends AppCompatActivity {
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERM_REQ_CODE);
         }
+    }
+
+    private void setupBubbleSwitch() {
+        CompoundButton sw = findViewById(R.id.switch_bubble);
+        sw.setChecked(BubblePrefs.isEnabled(this));
+        sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                if (!Settings.canDrawOverlays(this)) {
+                    sw.setChecked(false);
+                    Toast.makeText(this, R.string.bubble_need_overlay, Toast.LENGTH_LONG).show();
+                    startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName())));
+                    return;
+                }
+                BubblePrefs.setEnabled(this, true);
+                Intent intent = new Intent(this, BubbleService.class);
+                intent.setAction(BubbleService.ACTION_SHOW);
+                ContextCompat.startForegroundService(this, intent);
+            } else {
+                BubblePrefs.setEnabled(this, false);
+                Intent intent = new Intent(this, BubbleService.class);
+                intent.setAction(BubbleService.ACTION_HIDE);
+                startService(intent);
+            }
+        });
+    }
+
+    private void setupA11ySwitch() {
+        CompoundButton sw = findViewById(R.id.switch_a11y);
+        sw.setChecked(BubblePrefs.hasA11yConsent(this));
+        sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.a11y_consent_title)
+                        .setMessage(R.string.a11y_consent_body)
+                        .setPositiveButton(R.string.a11y_consent_accept, (d, w) -> {
+                            BubblePrefs.setA11yConsent(this, true);
+                            InsertionAccessibilityService.openSettings(this);
+                        })
+                        .setNegativeButton(android.R.string.cancel, (d, w) -> sw.setChecked(false))
+                        .setOnCancelListener(d -> sw.setChecked(false))
+                        .show();
+            } else {
+                BubblePrefs.setA11yConsent(this, false);
+            }
+        });
+    }
+
+    private void setupRetentionRadio() {
+        RadioGroup rg = findViewById(R.id.rg_retention);
+        int retention = HistoryPrefs.getRetention(this);
+        switch (retention) {
+            case 0: rg.check(R.id.rb_ret_off); break;
+            case 10: rg.check(R.id.rb_ret_10); break;
+            case 25: rg.check(R.id.rb_ret_25); break;
+            case 50: rg.check(R.id.rb_ret_50); break;
+            case 100: rg.check(R.id.rb_ret_100); break;
+            default: rg.check(R.id.rb_ret_unlimited); break;
+        }
+        rg.setOnCheckedChangeListener((group, checkedId) -> {
+            int val;
+            if (checkedId == R.id.rb_ret_off) val = 0;
+            else if (checkedId == R.id.rb_ret_10) val = 10;
+            else if (checkedId == R.id.rb_ret_25) val = 25;
+            else if (checkedId == R.id.rb_ret_50) val = 50;
+            else if (checkedId == R.id.rb_ret_100) val = 100;
+            else val = -1;
+            HistoryPrefs.setRetention(this, val);
+            TranscriptionHistory.get(this).prune();
+        });
+    }
+
+    private void setupBubbleUnloadRadio() {
+        RadioGroup rg = findViewById(R.id.rg_bubble_unload);
+        switch (BubblePrefs.getUnloadMinutes(this)) {
+            case 0: rg.check(R.id.rb_unload_never); break;
+            case 5: rg.check(R.id.rb_unload_5); break;
+            case 30: rg.check(R.id.rb_unload_30); break;
+            default: rg.check(R.id.rb_unload_15); break;
+        }
+        rg.setOnCheckedChangeListener((group, checkedId) -> {
+            int val;
+            if (checkedId == R.id.rb_unload_never) val = 0;
+            else if (checkedId == R.id.rb_unload_5) val = 5;
+            else if (checkedId == R.id.rb_unload_30) val = 30;
+            else val = 15;
+            BubblePrefs.setUnloadMinutes(this, val);
+            notifyBubbleRefresh();
+        });
+    }
+
+    private void setupBubbleSizeRadio() {
+        RadioGroup rg = findViewById(R.id.rg_bubble_size);
+        switch (BubblePrefs.getSizeDp(this)) {
+            case 48: rg.check(R.id.rb_size_small); break;
+            case 72: rg.check(R.id.rb_size_large); break;
+            default: rg.check(R.id.rb_size_medium); break;
+        }
+        rg.setOnCheckedChangeListener((group, checkedId) -> {
+            int val;
+            if (checkedId == R.id.rb_size_small) val = 48;
+            else if (checkedId == R.id.rb_size_large) val = 72;
+            else val = 56;
+            BubblePrefs.setSizeDp(this, val);
+            notifyBubbleRefresh();
+        });
+    }
+
+    /** Tells a visible bubble to re-read its settings (size / unload interval). */
+    private void notifyBubbleRefresh() {
+        if (!BubblePrefs.isEnabled(this)) return;
+        Intent intent = new Intent(this, BubbleService.class);
+        intent.setAction(BubbleService.ACTION_REFRESH);
+        startService(intent);
     }
 
     @Override

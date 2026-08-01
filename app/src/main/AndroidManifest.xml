@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -128,6 +129,39 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+
+        <!-- Floating mic bubble service -->
+        <service
+            android:name=".BubbleService"
+            android:foregroundServiceType="microphone"
+            android:exported="false" />
+
+        <!-- Accessibility service for optional direct text insertion -->
+        <service
+            android:name=".InsertionAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_insertion" />
+        </service>
+
+        <!-- Transcription history -->
+        <activity
+            android:name=".HistoryActivity"
+            android:label="@string/history_title"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false" />
+
+        <!-- Custom words (Whisper recognition bias) -->
+        <activity
+            android:name=".CustomWordsActivity"
+            android:label="@string/custom_words_title"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false" />
 
     </application>
 </manifest>

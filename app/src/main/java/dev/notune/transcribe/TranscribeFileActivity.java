@@ -126,6 +126,8 @@ public class TranscribeFileActivity extends AppCompatActivity {
 
             resultText.setText(text);
 
+            TranscriptionHistory.get(this).insert(text, TranscriptionHistory.SOURCE_FILE);
+
             // Auto-copy to clipboard
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("Transcription", text);

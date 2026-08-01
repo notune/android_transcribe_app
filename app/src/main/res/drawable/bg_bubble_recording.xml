@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Recording: a red disc with a bright ring so the live state reads at a
+     glance even without the stop-square icon. The ring is the recording-only
+     indicator; idle/processing backgrounds stay plain. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#FFB3261E" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@android:color/transparent" />
+            <stroke
+                android:width="3dp"
+                android:color="#FFFFB4AB" />
+        </shape>
+    </item>
+</layer-list>
