@@ -98,59 +98,61 @@ dependencies {
 // Rust / cargo-ndk build task
 // ---------------------------------------------------------------------------
 
-val cargoNdkBuild by tasks.registering(Exec::class) {
-    description = "Build Rust native code via cargo-ndk"
+val ndkDir = project.findProperty("ndk.dir")?.toString()
+    ?: System.getenv("ANDROID_NDK_HOME")
+    ?: System.getenv("ANDROID_NDK")
+    ?: android.ndkDirectory.absolutePath
+
+fun nativeVariant(name: String, armArch: String) = tasks.register<Exec>("cargoNdkBuild$name") {
+    description = "Build the $name Rust native backend via cargo-ndk"
     group = "build"
-
-    workingDir = rootProject.projectDir   // Cargo.toml lives at project root
-
-    // Detect NDK path from local.properties or env
-    val ndkDir = project.findProperty("ndk.dir")?.toString()
-        ?: System.getenv("ANDROID_NDK_HOME")
-        ?: System.getenv("ANDROID_NDK")
-        ?: android.ndkDirectory.absolutePath
+    workingDir = rootProject.projectDir
 
     environment("ANDROID_NDK_HOME", ndkDir)
-    // transcribe-cpp-sys builds its C++ core through CMake, whose Android
-    // platform detection needs one of these (ANDROID_NDK_HOME is not enough).
     environment("ANDROID_NDK_ROOT", ndkDir)
     environment("ANDROID_NDK", ndkDir)
-    // ggml cannot autodetect the CPU when cross-compiling and falls back to
-    // baseline armv8-a, losing the dotprod/fp16 kernels its quantized matmuls
-    // rely on (several times slower). armv8.2-a+dotprod+fp16 is supported by
-    // arm64 phones from ~2018 on; the engine refuses older CPUs with a clear
-    // error at load (see check_cpu_features in src/engine.rs) instead of
-    // crashing mid-inference.
-    environment("TRANSCRIBE_CMAKE_ARGS", "-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16")
+    environment("CARGO_TARGET_DIR", layout.buildDirectory.dir("rust-$name").get().asFile)
+    environment("TRANSCRIBE_CMAKE_ARGS", "-DGGML_CPU_ARM_ARCH=$armArch")
 
-    val jniLibsDir = project.file("src/main/jniLibs")
-
+    val output = layout.buildDirectory.dir("jni-$name").get().asFile
     commandLine(
         "cargo", "ndk",
         "-t", "arm64-v8a",
-        "-o", jniLibsDir.absolutePath,
+        "-o", output.absolutePath,
         "build", "--release"
     )
+    outputs.dir(output)
+    outputs.upToDateWhen { false }
+}
 
-    // Copy libc++_shared.so from NDK (needed because Rust links against it dynamically)
+val cargoNdkBuildArmv8 = nativeVariant("Armv8", "armv8-a")
+val cargoNdkBuildDotprod = nativeVariant("Dotprod", "armv8.2-a+dotprod+fp16")
+
+val cargoNdkBuild by tasks.registering {
+    description = "Build and package both native CPU backends"
+    group = "build"
+    dependsOn(cargoNdkBuildArmv8, cargoNdkBuildDotprod)
+
     doLast {
-        val ndkPath = environment["ANDROID_NDK_HOME"] as String
-        val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so")
-        if (libcpp.exists()) {
-            val destDir = File(jniLibsDir, "arm64-v8a")
-            destDir.mkdirs()
-            libcpp.copyTo(File(destDir, "libc++_shared.so"), overwrite = true)
-            println("Copied libc++_shared.so from NDK")
-        } else {
+        val destDir = project.file("src/main/jniLibs/arm64-v8a")
+        destDir.mkdirs()
+        copy {
+            from(layout.buildDirectory.file("jni-Armv8/arm64-v8a/libandroid_transcribe_app.so"))
+            into(destDir)
+            rename { "libandroid_transcribe_app_armv8.so" }
+        }
+        copy {
+            from(layout.buildDirectory.file("jni-Dotprod/arm64-v8a/libandroid_transcribe_app.so"))
+            into(destDir)
+            rename { "libandroid_transcribe_app_dotprod.so" }
+        }
+
+        val libcpp = file("$ndkDir/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so")
+        if (!libcpp.exists()) {
             throw GradleException("libc++_shared.so not found in NDK at: ${libcpp.absolutePath}")
         }
+        libcpp.copyTo(File(destDir, "libc++_shared.so"), overwrite = true)
     }
-
-    outputs.dir(jniLibsDir)
-    // No input tracking — always run and let cargo's own incremental build
-    // decide what to recompile (a no-op cargo invocation is fast). Without
-    // this, Gradle sees unchanged outputs and skips Rust rebuilds entirely.
-    outputs.upToDateWhen { false }
 }
 
 // Wire the cargo-ndk build into the Android build lifecycle
