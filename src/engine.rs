@@ -400,30 +400,6 @@ fn performance_core_count() -> i32 {
     }
 }
 
-/// CPU features this build's ggml kernels require (see GGML_CPU_ARM_ARCH in
-/// the gradle build): dot-product and half-precision SIMD, present on arm64
-/// cores since ~2018. Without this check, an older CPU would crash with an
-/// illegal instruction mid-inference instead of showing an error.
-#[cfg(target_arch = "aarch64")]
-fn check_cpu_features() -> Result<(), String> {
-    const HWCAP_ASIMHP: libc::c_ulong = 1 << 10; // FEAT_FP16 (asimdhp)
-    const HWCAP_ASIMDDP: libc::c_ulong = 1 << 20; // FEAT_DotProd (asimddp)
-    let hwcap = unsafe { libc::getauxval(libc::AT_HWCAP) };
-    if hwcap & HWCAP_ASIMDDP == 0 || hwcap & HWCAP_ASIMHP == 0 {
-        return Err(
-            "this device's CPU is too old for this app version (needs arm64 \
-             dotprod/fp16, available on phones from ~2018 on)"
-                .to_string(),
-        );
-    }
-    Ok(())
-}
-
-#[cfg(not(target_arch = "aarch64"))]
-fn check_cpu_features() -> Result<(), String> {
-    Ok(())
-}
-
 /// Reads a single-value config file (trimmed); `None` if absent or empty.
 fn read_config(path: &Path) -> Option<String> {
     let s = std::fs::read_to_string(path).ok()?;
@@ -438,11 +414,6 @@ fn read_config(path: &Path) -> Option<String> {
 /// Performs the model load: the selected imported GGUF if any (falling back
 /// to the bundled model on failure), otherwise the bundled model.
 fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
-    if let Err(msg) = check_cpu_features() {
-        notify_status(env, context, &format!("Error: {}", msg));
-        return Err(msg);
-    }
-
     let files_dir = assets::files_dir(env, context).map_err(|e| {
         let msg = format!("Failed to resolve filesDir: {}", e);
         notify_status(env, context, &format!("Error: {}", msg));
