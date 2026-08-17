@@ -5,8 +5,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.pm.PackageManager;
@@ -37,7 +40,23 @@ public class RecognizeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.recognize_activity);
+        // Opt-in: show the panel as a narrow strip at a screen edge instead of
+        // along the bottom. The side is physical (LEFT/RIGHT, not START/END):
+        // it is the edge the user's hand reaches, so it must not be flipped by
+        // the locale's text direction.
+        String side = RecognizePrefs.getPanelSide(this);
+        if (side.isEmpty()) {
+            setContentView(R.layout.recognize_activity);
+        } else {
+            setContentView(R.layout.recognize_activity_side);
+            if (RecognizePrefs.SIDE_LEFT.equals(side)) {
+                View panel = findViewById(R.id.panel);
+                FrameLayout.LayoutParams lp =
+                        (FrameLayout.LayoutParams) panel.getLayoutParams();
+                lp.gravity = Gravity.LEFT | Gravity.CENTER_VERTICAL;
+                panel.setLayoutParams(lp);
+            }
+        }
 
         // Keep the screen awake for the lifetime of this recording screen so it
         // never sleeps mid-capture and cuts the recording short.

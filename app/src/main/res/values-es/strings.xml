@@ -37,6 +37,11 @@
     <string name="setting_auto_stop">Parada automática tras silencio</string>
     <string name="setting_auto_stop_desc">Cerrar la ventana de entrada de voz automáticamente ~2 segundos después de dejar de hablar</string>
 
+    <string name="setting_recognize_side">Panel de voz en el lateral</string>
+    <string name="setting_recognize_side_desc">Mostrar la ventana de entrada de voz como un panel vertical estrecho en el borde de la pantalla en lugar de abajo</string>
+    <string name="recognize_side_right">Derecha</string>
+    <string name="recognize_side_left">Izquierda</string>
+
     <string name="setting_subtitle_lines">Longitud de subtítulos</string>
     <string name="setting_subtitle_lines_desc">Cuántas líneas muestran los subtítulos en directo; el texto antiguo se desplaza</string>
     <string name="subtitle_lines_2">2 líneas</string>

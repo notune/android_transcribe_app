@@ -37,6 +37,11 @@
     <string name="setting_auto_stop">Auto-Stopp bei Stille</string>
     <string name="setting_auto_stop_desc">Spracheingabe-Popup automatisch ~2 Sekunden nach dem Sprechende beenden</string>
 
+    <string name="setting_recognize_side">Sprachpanel an der Seite</string>
+    <string name="setting_recognize_side_desc">Spracheingabe-Popup als schmales senkrechtes Panel am Bildschirmrand statt unten anzeigen</string>
+    <string name="recognize_side_right">Rechts</string>
+    <string name="recognize_side_left">Links</string>
+
     <string name="setting_subtitle_lines">Untertitellänge</string>
     <string name="setting_subtitle_lines_desc">Wie viele Zeilen die Live-Untertitel anzeigen; älterer Text scrollt weg</string>
     <string name="subtitle_lines_2">2 Zeilen</string>

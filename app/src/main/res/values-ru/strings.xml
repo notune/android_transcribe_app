@@ -37,6 +37,11 @@
     <string name="setting_auto_stop">Автостоп при тишине</string>
     <string name="setting_auto_stop_desc">Автоматически закрывать окно голосового ввода примерно через 2 секунды после окончания речи</string>
 
+    <string name="setting_recognize_side">Голосовая панель сбоку</string>
+    <string name="setting_recognize_side_desc">Показывать окно голосового ввода как узкую вертикальную панель у края экрана вместо нижней части</string>
+    <string name="recognize_side_right">Справа</string>
+    <string name="recognize_side_left">Слева</string>
+
     <string name="setting_subtitle_lines">Длина субтитров</string>
     <string name="setting_subtitle_lines_desc">Сколько строк показывают субтитры; более старый текст прокручивается</string>
     <string name="subtitle_lines_2">2 строки</string>

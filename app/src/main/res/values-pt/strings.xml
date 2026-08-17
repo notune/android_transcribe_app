@@ -37,6 +37,11 @@
     <string name="setting_auto_stop">Parada automática após silêncio</string>
     <string name="setting_auto_stop_desc">Fechar a janela de entrada de voz automaticamente ~2 segundos após você parar de falar</string>
 
+    <string name="setting_recognize_side">Painel de voz na lateral</string>
+    <string name="setting_recognize_side_desc">Mostrar a janela de entrada de voz como um painel vertical estreito na borda da tela em vez de na parte inferior</string>
+    <string name="recognize_side_right">Direita</string>
+    <string name="recognize_side_left">Esquerda</string>
+
     <string name="setting_subtitle_lines">Comprimento das legendas</string>
     <string name="setting_subtitle_lines_desc">Quantas linhas as legendas ao vivo mostram; o texto mais antigo rola para fora</string>
     <string name="subtitle_lines_2">2 linhas</string>
