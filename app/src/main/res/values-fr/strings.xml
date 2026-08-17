@@ -37,6 +37,12 @@
     <string name="setting_auto_stop">Arrêt automatique après un silence</string>
     <string name="setting_auto_stop_desc">Fermer automatiquement la fenêtre de saisie vocale ~2 secondes après la fin de la parole</string>
 
+    <string name="setting_ime_kb_key_top">Touche clavier en haut</string>
+    <string name="setting_ime_kb_key_top_desc">Déplacer la touche de changement de clavier du clavier vocal de la rangée du bas vers la barre d\'état</string>
+
+    <string name="setting_ime_edit_row">Touches d\'édition de texte</string>
+    <string name="setting_ime_edit_row_desc">Ajouter des touches de curseur, de sélection et de ponctuation au clavier vocal ; nécessite la touche clavier en haut</string>
+
     <string name="setting_subtitle_lines">Longueur des sous-titres</string>
     <string name="setting_subtitle_lines_desc">Nombre de lignes affichées par les sous-titres en direct ; le texte plus ancien défile</string>
     <string name="subtitle_lines_2">2 lignes</string>

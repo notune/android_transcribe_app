@@ -19,6 +19,8 @@ import android.view.inputmethod.EditorInfo;
 import android.content.res.ColorStateList;
 import android.view.ContextThemeWrapper;
 import java.io.File;
+import java.text.BreakIterator;
+import java.util.Locale;
 
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.MaterialColors;
@@ -42,15 +44,29 @@ public class RustInputMethodService extends InputMethodService {
     private android.widget.ImageView micIcon;
     private ProgressBar progressBar;
     private View backspaceButton;
+    private View backspaceNavButton;
     private View spaceButton;
     private View enterButton;
     private View switchKeyboardButton;
     private View inputView;
     private MicLevelView micLevelView;
     private View recordCircle;
+    // Optional text-editing keys (see the settings on the main screen).
+    private View shiftButton;
+    private View wordLeftButton;
+    private View charLeftButton;
+    private View charRightButton;
+    private View wordRightButton;
+    private View selectButton;
+    private View commaButton;
+    private View periodButton;
     // Night flag the current input view was inflated with, so it can be rebuilt
     // if the theme preference changes while this process stays alive.
     private boolean viewIsNight = false;
+    // Same idea for the two optional-key settings: they change the layout, and
+    // this process outlives the app screen where they are toggled.
+    private boolean viewKbKeyTop = false;
+    private boolean viewEditRow = false;
     private Handler mainHandler;
     private boolean isRecording = false;
     private boolean pendingSwitchBack = false;
@@ -60,6 +76,42 @@ public class RustInputMethodService extends InputMethodService {
     private static final long REPEAT_INTERVAL = 50; // ms between repeats
     private Runnable backspaceRepeatRunnable;
     private Runnable spaceRepeatRunnable;
+    // One per direction: sharing a single field would let a second finger
+    // overwrite the first key's runnable, orphaning it to repeat forever.
+    private Runnable charLeftRepeatRunnable;
+    private Runnable charRightRepeatRunnable;
+    // How much text either side of the cursor to inspect for word and paragraph
+    // jumps. Editors only share a window of their content with the IME, so this
+    // is a bound on the search, not on the field.
+    private static final int EDIT_TEXT_WINDOW = 4096;
+    // Cursor position, kept current by onUpdateSelection.
+    private int selStart = 0;
+    private int selEnd = 0;
+    // The range this service last asked for. onUpdateSelection compares against
+    // it to tell its own moves from the user tapping into the text, which has to
+    // cancel the cycles below — they are anchored to the previous selection.
+    private int expectedSelStart = -1;
+    private int expectedSelEnd = -1;
+    // Set when we asked for a selection whose result only the editor knows
+    // (select-all), so the one update it produces isn't mistaken for the user's.
+    private boolean selectionChangePending = false;
+    // While on, the cursor keys extend the selection from selectionAnchor
+    // instead of moving the caret.
+    private boolean selectionMode = false;
+    private int selectionAnchor = 0;
+    // Select key: 1 = last dictation, 2 = whole field, 0 = nothing (restoring
+    // the caret to where it was when the cycle started).
+    private int selectCycleStep = 0;
+    private int selectCycleCaret = 0;
+    // Range of the last committed transcription, or -1 once any edit has made
+    // the offsets meaningless.
+    private int lastDictationStart = -1;
+    private int lastDictationEnd = -1;
+    // Case key: 1 = capitalized, 2 = upper, 3 = lower. Each step is computed
+    // from the text as it was before the cycle started, so capitalizing an
+    // already-uppercase word still works.
+    private int caseCycleStep = 0;
+    private String caseCycleOriginal = null;
     private final AudioFocusPauser audioPauser = new AudioFocusPauser();
     private boolean pauseAudioActive = false;
     // Whether an editor is currently focused/started for input. Tracked via
@@ -117,6 +169,11 @@ public class RustInputMethodService extends InputMethodService {
                 return insets;
             });
 
+            // Which optional keys to show. Captured here so onStartInputView can
+            // tell when the user has changed them behind this view's back.
+            viewKbKeyTop = isKbKeyTopEnabled();
+            viewEditRow = isEditRowEnabled();
+
             statusView = view.findViewById(R.id.ime_status_text);
             progressBar = view.findViewById(R.id.ime_progress);
             recordContainer = view.findViewById(R.id.ime_record_container);
@@ -125,11 +182,23 @@ public class RustInputMethodService extends InputMethodService {
             recordCircle = view.findViewById(R.id.ime_record_circle);
             hintView = view.findViewById(R.id.ime_hint);
             backspaceButton = view.findViewById(R.id.ime_backspace);
+            backspaceNavButton = view.findViewById(R.id.ime_backspace_nav);
             spaceButton = view.findViewById(R.id.ime_space);
             enterButton = view.findViewById(R.id.ime_enter);
             switchKeyboardButton = view.findViewById(R.id.ime_switch_keyboard);
+            shiftButton = view.findViewById(R.id.ime_shift);
+            wordLeftButton = view.findViewById(R.id.ime_word_left);
+            charLeftButton = view.findViewById(R.id.ime_char_left);
+            charRightButton = view.findViewById(R.id.ime_char_right);
+            wordRightButton = view.findViewById(R.id.ime_word_right);
+            selectButton = view.findViewById(R.id.ime_select);
+            commaButton = view.findViewById(R.id.ime_comma);
+            periodButton = view.findViewById(R.id.ime_period);
 
-            switchKeyboardButton.setOnClickListener(v -> {
+            applyKeyLayout(view);
+
+            // Same action from either position, depending on the setting.
+            View.OnClickListener switchKeyboard = v -> {
                 if (isRecording) {
                     pendingSwitchBack = true;
                     stopRecording();
@@ -137,7 +206,14 @@ public class RustInputMethodService extends InputMethodService {
                 } else {
                     switchToPreviousInputMethod();
                 }
-            });
+            };
+            switchKeyboardButton.setOnClickListener(switchKeyboard);
+            view.findViewById(R.id.ime_switch_keyboard_top).setOnClickListener(switchKeyboard);
+
+            // Every key is wired whether or not it is currently shown, so that
+            // toggling a setting is a visibility change on the live view rather
+            // than a rebuild.
+            wireEditingKeys();
 
             // Key repeat runnable for backspace
             backspaceRepeatRunnable = new Runnable() {
@@ -164,9 +240,11 @@ public class RustInputMethodService extends InputMethodService {
                 }
             };
 
-            backspaceButton.setOnTouchListener((v, event) -> {
+            // Backspace exists in both rows; only one of them is ever visible.
+            View.OnTouchListener backspaceTouch = (v, event) -> {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        onTextEdited();
                         InputConnection ic = getCurrentInputConnection();
                         if (ic != null) {
                             ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_DEL));
@@ -180,11 +258,14 @@ public class RustInputMethodService extends InputMethodService {
                         return true;
                 }
                 return false;
-            });
+            };
+            backspaceButton.setOnTouchListener(backspaceTouch);
+            backspaceNavButton.setOnTouchListener(backspaceTouch);
 
             spaceButton.setOnTouchListener((v, event) -> {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        onTextEdited();
                         InputConnection ic = getCurrentInputConnection();
                         if (ic != null) {
                             ic.commitText(" ", 1);
@@ -200,6 +281,7 @@ public class RustInputMethodService extends InputMethodService {
             });
 
             enterButton.setOnClickListener(v -> {
+                onTextEdited();
                 InputConnection ic = getCurrentInputConnection();
                 if (ic != null) {
                     android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
@@ -326,17 +408,32 @@ public class RustInputMethodService extends InputMethodService {
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
         inputActive = true;
+        // A different field means the remembered offsets point at nothing, and a
+        // selection mode left on from the last field would surprise the user.
+        resetEditingState(attribute);
     }
 
     @Override
     public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
         inputActive = true;
-        // Rebuild the keyboard if the theme preference changed while this
-        // (long-lived) IME process stayed alive, so it matches the app setting.
-        if (inputView != null
-                && ThemePrefs.isNight(ThemePrefs.wrapForNight(this, ThemePrefs.getMode(this))) != viewIsNight) {
+        // Both the theme and the optional-key settings can change while this
+        // (long-lived) IME process stays alive, so check them every time the
+        // keyboard is about to be shown.
+        boolean night = ThemePrefs.isNight(ThemePrefs.wrapForNight(this, ThemePrefs.getMode(this)));
+        if (inputView != null && night != viewIsNight) {
+            // A theme change needs a fresh inflate to re-resolve every attribute.
+            cancelKeyRepeats();
             setInputView(onCreateInputView());
+        } else if (inputView != null
+                && (isKbKeyTopEnabled() != viewKbKeyTop || isEditRowEnabled() != viewEditRow)) {
+            // The keys are all inflated already, so this is only a visibility
+            // change. Swapping in a whole new view here would leave the added row
+            // undrawn, because the input window has already been sized.
+            viewKbKeyTop = isKbKeyTopEnabled();
+            viewEditRow = isEditRowEnabled();
+            cancelKeyRepeats();
+            applyKeyLayout(inputView);
         }
         // A field is focused and the input connection is live again — commit any
         // text that finished transcribing while nothing was focused.
@@ -349,6 +446,37 @@ public class RustInputMethodService extends InputMethodService {
         inputActive = false;
     }
 
+    @Override
+    public void onUpdateSelection(int oldSelStart, int oldSelEnd, int newSelStart, int newSelEnd,
+                                  int candidatesStart, int candidatesEnd) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
+                candidatesStart, candidatesEnd);
+        selStart = newSelStart;
+        selEnd = newSelEnd;
+        // Someone other than us moved the caret — the user tapped into the text,
+        // or the app edited it. Both cycles remember a range and a snapshot of
+        // the text that was in it, so continuing them would apply the old text
+        // to the new selection.
+        if (selectionChangePending) {
+            selectionChangePending = false;
+            expectedSelStart = newSelStart;
+            expectedSelEnd = newSelEnd;
+        } else if (newSelStart != expectedSelStart || newSelEnd != expectedSelEnd) {
+            selectCycleStep = 0;
+            caseCycleStep = 0;
+        }
+    }
+
+    /**
+     * Moves the selection and records where we put it, so the mirror above stays
+     * in step and onUpdateSelection can recognise the change as ours.
+     */
+    private void setSelectionTracked(InputConnection ic, int start, int end) {
+        ic.setSelection(start, end);
+        selStart = expectedSelStart = start;
+        selEnd = expectedSelEnd = end;
+    }
+
     private void updateRecordButtonUI(boolean recording) {
         isRecording = recording;
         // Keep the screen awake while recording so it never sleeps mid-capture
@@ -358,7 +486,9 @@ public class RustInputMethodService extends InputMethodService {
         }
         tintRecordButton(recording);
         if (recording) {
-            statusView.setText("Listening...");
+            // With the editing keys on there is no room for the hint under the
+            // mic, so the status line carries the instruction instead.
+            statusView.setText(viewEditRow ? "Listening… (tap to stop)" : "Listening...");
             hintView.setText("Tap to Stop");
         } else {
             statusView.setText("Processing...");
@@ -497,17 +627,35 @@ public class RustInputMethodService extends InputMethodService {
     // Commits transcribed text into the active input connection, optionally
     // selecting it afterwards (select_transcription setting).
     private void commitTranscribedText(InputConnection ic, String committed) {
+        // Dictating over a selection replaces it, so any selection mode the user
+        // left on has served its purpose by now, and both cycles are anchored to
+        // text that is no longer there.
+        if (selectionMode) {
+            selectionMode = false;
+            updateEditingKeyTints();
+        }
+        selectCycleStep = 0;
+        caseCycleStep = 0;
         ic.commitText(committed, 1);
 
-        if (!pendingSwitchBack && new File(getFilesDir(), "select_transcription").exists()) {
-            android.view.inputmethod.ExtractedText et = ic.getExtractedText(
-                new android.view.inputmethod.ExtractedTextRequest(), 0);
-            if (et != null) {
-                int end = et.selectionStart;
-                int start = end - committed.length();
-                if (start >= 0) {
-                    ic.setSelection(start, end);
-                }
+        // Extracting the field is a round trip that copies its text, so only ask
+        // when something will read the answer: the select key's "just what I
+        // dictated" step, or the select-transcription setting.
+        boolean selectTranscription = !pendingSwitchBack
+                && new File(getFilesDir(), "select_transcription").exists();
+        if (!viewEditRow && !selectTranscription) return;
+
+        android.view.inputmethod.ExtractedText et = ic.getExtractedText(
+            new android.view.inputmethod.ExtractedTextRequest(), 0);
+        if (et != null) {
+            int end = et.selectionStart;
+            int start = end - committed.length();
+            // Remembered so the select key can offer "just what I dictated"
+            // before falling back to the whole field.
+            lastDictationStart = start >= 0 ? start : -1;
+            lastDictationEnd = start >= 0 ? end : -1;
+            if (selectTranscription && start >= 0) {
+                ic.setSelection(start, end);
             }
         }
     }
@@ -529,8 +677,438 @@ public class RustInputMethodService extends InputMethodService {
         }
     }
 
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    /**
+     * Shows the keys the user has opted into. Every key is inflated either way
+     * (see ime_layout.xml), so this only flips visibility — no findViewById can
+     * come back null for an arrangement that isn't in use.
+     */
+    private void applyKeyLayout(View view) {
+        view.findViewById(R.id.ime_switch_keyboard_top)
+                .setVisibility(viewKbKeyTop ? View.VISIBLE : View.GONE);
+        switchKeyboardButton.setVisibility(viewKbKeyTop ? View.GONE : View.VISIBLE);
+
+        view.findViewById(R.id.ime_nav_row).setVisibility(viewEditRow ? View.VISIBLE : View.GONE);
+        selectButton.setVisibility(viewEditRow ? View.VISIBLE : View.GONE);
+        commaButton.setVisibility(viewEditRow ? View.VISIBLE : View.GONE);
+        periodButton.setVisibility(viewEditRow ? View.VISIBLE : View.GONE);
+        // Backspace moved up to the cursor row; the status line takes over the
+        // hint's "tap to stop" duty.
+        view.findViewById(R.id.ime_backspace)
+                .setVisibility(viewEditRow ? View.GONE : View.VISIBLE);
+        hintView.setVisibility(viewEditRow ? View.GONE : View.VISIBLE);
+
+        // Enter ends the bottom row once backspace leaves it, so drop the
+        // trailing gap that would otherwise sit against the edge.
+        LinearLayout.LayoutParams enterParams =
+                (LinearLayout.LayoutParams) enterButton.getLayoutParams();
+        enterParams.width = dp(viewEditRow ? 52 : 64);
+        enterParams.setMarginEnd(viewEditRow ? 0 : dp(8));
+        enterButton.setLayoutParams(enterParams);
+
+        // The optional rows take their height out of the record area rather than
+        // adding to it, so the keyboard never grows and shoves the host app's
+        // layout upward.
+        android.view.ViewGroup.LayoutParams recordParams = recordContainer.getLayoutParams();
+        recordParams.height = dp(viewEditRow ? 124 : (viewKbKeyTop ? 176 : 200));
+        recordContainer.setLayoutParams(recordParams);
+    }
+
+    /** Click handlers for the optional cursor, selection and punctuation keys. */
+    private void wireEditingKeys() {
+        charLeftButton.setOnTouchListener(cursorRepeatListener(-1));
+        charRightButton.setOnTouchListener(cursorRepeatListener(1));
+
+        wordLeftButton.setOnClickListener(v -> moveCaret(-1, BY_WORD));
+        wordRightButton.setOnClickListener(v -> moveCaret(1, BY_WORD));
+        // Holding a word key overshoots to the paragraph edge. This is why the
+        // word keys don't repeat on hold the way the character keys do.
+        wordLeftButton.setOnLongClickListener(v -> {
+            moveCaret(-1, BY_PARAGRAPH);
+            return true;
+        });
+        wordRightButton.setOnLongClickListener(v -> {
+            moveCaret(1, BY_PARAGRAPH);
+            return true;
+        });
+
+        selectButton.setOnClickListener(v -> onSelectKey());
+        // Returning true both consumes the click that would otherwise follow on
+        // release and gets the long-press haptic for free.
+        selectButton.setOnLongClickListener(v -> {
+            toggleSelectionMode();
+            return true;
+        });
+
+        shiftButton.setOnClickListener(v -> onCaseKey());
+
+        commaButton.setOnClickListener(v -> commitCharacter(","));
+        periodButton.setOnClickListener(v -> commitCharacter("."));
+        commaButton.setOnLongClickListener(v -> {
+            commitCharacter("?");
+            return true;
+        });
+        periodButton.setOnLongClickListener(v -> {
+            commitCharacter("!");
+            return true;
+        });
+    }
+
+    /**
+     * Hold-to-repeat for one cursor key. The runnable is created once and owned
+     * by that key, mirroring the backspace and space keys: a runnable created
+     * per touch and stored in a field shared with the opposite key is orphaned
+     * when the other key is pressed, and then repeats until the process dies.
+     */
+    private View.OnTouchListener cursorRepeatListener(int direction) {
+        Runnable repeat = new Runnable() {
+            @Override
+            public void run() {
+                moveCaret(direction, BY_CHAR);
+                mainHandler.postDelayed(this, REPEAT_INTERVAL);
+            }
+        };
+        if (direction < 0) {
+            charLeftRepeatRunnable = repeat;
+        } else {
+            charRightRepeatRunnable = repeat;
+        }
+        return (v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    moveCaret(direction, BY_CHAR);
+                    mainHandler.postDelayed(repeat, REPEAT_INITIAL_DELAY);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    mainHandler.removeCallbacks(repeat);
+                    return true;
+            }
+            return false;
+        };
+    }
+
+    private void cancelKeyRepeats() {
+        if (backspaceRepeatRunnable != null) mainHandler.removeCallbacks(backspaceRepeatRunnable);
+        if (spaceRepeatRunnable != null) mainHandler.removeCallbacks(spaceRepeatRunnable);
+        if (charLeftRepeatRunnable != null) mainHandler.removeCallbacks(charLeftRepeatRunnable);
+        if (charRightRepeatRunnable != null) mainHandler.removeCallbacks(charRightRepeatRunnable);
+    }
+
+    private static final int BY_CHAR = 0;
+    private static final int BY_WORD = 1;
+    private static final int BY_PARAGRAPH = 2;
+
+    /**
+     * Moves the caret, or extends the selection while selection mode is on.
+     * With a selection but no selection mode the keys collapse it to the edge
+     * they point at, which is what every text editor does.
+     */
+    private void moveCaret(int direction, int granularity) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        selectCycleStep = 0;
+        caseCycleStep = 0;
+
+        if (!selectionMode && selStart != selEnd) {
+            int edge = direction > 0 ? Math.max(selStart, selEnd) : Math.min(selStart, selEnd);
+            setSelectionTracked(ic, edge, edge);
+            updateEditingKeyTints();
+            return;
+        }
+
+        // A plain character step is best left to the editor: it knows where the
+        // text ends and needs no round trip to read it.
+        if (granularity == BY_CHAR && !selectionMode) {
+            sendDownUpKeyEvents(direction > 0
+                    ? android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+                    : android.view.KeyEvent.KEYCODE_DPAD_LEFT);
+            return;
+        }
+
+        int caret = selectionMode && selStart != selectionAnchor ? selStart : selEnd;
+        int target;
+        if (granularity == BY_CHAR) {
+            // Extending past the last character: setSelection would be ignored
+            // out of range and no correction would arrive, so the mirrored end
+            // would drift past the text and the opposite key would look dead.
+            if (direction > 0 && caret >= selEnd) {
+                CharSequence after = ic.getTextAfterCursor(1, 0);
+                if (after == null || after.length() == 0) return;
+            }
+            target = Math.max(0, caret + direction);
+        } else {
+            android.view.inputmethod.ExtractedTextRequest req =
+                    new android.view.inputmethod.ExtractedTextRequest();
+            // Bound what the editor has to marshal; startOffset below puts the
+            // window back into whole-field coordinates.
+            req.hintMaxChars = EDIT_TEXT_WINDOW;
+            android.view.inputmethod.ExtractedText et = ic.getExtractedText(req, 0);
+            if (et == null || et.text == null) {
+                // Password fields and editors with their own text handling don't
+                // extract; fall back to a character step rather than doing nothing.
+                target = Math.max(0, caret + direction);
+            } else {
+                int offset = Math.max(0, et.startOffset);
+                String text = et.text.toString();
+                int local = Math.max(0, Math.min(text.length(), caret - offset));
+                target = offset + (granularity == BY_WORD
+                        ? wordBoundary(text, local, direction)
+                        : paragraphEdge(text, local, direction));
+            }
+        }
+
+        if (selectionMode) {
+            setSelectionTracked(ic, Math.min(selectionAnchor, target),
+                    Math.max(selectionAnchor, target));
+        } else {
+            setSelectionTracked(ic, target, target);
+        }
+    }
+
+    /**
+     * Next word boundary in {@code text} from {@code from}. Separator runs are
+     * skipped so that a jump always lands on a word rather than on the space
+     * before it. BreakIterator does the locale-specific part.
+     */
+    private int wordBoundary(String text, int from, int direction) {
+        BreakIterator it = BreakIterator.getWordInstance(Locale.getDefault());
+        it.setText(text);
+        int pos = from;
+        while (true) {
+            int next = direction < 0 ? it.preceding(pos) : it.following(pos);
+            if (next == BreakIterator.DONE) return direction < 0 ? 0 : text.length();
+            if (hasLetterOrDigit(text, Math.min(pos, next), Math.max(pos, next))) return next;
+            pos = next;
+        }
+    }
+
+    private boolean hasLetterOrDigit(String text, int from, int to) {
+        for (int i = from; i < to; i++) {
+            if (Character.isLetterOrDigit(text.charAt(i))) return true;
+        }
+        return false;
+    }
+
+    /** Start or end of the current paragraph; the whole field if it has no newlines. */
+    private int paragraphEdge(String text, int from, int direction) {
+        if (direction < 0) {
+            int nl = text.lastIndexOf('\n', Math.max(0, from - 1));
+            return nl < 0 ? 0 : nl + 1;
+        }
+        int nl = text.indexOf('\n', from);
+        return nl < 0 ? text.length() : nl;
+    }
+
+    /**
+     * Select key: successive taps widen the selection from the last dictation to
+     * the whole field, then put the caret back where the cycle started.
+     */
+    private void onSelectKey() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        caseCycleStep = 0;
+        if (selectionMode) {
+            // Also the way out of selection mode, so the key is never a dead end.
+            selectionMode = false;
+            updateEditingKeyTints();
+            return;
+        }
+
+        if (selectCycleStep == 0) selectCycleCaret = selStart;
+        selectCycleStep++;
+
+        if (selectCycleStep == 1) {
+            if (lastDictationStart >= 0 && lastDictationEnd > lastDictationStart) {
+                setSelectionTracked(ic, lastDictationStart, lastDictationEnd);
+                return;
+            }
+            // Nothing dictated into this field yet, so there is no first step.
+            selectCycleStep = 2;
+        }
+        if (selectCycleStep == 2) {
+            ic.performContextMenuAction(android.R.id.selectAll);
+            selectionChangePending = true;
+            return;
+        }
+        selectCycleStep = 0;
+        setSelectionTracked(ic, selectCycleCaret, selectCycleCaret);
+    }
+
+    /** Long-press on the select key: the cursor keys start selecting instead of moving. */
+    private void toggleSelectionMode() {
+        InputConnection ic = getCurrentInputConnection();
+        selectionMode = !selectionMode;
+        selectCycleStep = 0;
+        caseCycleStep = 0;
+        if (selectionMode) {
+            selectionAnchor = selStart;
+            if (ic != null && selStart != selEnd) {
+                setSelectionTracked(ic, selStart, selStart);
+            }
+        }
+        updateEditingKeyTints();
+    }
+
+    /**
+     * Case key: capitalized, then upper, then lower. Each step is derived from
+     * the text as it was before the cycle started — capitalizing text that is
+     * already uppercase would otherwise be a no-op. Does nothing without a
+     * selection.
+     */
+    private void onCaseKey() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null || selStart == selEnd) return;
+        CharSequence selected = ic.getSelectedText(0);
+        if (selected == null || selected.length() == 0) return;
+
+        if (caseCycleStep == 0) caseCycleOriginal = selected.toString();
+        caseCycleStep++;
+        String out;
+        if (caseCycleStep == 1) {
+            out = capitalizeWords(caseCycleOriginal);
+        } else if (caseCycleStep == 2) {
+            out = caseCycleOriginal.toUpperCase(Locale.getDefault());
+        } else {
+            out = caseCycleOriginal.toLowerCase(Locale.getDefault());
+            caseCycleStep = 0;
+        }
+
+        int start = Math.min(selStart, selEnd);
+        // commitText replaces the selection and leaves the caret after it, so the
+        // selection has to be restored for the next step of the cycle. Batched so
+        // the field doesn't flicker in between.
+        ic.beginBatchEdit();
+        ic.commitText(out, 1);
+        setSelectionTracked(ic, start, start + out.length());
+        ic.endBatchEdit();
+        updateEditingKeyTints();
+    }
+
+    private String capitalizeWords(String text) {
+        StringBuilder out = new StringBuilder(text.toLowerCase(Locale.getDefault()));
+        boolean atWordStart = true;
+        for (int i = 0; i < out.length(); i++) {
+            char c = out.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                if (atWordStart) out.setCharAt(i, Character.toUpperCase(c));
+                atWordStart = false;
+            } else {
+                atWordStart = true;
+            }
+        }
+        return out.toString();
+    }
+
+    private void commitCharacter(String character) {
+        onTextEdited();
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.commitText(character, 1);
+    }
+
+    /**
+     * Any edit leaves the remembered offsets pointing at text that has moved, and
+     * ends the modes anchored to it — including selection mode, so a stray
+     * cursor key can't start selecting long after the user forgot it was on.
+     */
+    private void onTextEdited() {
+        lastDictationStart = -1;
+        lastDictationEnd = -1;
+        selectCycleStep = 0;
+        caseCycleStep = 0;
+        if (selectionMode) {
+            selectionMode = false;
+            updateEditingKeyTints();
+        }
+    }
+
+    /**
+     * Starts the editing keys over for a newly focused field: the cycles forget
+     * what they were doing, and the caret mirror adopts the offsets the editor
+     * reports for itself. Seeding it matters because onUpdateSelection is not
+     * guaranteed to arrive before the first key press — a WebView or a custom
+     * editor may never send one — and a key acting on the previous field's
+     * offsets would move the caret somewhere the user never was.
+     */
+    private void resetEditingState(EditorInfo attribute) {
+        selectionMode = false;
+        selectCycleStep = 0;
+        caseCycleStep = 0;
+        caseCycleOriginal = null;
+        lastDictationStart = -1;
+        lastDictationEnd = -1;
+        // EditorInfo reports -1 when it does not know where the caret is; the
+        // start of the field is the one offset that is valid in every field.
+        int start = attribute == null ? -1 : attribute.initialSelStart;
+        int end = attribute == null ? -1 : attribute.initialSelEnd;
+        if (start < 0 || end < 0) {
+            start = 0;
+            end = 0;
+        }
+        selStart = expectedSelStart = start;
+        selEnd = expectedSelEnd = end;
+        selectionChangePending = false;
+        updateEditingKeyTints();
+    }
+
+    /** Accents the keys whose behaviour is currently modified. */
+    private void updateEditingKeyTints() {
+        if (!viewEditRow) return;
+        tintKey(selectButton, selectionMode, true);
+        tintKey(wordLeftButton, selectionMode, false);
+        tintKey(charLeftButton, selectionMode, false);
+        tintKey(charRightButton, selectionMode, false);
+        tintKey(wordRightButton, selectionMode, false);
+        tintKey(shiftButton, caseCycleStep > 0, false);
+        // The bar under the arrow is the caps-lock convention, so it belongs to
+        // the all-uppercase step alone.
+        if (shiftButton instanceof android.widget.ImageView) {
+            ((android.widget.ImageView) shiftButton).setImageResource(
+                    caseCycleStep == 2 ? R.drawable.ic_shift_lock : R.drawable.ic_shift);
+        }
+    }
+
+    /** Tonal key state: {@code strong} is the primary pair the record button uses. */
+    private void tintKey(View key, boolean active, boolean strong) {
+        if (key == null) return;
+        int background;
+        int foreground;
+        if (!active) {
+            background = com.google.android.material.R.attr.colorSurfaceContainerHighest;
+            foreground = com.google.android.material.R.attr.colorOnSurfaceVariant;
+        } else if (strong) {
+            background = com.google.android.material.R.attr.colorPrimaryContainer;
+            foreground = com.google.android.material.R.attr.colorOnPrimaryContainer;
+        } else {
+            background = com.google.android.material.R.attr.colorSecondaryContainer;
+            foreground = com.google.android.material.R.attr.colorOnSecondaryContainer;
+        }
+        key.setBackgroundTintList(
+                ColorStateList.valueOf(MaterialColors.getColor(key, background)));
+        if (key instanceof android.widget.ImageView) {
+            ((android.widget.ImageView) key)
+                    .setColorFilter(MaterialColors.getColor(key, foreground));
+        }
+    }
+
     private boolean isPauseAudioEnabled() {
         return new File(getFilesDir(), "pause_audio").exists();
+    }
+
+    /**
+     * The status-row keyboard key. Implied by the editing keys, which need the
+     * bottom row for punctuation — so a marker pair left out of sync by an older
+     * install still produces a usable keyboard.
+     */
+    private boolean isKbKeyTopEnabled() {
+        return new File(getFilesDir(), "ime_kb_key_top").exists() || isEditRowEnabled();
+    }
+
+    private boolean isEditRowEnabled() {
+        return new File(getFilesDir(), "ime_edit_row").exists();
     }
 
     /** "Record in background" is default ON; the marker file is the opt-out. */

@@ -37,6 +37,12 @@
     <string name="setting_auto_stop">Auto-Stopp bei Stille</string>
     <string name="setting_auto_stop_desc">Spracheingabe-Popup automatisch ~2 Sekunden nach dem Sprechende beenden</string>
 
+    <string name="setting_ime_kb_key_top">Tastaturtaste oben</string>
+    <string name="setting_ime_kb_key_top_desc">Die Tastaturwechsel-Taste der Sprachtastatur von der unteren Reihe in die Statuszeile verschieben</string>
+
+    <string name="setting_ime_edit_row">Textbearbeitungstasten</string>
+    <string name="setting_ime_edit_row_desc">Tasten für Cursor, Auswahl und Satzzeichen zur Sprachtastatur hinzufügen; erfordert die Tastaturtaste oben</string>
+
     <string name="setting_subtitle_lines">Untertitellänge</string>
     <string name="setting_subtitle_lines_desc">Wie viele Zeilen die Live-Untertitel anzeigen; älterer Text scrollt weg</string>
     <string name="subtitle_lines_2">2 Zeilen</string>

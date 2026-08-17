@@ -37,6 +37,12 @@
     <string name="setting_auto_stop">Arresto automatico dopo il silenzio</string>
     <string name="setting_auto_stop_desc">Chiudi la finestra di immissione vocale automaticamente ~2 secondi dopo la fine del parlato</string>
 
+    <string name="setting_ime_kb_key_top">Tasto tastiera in alto</string>
+    <string name="setting_ime_kb_key_top_desc">Spostare il tasto di cambio tastiera della tastiera vocale dalla riga inferiore alla barra di stato</string>
+
+    <string name="setting_ime_edit_row">Tasti di modifica del testo</string>
+    <string name="setting_ime_edit_row_desc">Aggiungere tasti di cursore, selezione e punteggiatura alla tastiera vocale; richiede il tasto tastiera in alto</string>
+
     <string name="setting_subtitle_lines">Lunghezza sottotitoli</string>
     <string name="setting_subtitle_lines_desc">Quante righe mostrano i sottotitoli in tempo reale; il testo più vecchio scorre via</string>
     <string name="subtitle_lines_2">2 righe</string>

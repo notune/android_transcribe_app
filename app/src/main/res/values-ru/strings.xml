@@ -37,6 +37,12 @@
     <string name="setting_auto_stop">Автостоп при тишине</string>
     <string name="setting_auto_stop_desc">Автоматически закрывать окно голосового ввода примерно через 2 секунды после окончания речи</string>
 
+    <string name="setting_ime_kb_key_top">Клавиша клавиатуры сверху</string>
+    <string name="setting_ime_kb_key_top_desc">Переместить клавишу смены клавиатуры голосовой клавиатуры из нижнего ряда в строку состояния</string>
+
+    <string name="setting_ime_edit_row">Клавиши редактирования текста</string>
+    <string name="setting_ime_edit_row_desc">Добавить клавиши курсора, выделения и пунктуации на голосовую клавиатуру; требует клавишу клавиатуры сверху</string>
+
     <string name="setting_subtitle_lines">Длина субтитров</string>
     <string name="setting_subtitle_lines_desc">Сколько строк показывают субтитры; более старый текст прокручивается</string>
     <string name="subtitle_lines_2">2 строки</string>

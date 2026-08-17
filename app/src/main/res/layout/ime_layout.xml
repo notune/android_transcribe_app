@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Voice keyboard. The text-editing keys and the status-row keyboard key are
+     opt-in (see the settings on the main screen): every view is inflated, and
+     RustInputMethodService hides the ones the user has not enabled. Keeping a
+     single layout means findViewById never returns null for a key that exists
+     in one arrangement but not the other. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -9,6 +14,7 @@
 
     <!-- Status row -->
     <LinearLayout
+        android:id="@+id/ime_status_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -19,7 +25,7 @@
             android:id="@+id/ime_status_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="2"
             android:text="Tap to speak"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textAppearance="?attr/textAppearanceBodyMedium"
@@ -31,9 +37,29 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:visibility="gone"/>
+
+        <!-- Optional replacement for the bottom-row switch key: same action, but
+             out of thumb's way of the editing keys. Weight 1 against the status
+             text's 2 makes it a third of the row. -->
+        <ImageView
+            android:id="@+id/ime_switch_keyboard_top"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_keyboard"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginStart="8dp"
+            android:visibility="gone"
+            android:contentDescription="Switch keyboard"/>
     </LinearLayout>
 
-    <!-- Record area: pulsing mic-level glow behind a circular record button -->
+    <!-- Record area: pulsing mic-level glow behind a circular record button.
+         Shrinks when the optional rows are shown, so the keyboard keeps its
+         overall height instead of pushing the host app's layout around. -->
     <FrameLayout
         android:id="@+id/ime_record_container"
         android:layout_width="match_parent"
@@ -41,10 +67,14 @@
         android:clickable="true"
         android:focusable="true">
 
+        <!-- Follows the container so the glow is never clipped when the record
+             area shrinks to make room for the optional rows. At the default
+             200dp height this draws exactly as the old fixed 200dp square did:
+             the glow radius derives from min(width, height). -->
         <dev.notune.transcribe.MicLevelView
             android:id="@+id/ime_mic_level"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_gravity="center"/>
 
         <View
@@ -73,8 +103,106 @@
             android:textAppearance="?attr/textAppearanceBodySmall"/>
     </FrameLayout>
 
-    <!-- Bottom key row -->
+    <!-- Optional cursor row: move and select without leaving the voice keyboard.
+         Long-pressing a word key jumps to the paragraph edge instead. -->
     <LinearLayout
+        android:id="@+id/ime_nav_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        android:paddingTop="8dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ime_shift"
+            android:layout_width="56dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_shift"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Change case"/>
+
+        <ImageView
+            android:id="@+id/ime_word_left"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_word_left"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Previous word"/>
+
+        <ImageView
+            android:id="@+id/ime_char_left"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_cursor_left"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Move left"/>
+
+        <ImageView
+            android:id="@+id/ime_char_right"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_cursor_right"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Move right"/>
+
+        <ImageView
+            android:id="@+id/ime_word_right"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_word_right"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Next word"/>
+
+        <!-- Backspace lives here while the cursor row is shown; the bottom-row
+             one is hidden, so only ever one of the two is wired up. -->
+        <ImageView
+            android:id="@+id/ime_backspace_nav"
+            android:layout_width="56dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_backspace"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Backspace"/>
+    </LinearLayout>
+
+    <!-- Bottom key row. Child order is chosen so that hiding a subset yields
+         either arrangement: switch/space/enter/backspace by default, or
+         select/comma/space/period/enter with the editing keys enabled. -->
+    <LinearLayout
+        android:id="@+id/ime_bottom_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -95,6 +223,52 @@
             android:contentDescription="Switch keyboard"/>
 
         <ImageView
+            android:id="@+id/ime_select"
+            android:layout_width="52dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_select_all"
+            android:scaleType="centerInside"
+            android:background="@drawable/bg_ime_key"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone"
+            android:contentDescription="Select"/>
+
+        <!-- Comma and period carry their long-press character in the corner:
+             a hidden alternate nobody can see is a hidden alternate nobody uses. -->
+        <FrameLayout
+            android:id="@+id/ime_comma"
+            android:layout_width="40dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_ime_key"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone"
+            android:contentDescription="Comma">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text=","
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textAppearance="?attr/textAppearanceTitleMedium"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="6dp"
+                android:text="?"
+                android:textSize="11sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </FrameLayout>
+
+        <ImageView
             android:id="@+id/ime_space"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -107,6 +281,36 @@
             android:focusable="true"
             android:layout_marginEnd="8dp"
             android:contentDescription="Space"/>
+
+        <FrameLayout
+            android:id="@+id/ime_period"
+            android:layout_width="40dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_ime_key"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone"
+            android:contentDescription="Period">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="."
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textAppearance="?attr/textAppearanceTitleMedium"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="6dp"
+                android:text="!"
+                android:textSize="11sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </FrameLayout>
 
         <ImageView
             android:id="@+id/ime_enter"

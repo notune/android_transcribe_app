@@ -97,6 +97,14 @@ public class MainActivity extends AppCompatActivity {
         bindMarkerSwitch(R.id.switch_record_background, "stop_on_hide", true);
         bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false);
 
+        // Voice-keyboard layout. The editing keys need the bottom row for
+        // punctuation, so they push the keyboard-switch key up to the status row:
+        // that switch shows as on and locked while they are enabled.
+        CompoundButton kbKeyTop = bindMarkerSwitch(R.id.switch_ime_kb_key_top, "ime_kb_key_top", false);
+        CompoundButton editRow = bindMarkerSwitch(R.id.switch_ime_edit_row, "ime_edit_row", false,
+                (button, isChecked) -> showKeyboardKeyImplied(kbKeyTop, isChecked));
+        showKeyboardKeyImplied(kbKeyTop, editRow.isChecked());
+
         // Live subtitle line limit: 2 (default), 4, or 0 = unlimited.
         RadioGroup subsLinesGroup = findViewById(R.id.rg_subtitle_lines);
         int subsLines = SubtitlePrefs.getMaxLines(this);
@@ -282,11 +290,17 @@ public class MainActivity extends AppCompatActivity {
      * Binds a switch to a marker file in filesDir. With {@code inverted}, the
      * file's presence means the switch is OFF (used for default-on settings).
      */
-    private void bindMarkerSwitch(int switchId, String fileName, boolean inverted) {
+    private CompoundButton bindMarkerSwitch(int switchId, String fileName, boolean inverted) {
+        return bindMarkerSwitch(switchId, fileName, inverted, null);
+    }
+
+    /** As above, with {@code extra} run after the marker file has been updated. */
+    private CompoundButton bindMarkerSwitch(int switchId, String fileName, boolean inverted,
+                                            CompoundButton.OnCheckedChangeListener extra) {
         CompoundButton sw = findViewById(switchId);
         File marker = new File(getFilesDir(), fileName);
         sw.setChecked(marker.exists() != inverted);
-        sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        CompoundButton.OnCheckedChangeListener listener = (buttonView, isChecked) -> {
             boolean shouldExist = isChecked != inverted;
             if (shouldExist) {
                 try {
@@ -297,7 +311,32 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 marker.delete();
             }
-        });
+            if (extra != null) extra.onCheckedChanged(buttonView, isChecked);
+        };
+        // Kept so a switch can be moved for display only, without writing.
+        sw.setTag(listener);
+        sw.setOnCheckedChangeListener(listener);
+        return sw;
+    }
+
+    /**
+     * The editing keys imply the keyboard-switch key in the status row, so its
+     * switch reads as on and locked while they are enabled. Only the display is
+     * forced: writing the marker would overwrite the user's own choice, and
+     * turning the editing keys back off could not then restore it.
+     * RustInputMethodService derives the same implication when it reads them.
+     */
+    private void showKeyboardKeyImplied(CompoundButton kbKeyTop, boolean editRowEnabled) {
+        kbKeyTop.setEnabled(!editRowEnabled);
+        boolean chosen = new File(getFilesDir(), "ime_kb_key_top").exists();
+        boolean shown = chosen || editRowEnabled;
+        if (kbKeyTop.isChecked() == shown) return;
+        // Detach so this display-only change never reaches the marker file.
+        CompoundButton.OnCheckedChangeListener saved =
+                (CompoundButton.OnCheckedChangeListener) kbKeyTop.getTag();
+        kbKeyTop.setOnCheckedChangeListener(null);
+        kbKeyTop.setChecked(shown);
+        kbKeyTop.setOnCheckedChangeListener(saved);
     }
 
     private void checkAndRequestPermissions() {

@@ -37,6 +37,12 @@
     <string name="setting_auto_stop">Parada automática após silêncio</string>
     <string name="setting_auto_stop_desc">Fechar a janela de entrada de voz automaticamente ~2 segundos após você parar de falar</string>
 
+    <string name="setting_ime_kb_key_top">Tecla de teclado no topo</string>
+    <string name="setting_ime_kb_key_top_desc">Mover a tecla de troca de teclado do teclado de voz da linha inferior para a barra de status</string>
+
+    <string name="setting_ime_edit_row">Teclas de edição de texto</string>
+    <string name="setting_ime_edit_row_desc">Adicionar teclas de cursor, seleção e pontuação ao teclado de voz; requer a tecla de teclado no topo</string>
+
     <string name="setting_subtitle_lines">Comprimento das legendas</string>
     <string name="setting_subtitle_lines_desc">Quantas linhas as legendas ao vivo mostram; o texto mais antigo rola para fora</string>
     <string name="subtitle_lines_2">2 linhas</string>

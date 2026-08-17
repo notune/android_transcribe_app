@@ -37,6 +37,12 @@
     <string name="setting_auto_stop">Parada automática tras silencio</string>
     <string name="setting_auto_stop_desc">Cerrar la ventana de entrada de voz automáticamente ~2 segundos después de dejar de hablar</string>
 
+    <string name="setting_ime_kb_key_top">Tecla de teclado arriba</string>
+    <string name="setting_ime_kb_key_top_desc">Mover la tecla de cambio de teclado del teclado de voz de la fila inferior a la barra de estado</string>
+
+    <string name="setting_ime_edit_row">Teclas de edición de texto</string>
+    <string name="setting_ime_edit_row_desc">Añadir teclas de cursor, selección y puntuación al teclado de voz; requiere la tecla de teclado arriba</string>
+
     <string name="setting_subtitle_lines">Longitud de subtítulos</string>
     <string name="setting_subtitle_lines_desc">Cuántas líneas muestran los subtítulos en directo; el texto antiguo se desplaza</string>
     <string name="subtitle_lines_2">2 líneas</string>
