@@ -337,6 +337,11 @@ public class RustInputMethodService extends InputMethodService {
         if (inputView != null
                 && ThemePrefs.isNight(ThemePrefs.wrapForNight(this, ThemePrefs.getMode(this))) != viewIsNight) {
             setInputView(onCreateInputView());
+            // The insets pass for this window has already run, so the fresh
+            // view never gets the navigation-bar padding onCreateInputView
+            // adds for it — the keyboard then comes back exactly one bottom
+            // inset shorter (48dp here) and the key row is clipped away.
+            inputView.requestApplyInsets();
         }
         // A field is focused and the input connection is live again — commit any
         // text that finished transcribing while nothing was focused.
