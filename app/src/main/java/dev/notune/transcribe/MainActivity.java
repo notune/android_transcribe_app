@@ -10,10 +10,13 @@ import android.speech.RecognizerIntent;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,6 +30,8 @@ import com.google.android.material.snackbar.Snackbar;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -96,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
         // Record-in-background defaults to ON; its marker file is the opt-out.
         bindMarkerSwitch(R.id.switch_record_background, "stop_on_hide", true);
         bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false);
+        setupRecognizeSideSetting();
 
         // Live subtitle line limit: 2 (default), 4, or 0 = unlimited.
         RadioGroup subsLinesGroup = findViewById(R.id.rg_subtitle_lines);
@@ -296,6 +302,54 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else {
                 marker.delete();
+            }
+        });
+    }
+
+    /**
+     * Binds the switch and the side spinner to the single stored value: no
+     * stored side means the switch is off and the popup keeps its bottom
+     * panel. The switch writes the spinner's side straight away, so it can
+     * never end up on with nothing stored.
+     */
+    private void setupRecognizeSideSetting() {
+        CompoundButton sw = findViewById(R.id.switch_recognize_side);
+        Spinner spinner = findViewById(R.id.spinner_recognize_side);
+
+        // Sides and their labels are read by the same index, and the stored
+        // value is looked up in the list rather than at a hardcoded position.
+        List<String> sides = Arrays.asList(RecognizePrefs.SIDE_RIGHT, RecognizePrefs.SIDE_LEFT);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, new String[]{
+                        getString(R.string.recognize_side_right),
+                        getString(R.string.recognize_side_left)});
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        String side = RecognizePrefs.getPanelSide(this);
+        sw.setChecked(!side.isEmpty());
+        spinner.setVisibility(side.isEmpty() ? View.GONE : View.VISIBLE);
+        spinner.setSelection(Math.max(0, sides.indexOf(side)), false);
+
+        sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            RecognizePrefs.setPanelSide(this,
+                    isChecked ? sides.get(spinner.getSelectedItemPosition()) : "");
+            spinner.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // A spinner reports its initial selection once it is laid out;
+                // ignoring that while the switch is off keeps it from turning
+                // the setting on by itself.
+                if (!sw.isChecked()) return;
+                String value = sides.get(position);
+                if (value.equals(RecognizePrefs.getPanelSide(MainActivity.this))) return;
+                RecognizePrefs.setPanelSide(MainActivity.this, value);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
             }
         });
     }

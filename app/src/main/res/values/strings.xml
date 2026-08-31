@@ -38,6 +38,11 @@
     <string name="setting_auto_stop">Auto-stop after silence</string>
     <string name="setting_auto_stop_desc">End the voice input popup automatically ~2 seconds after you stop speaking</string>
 
+    <string name="setting_recognize_side">Voice panel at the side</string>
+    <string name="setting_recognize_side_desc">Show the voice input popup as a narrow vertical panel at the screen edge instead of along the bottom</string>
+    <string name="recognize_side_right">Right</string>
+    <string name="recognize_side_left">Left</string>
+
     <string name="setting_subtitle_lines">Subtitle length</string>
     <string name="setting_subtitle_lines_desc">How many lines the live subtitles show; older text scrolls away</string>
     <string name="subtitle_lines_2">2 lines</string>

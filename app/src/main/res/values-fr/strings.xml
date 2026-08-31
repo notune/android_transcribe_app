@@ -37,6 +37,11 @@
     <string name="setting_auto_stop">Arrêt automatique après un silence</string>
     <string name="setting_auto_stop_desc">Fermer automatiquement la fenêtre de saisie vocale ~2 secondes après la fin de la parole</string>
 
+    <string name="setting_recognize_side">Panneau vocal sur le côté</string>
+    <string name="setting_recognize_side_desc">Afficher la fenêtre de saisie vocale comme un panneau vertical étroit au bord de l\'écran plutôt qu\'en bas</string>
+    <string name="recognize_side_right">Droite</string>
+    <string name="recognize_side_left">Gauche</string>
+
     <string name="setting_subtitle_lines">Longueur des sous-titres</string>
     <string name="setting_subtitle_lines_desc">Nombre de lignes affichées par les sous-titres en direct ; le texte plus ancien défile</string>
     <string name="subtitle_lines_2">2 lignes</string>
