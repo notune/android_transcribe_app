@@ -38,6 +38,12 @@
     <string name="setting_auto_stop">Auto-stop after silence</string>
     <string name="setting_auto_stop_desc">End the voice input popup automatically ~2 seconds after you stop speaking</string>
 
+    <string name="setting_ime_kb_key_top">Keyboard key at the top</string>
+    <string name="setting_ime_kb_key_top_desc">Move the switch-keyboard key on the voice keyboard from the bottom row up to the status row</string>
+
+    <string name="setting_ime_edit_row">Text editing keys</string>
+    <string name="setting_ime_edit_row_desc">Add cursor, selection and punctuation keys to the voice keyboard; needs the keyboard key at the top</string>
+
     <string name="setting_subtitle_lines">Subtitle length</string>
     <string name="setting_subtitle_lines_desc">How many lines the live subtitles show; older text scrolls away</string>
     <string name="subtitle_lines_2">2 lines</string>
