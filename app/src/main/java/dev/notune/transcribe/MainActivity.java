@@ -43,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private TextView statusText;
+    private TextView setupDetailText;
+    private Button retrySetupButton;
+    private final OfflineModelUiState offlineModelUiState = new OfflineModelUiState();
     private TextView voiceStatusText;
     private ImageView voiceStatusIcon;
     private Button voiceGrantButton;
@@ -57,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         statusText = findViewById(R.id.text_status);
+        setupDetailText = findViewById(R.id.text_setup_detail);
+        retrySetupButton = findViewById(R.id.btn_retry_setup);
         voiceStatusText = findViewById(R.id.text_voice_status);
         voiceStatusIcon = findViewById(R.id.img_voice_status);
         voiceGrantButton = findViewById(R.id.btn_voice_grant);
@@ -68,6 +73,12 @@ public class MainActivity extends AppCompatActivity {
         voiceGrantButton.setOnClickListener(v -> checkAndRequestPermissions());
         voiceTryButton.setOnClickListener(v -> launchVoiceTest());
         voiceHelpButton.setOnClickListener(v -> showHelpDialog());
+        retrySetupButton.setOnClickListener(v -> {
+            offlineModelUiState.onRetryStarted();
+            renderOfflineModelState();
+            retrySetupNative(this);
+        });
+        renderOfflineModelState();
 
         imeSettingsButton.setOnClickListener(v -> {
              Intent intent = new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS);
@@ -400,15 +411,38 @@ public class MainActivity extends AppCompatActivity {
     // Called from Rust
     public void onStatusUpdate(String status) {
         runOnUiThread(() -> {
-            statusText.setText(status);
             // "Ready" may carry a suffix, e.g. "Ready (this model can't translate)".
             if (status.startsWith("Ready")) {
+                offlineModelUiState.onSetupReady();
                 startSubsButton.setEnabled(true);
+            } else if (status.startsWith("Error")) {
+                String category = "model_load";
+                int open = status.indexOf('[');
+                int close = status.indexOf(']', open + 1);
+                if (open >= 0 && close > open) {
+                    category = status.substring(open + 1, close);
+                }
+                offlineModelUiState.onSetupFailed(category, status.substring("Error:".length()).trim());
+                startSubsButton.setEnabled(false);
+            } else {
+                offlineModelUiState.onRetryStarted();
             }
+            renderOfflineModelState();
         });
     }
 
+    private void renderOfflineModelState() {
+        OfflineModelUiState.Rendered rendered = offlineModelUiState.render();
+        statusText.setText(rendered.headline);
+        setupDetailText.setText(rendered.detail);
+        setupDetailText.setVisibility(rendered.detail.isEmpty() ? View.GONE : View.VISIBLE);
+        retrySetupButton.setVisibility(rendered.retryVisible ? View.VISIBLE : View.GONE);
+        retrySetupButton.setEnabled(rendered.retryVisible);
+    }
+
     private native void initNative(MainActivity activity);
+
+    private native void retrySetupNative(MainActivity activity);
 
     private native void benchmarkNative(MainActivity activity, float[] samples, int length);
 }

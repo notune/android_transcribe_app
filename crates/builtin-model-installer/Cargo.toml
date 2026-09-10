@@ -1,0 +1,12 @@
+[package]
+name = "builtin-model-installer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fs2 = "0.4"
+sha2 = "0.10"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"

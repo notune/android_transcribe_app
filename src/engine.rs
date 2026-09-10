@@ -190,8 +190,7 @@ impl Engine {
 }
 
 /// Holds the loaded engine singleton.
-static GLOBAL_ENGINE: Lazy<Mutex<Option<Arc<Mutex<Engine>>>>> =
-    Lazy::new(|| Mutex::new(None));
+static GLOBAL_ENGINE: Lazy<Mutex<Option<Arc<Mutex<Engine>>>>> = Lazy::new(|| Mutex::new(None));
 
 /// Loading coordination state + condvar for waiters.
 static LOAD_STATE: Lazy<(Mutex<LoadState>, Condvar)> =
@@ -223,7 +222,9 @@ pub fn transcribe_shared(engine: &Arc<Mutex<Engine>>, samples: Vec<f32>) -> Resu
     let audio_secs = samples.len() as f64 / 16_000.0;
     let started = std::time::Instant::now();
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let mut guard = engine.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut guard = engine
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         guard.transcribe(samples)
     }))
     .unwrap_or_else(|_| {
@@ -298,7 +299,7 @@ pub fn ensure_loaded_from_thread(
 
     // Fast path: already loaded
     if is_engine_loaded() {
-        notify("Ready");
+        notify("Ready for offline speech");
         return Ok(());
     }
 
@@ -307,21 +308,21 @@ pub fn ensure_loaded_from_thread(
 
     // Re-check under lock
     if is_engine_loaded() {
-        notify("Ready");
+        notify("Ready for offline speech");
         return Ok(());
     }
 
     match &*state {
         LoadState::Loading => {
             // Another thread is loading — wait for it
-            notify("Waiting for model...");
+            notify("Preparing offline model");
             while *state == LoadState::Loading {
                 state = cvar.wait(state).unwrap();
             }
             drop(state);
 
             if is_engine_loaded() {
-                notify("Ready");
+                notify("Ready for offline speech");
                 Ok(())
             } else {
                 let msg = "Model failed to load".to_string();
@@ -330,7 +331,7 @@ pub fn ensure_loaded_from_thread(
             }
         }
         LoadState::Done => {
-            notify("Ready");
+            notify("Ready for offline speech");
             Ok(())
         }
         LoadState::Idle | LoadState::Failed(_) => {
@@ -458,6 +459,9 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
         .filter(|&n| n > 0)
         .unwrap_or_else(performance_core_count);
 
+    // An imported model is a complete offline path in its own right. Try it
+    // before touching the bundled recovery asset so compact/import builds do
+    // not fail merely because they intentionally omit that large asset.
     if let Some(name) = read_config(&files_dir.join(ACTIVE_MODEL_FILE)) {
         let path = files_dir.join("models").join(&name);
         notify_status(env, context, &format!("Loading model {}...", name));
@@ -473,24 +477,27 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
                 notify_status(
                     env,
                     context,
-                    &format!("Error loading {}: {} — using built-in model", name, e),
+                    &format!("Preparing offline model ({} could not load: {})", name, e),
                 );
                 // fall through to the bundled model
             }
         }
     }
 
-    notify_status(env, context, "Checking assets...");
-
-    let path = assets::extract_builtin_model(env, context).map_err(|e| {
-        let msg = format!("Asset error: {}", e);
+    notify_status(env, context, "Preparing offline model");
+    let builtin_path = assets::extract_builtin_model(env, context).map_err(|error| {
+        let msg = format!(
+            "offline model unavailable [{}]: {}",
+            error.category(),
+            error
+        );
         notify_status(env, context, &format!("Error: {}", msg));
         msg
     })?;
 
     notify_status(env, context, "Loading model...");
 
-    match Engine::load(&path, language, translate, threads) {
+    match Engine::load(&builtin_path, language, translate, threads) {
         Ok(engine) => {
             let status = engine.ready_status;
             *GLOBAL_ENGINE.lock().unwrap() = Some(Arc::new(Mutex::new(engine)));
@@ -498,9 +505,6 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
             Ok(())
         }
         Err(e) => {
-            // Load failed — likely corrupt/incomplete extraction. Invalidate
-            // it so the next attempt re-extracts from the APK.
-            assets::invalidate_builtin_model(&path);
             let msg = format!("Model error: {}", e);
             notify_status(env, context, &format!("Error: {}", msg));
             Err(msg)

@@ -19,7 +19,7 @@
 
     <application
         android:name=".App"
-        android:label="Offline Voice Input"
+        android:label="Offline Speech to Text"
         android:icon="@drawable/icon"
         android:theme="@style/AppTheme"
         android:hasCode="true">
@@ -117,7 +117,7 @@
         <!-- IME Service -->
         <service
             android:name=".RustInputMethodService"
-            android:label="Offline Voice Input"
+            android:label="Offline Speech to Text"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:process=":ime"
             android:exported="true">

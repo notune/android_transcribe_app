@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.security.MessageDigest
 
@@ -10,7 +11,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.notune.transcribe"
+        applicationId = "app.offlinespeechtotext"
         minSdk = 26
         targetSdk = 35
         versionCode = 19
@@ -33,9 +34,22 @@ android {
     }
 
     buildTypes {
+        create("candidate") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            matchingFallbacks += listOf("release")
+        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            // CI uses the decoded release keystore. Local verification uses
+            // the standard debug key so release packaging has the same final
+            // filename and can exercise the exact artifact verifier.
+            signingConfig = if (rootProject.file("release.keystore").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -70,7 +84,8 @@ android {
 val isBundle = gradle.startParameter.taskNames.any {
     it.contains("bundle", ignoreCase = true)
 }
-if (!isBundle) {
+val omitBundledModel = providers.gradleProperty("omitBundledModel").orNull == "true"
+if (!isBundle && !omitBundledModel) {
     android.sourceSets.getByName("main") {
         assets.srcDirs(
             "src/main/assets",
@@ -82,6 +97,7 @@ if (!isBundle) {
 dependencies {
     // Material Components (Material 3 / Material You). Pulls in AppCompat.
     implementation("com.google.android.material:material:1.12.0")
+    testImplementation("junit:junit:4.13.2")
 
     // Material/AppCompat transitively pull the legacy kotlin-stdlib-jdk7/jdk8:1.6.21
     // (via kotlinx-coroutines-android), whose classes were folded into
@@ -92,6 +108,11 @@ dependencies {
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")
     }
+}
+
+val bundletool by configurations.creating
+dependencies {
+    bundletool("com.android.tools.build:bundletool:1.18.1")
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +265,125 @@ val downloadModels by tasks.registering {
     }
 }
 
-tasks.named("preBuild") {
+val generatedModelDir = layout.buildDirectory.dir("generated/offline-model")
+val generateModelMetadata by tasks.registering {
+    description = "Generate verified built-in model constants for Rust and APK checks"
+    group = "build"
     dependsOn(downloadModels)
+
+    val rustSpec = generatedModelDir.map { it.file("model_spec.rs") }
+    val jsonSpec = generatedModelDir.map { it.file("model_spec.json") }
+    outputs.files(rustSpec, jsonSpec)
+
+    doLast {
+        val model = modelPackFiles.single()
+        val asset = rootProject.file("model_assets/src/main/assets/builtin-model/${model.name}")
+        if (!asset.isFile || asset.length() <= 0) {
+            throw GradleException("Bundled model is absent or empty: ${asset.absolutePath}")
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+        FileInputStream(asset).use { input ->
+            val buffer = ByteArray(1024 * 1024)
+            var count: Int
+            while (input.read(buffer).also { count = it } != -1) {
+                digest.update(buffer, 0, count)
+            }
+        }
+        val actualHash = digest.digest().joinToString("") { "%02x".format(it) }
+        if (actualHash != model.sha256) {
+            throw GradleException("Refusing to generate metadata for an unverified model")
+        }
+        val outputDir = generatedModelDir.get().asFile.apply { mkdirs() }
+        File(outputDir, "model_spec.rs").writeText(
+            "pub const BUILTIN_MODEL_FILE: &str = \"${model.name}\";\n" +
+                "pub const BUILTIN_MODEL_LEN: u64 = ${asset.length()};\n" +
+                "pub const BUILTIN_MODEL_SHA256: &str = \"${model.sha256}\";\n"
+        )
+        File(outputDir, "model_spec.json").writeText(
+            "{\"application_id\":\"app.offlinespeechtotext\"," +
+                "\"asset_path\":\"assets/builtin-model/${model.name}\"," +
+                "\"file_name\":\"${model.name}\",\"byte_length\":${asset.length()}," +
+                "\"sha256\":\"${model.sha256}\"}\n"
+        )
+    }
 }
+
+cargoNdkBuild.configure {
+    dependsOn(generateModelMetadata)
+    environment("BUILTIN_MODEL_SPEC_RS", generatedModelDir.map { it.file("model_spec.rs").asFile.absolutePath }.get())
+}
+
+tasks.named("preBuild") {
+    dependsOn(generateModelMetadata)
+}
+
+fun registerModelArchiveVerification(
+    taskName: String,
+    buildTask: String,
+    archivePath: String,
+    archiveLabel: String,
+    assetEntry: String? = null,
+    isBundle: Boolean = false,
+) {
+    tasks.register(taskName) {
+        description = "Verify the $archiveLabel package and bundled model bytes"
+        group = "verification"
+        dependsOn(buildTask)
+
+        doLast {
+            val archive = layout.buildDirectory.file(archivePath).get().asFile
+            val metadata = generatedModelDir.get().file("model_spec.json").asFile
+            if (!archive.isFile) throw GradleException("$archiveLabel not found: ${archive.absolutePath}")
+
+            val manifestPackage = if (isBundle) {
+                val output = ByteArrayOutputStream()
+                project.javaexec {
+                    classpath = bundletool
+                    mainClass.set("com.android.tools.build.bundletool.BundleToolMain")
+                    args(
+                        "dump", "manifest", "--bundle=${archive.absolutePath}",
+                        "--module=base", "--xpath=/manifest/@package",
+                    )
+                    standardOutput = output
+                }
+                output.toString(Charsets.UTF_8).trim()
+            } else {
+                val apkanalyzer = File(android.sdkDirectory, "cmdline-tools/latest/bin/apkanalyzer")
+                val manifestProcess = ProcessBuilder(
+                    apkanalyzer.absolutePath, "manifest", "application-id", archive.absolutePath
+                ).redirectErrorStream(true).start()
+                val result = manifestProcess.inputStream.bufferedReader().use { it.readText() }.trim()
+                if (manifestProcess.waitFor() != 0) {
+                    throw GradleException("apkanalyzer failed for $archiveLabel: $result")
+                }
+                result
+            }
+            val command = mutableListOf(
+                "python3", rootProject.file("scripts/verify_model_apk.py").absolutePath,
+                "--apk", archive.absolutePath,
+                "--metadata", metadata.absolutePath,
+                "--manifest-package", manifestPackage,
+            )
+            if (assetEntry != null) command += listOf("--asset-entry", assetEntry)
+            val verifyProcess = ProcessBuilder(command).inheritIO().start()
+            if (verifyProcess.waitFor() != 0) {
+                throw GradleException("$archiveLabel model verification failed")
+            }
+        }
+    }
+}
+
+registerModelArchiveVerification(
+    "verifyCandidateModelApk", "assembleCandidate",
+    "outputs/apk/candidate/app-candidate.apk", "candidate APK",
+)
+registerModelArchiveVerification(
+    "verifyReleaseModelApk", "assembleRelease",
+    "outputs/apk/release/app-release.apk", "release APK",
+)
+registerModelArchiveVerification(
+    "verifyReleaseModelBundle", "bundleRelease",
+    "outputs/bundle/release/app-release.aab", "release AAB",
+    "model_assets/assets/builtin-model/${modelPackFiles.single().name}",
+    true,
+)

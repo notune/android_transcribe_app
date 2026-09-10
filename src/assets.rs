@@ -1,18 +1,46 @@
-//! Extraction of the bundled speech model from APK assets into filesDir.
+//! Verified installation of the bundled speech model from APK assets.
 
-use jni::objects::JObject;
+use builtin_model_installer::{
+    ensure_installed_with_writer, FailureCategory, InstallOptions, ModelSpec,
+};
+use jni::objects::{JByteArray, JObject, JObjectArray};
 use jni::JNIEnv;
-use std::path::{Path, PathBuf};
+use std::fmt;
+use std::io::{self, Read};
+use std::path::PathBuf;
 
-/// Asset directory (and filesDir subdirectory) holding the bundled GGUF.
 const BUILTIN_MODEL_DIR: &str = "builtin-model";
-/// Marker file written after a successful extraction. If this file is missing,
-/// the directory is assumed to be incomplete (e.g. interrupted mid-extraction)
-/// and the assets will be re-extracted.
-const EXTRACTION_COMPLETE_MARKER: &str = ".extraction_complete";
-/// Model directory of the pre-GGUF (ONNX) app versions; deleted on sight so
-/// upgrades don't leave ~670 MB of dead files behind.
-const LEGACY_MODEL_DIR: &str = "parakeet-tdt-0.6b-v3-int8";
+
+mod generated {
+    include!(env!("BUILTIN_MODEL_SPEC_RS"));
+}
+
+#[derive(Debug)]
+pub struct ModelSetupError {
+    category: &'static str,
+    detail: String,
+}
+
+impl ModelSetupError {
+    fn new(category: &'static str, detail: impl Into<String>) -> Self {
+        Self {
+            category,
+            detail: detail.into(),
+        }
+    }
+
+    pub fn category(&self) -> &'static str {
+        self.category
+    }
+}
+
+impl fmt::Display for ModelSetupError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.detail)
+    }
+}
+
+impl std::error::Error for ModelSetupError {}
 
 /// Resolves the app's `filesDir` via the given Context.
 pub fn files_dir(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf> {
@@ -31,164 +59,166 @@ pub fn files_dir(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf>
     Ok(PathBuf::from(path_string))
 }
 
-/// Extracts the bundled model from APK assets (if not already done) and
-/// returns the path of its GGUF file.
-pub fn extract_builtin_model(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf> {
-    let base_path = files_dir(env, context)?;
-
-    let legacy_dir = base_path.join(LEGACY_MODEL_DIR);
-    if legacy_dir.exists() {
-        log::info!("Removing legacy ONNX model directory");
-        let _ = std::fs::remove_dir_all(&legacy_dir);
-    }
-
-    let model_dir = base_path.join(BUILTIN_MODEL_DIR);
-    let marker_file = model_dir.join(EXTRACTION_COMPLETE_MARKER);
-
-    // Only skip extraction if the marker file exists (proves prior extraction completed)
-    if marker_file.exists() {
-        return find_gguf(&model_dir);
-    }
-
-    // Incomplete or missing — wipe and re-extract
-    if model_dir.exists() {
-        log::info!("Removing incomplete model directory for re-extraction");
-        let _ = std::fs::remove_dir_all(&model_dir);
-    }
-
-    std::fs::create_dir_all(&model_dir)?;
-
-    let asset_manager_obj = env
+/// Verifies or atomically installs the one pinned bundled model.
+pub fn extract_builtin_model(
+    env: &mut JNIEnv,
+    context: &JObject,
+) -> Result<PathBuf, ModelSetupError> {
+    let base_path = files_dir(env, context)
+        .map_err(|error| ModelSetupError::new("io", format!("filesDir: {error}")))?;
+    let asset_manager = env
         .call_method(
             context,
             "getAssets",
             "()Landroid/content/res/AssetManager;",
             &[],
-        )?
-        .l()?;
+        )
+        .and_then(|value| value.l())
+        .map_err(|error| ModelSetupError::new("io", format!("AssetManager: {error}")))?;
 
-    copy_assets_recursively(env, &asset_manager_obj, BUILTIN_MODEL_DIR, &base_path)?;
+    if !asset_is_listed(env, &asset_manager)? {
+        return Err(ModelSetupError::new(
+            "asset_missing",
+            "this build does not contain the offline model",
+        ));
+    }
 
-    // Write the marker file to indicate successful completion
-    std::fs::write(&marker_file, "ok")?;
-    log::info!("Asset extraction complete, marker written");
-
-    find_gguf(&model_dir)
+    let spec = ModelSpec {
+        file_name: generated::BUILTIN_MODEL_FILE,
+        byte_len: generated::BUILTIN_MODEL_LEN,
+        sha256: generated::BUILTIN_MODEL_SHA256.to_owned(),
+    };
+    ensure_installed_with_writer(
+        &base_path,
+        &spec,
+        |destination| {
+            let mut source = open_asset(env, &asset_manager)?;
+            io::copy(&mut source, destination)?;
+            Ok(())
+        },
+        InstallOptions::default(),
+        |_| {},
+    )
+    .map_err(|error| ModelSetupError::new(category_key(error.category()), error.to_string()))
 }
 
-/// Removes the extraction marker so the next load re-extracts the bundled
-/// model — called when a load fails on (likely corrupt) extracted files.
-pub fn invalidate_builtin_model(model_path: &Path) {
-    if let Some(dir) = model_path.parent() {
-        let marker = dir.join(EXTRACTION_COMPLETE_MARKER);
-        if marker.exists() {
-            log::warn!("Model load failed, removing extraction marker for re-extraction");
-            let _ = std::fs::remove_file(&marker);
-        }
+fn category_key(category: FailureCategory) -> &'static str {
+    match category {
+        FailureCategory::AssetMissing => "asset_missing",
+        FailureCategory::Integrity => "integrity",
+        FailureCategory::Storage => "storage",
+        FailureCategory::Permission => "permission",
+        FailureCategory::LockTimeout => "lock_timeout",
+        FailureCategory::Io => "io",
     }
 }
 
-/// Returns the single `.gguf` file in `dir`.
-fn find_gguf(dir: &Path) -> anyhow::Result<PathBuf> {
-    for entry in std::fs::read_dir(dir)? {
-        let path = entry?.path();
-        if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("gguf")) {
-            return Ok(path);
-        }
-    }
-    anyhow::bail!("no GGUF file found in {}", dir.display())
-}
-
-fn copy_assets_recursively(
-    env: &mut JNIEnv,
-    asset_manager: &JObject,
-    path: &str,
-    target_root: &Path,
-) -> anyhow::Result<()> {
-    use jni::objects::JObjectArray;
-
-    let path_jstring = env.new_string(path)?;
-    let list_array_obj = env
+fn asset_is_listed(env: &mut JNIEnv, asset_manager: &JObject) -> Result<bool, ModelSetupError> {
+    let directory = env
+        .new_string(BUILTIN_MODEL_DIR)
+        .map_err(|error| ModelSetupError::new("io", error.to_string()))?;
+    let array_object = env
         .call_method(
             asset_manager,
             "list",
             "(Ljava/lang/String;)[Ljava/lang/String;",
-            &[(&path_jstring).into()],
-        )?
-        .l()?;
-
-    let list_array: JObjectArray = list_array_obj.into();
-    let len = env.get_array_length(&list_array)?;
-
-    if len == 0 {
-        return copy_asset_file(env, asset_manager, path, target_root);
+            &[(&directory).into()],
+        )
+        .and_then(|value| value.l())
+        .map_err(|error| ModelSetupError::new("io", format!("listing APK assets: {error}")))?;
+    let array: JObjectArray = array_object.into();
+    let count = env
+        .get_array_length(&array)
+        .map_err(|error| ModelSetupError::new("io", error.to_string()))?;
+    for index in 0..count {
+        let item = env
+            .get_object_array_element(&array, index)
+            .map_err(|error| ModelSetupError::new("io", error.to_string()))?;
+        let name: String = env
+            .get_string(&item.into())
+            .map_err(|error| ModelSetupError::new("io", error.to_string()))?
+            .into();
+        if name == generated::BUILTIN_MODEL_FILE {
+            return Ok(true);
+        }
     }
-
-    let target_dir = target_root.join(path);
-    std::fs::create_dir_all(&target_dir)?;
-
-    for i in 0..len {
-        let file_name_obj = env.get_object_array_element(&list_array, i)?;
-        let file_name: String = env.get_string(&file_name_obj.into())?.into();
-
-        let child_path = if path.is_empty() {
-            file_name
-        } else {
-            format!("{}/{}", path, file_name)
-        };
-
-        copy_assets_recursively(env, asset_manager, &child_path, target_root)?;
-    }
-    Ok(())
+    Ok(false)
 }
 
-fn copy_asset_file(
-    env: &mut JNIEnv,
-    asset_manager: &JObject,
-    asset_path: &str,
-    target_root: &Path,
-) -> anyhow::Result<()> {
-    let path_jstring = env.new_string(asset_path)?;
-    let result = env.call_method(
+fn open_asset<'local, 'env>(
+    env: &'env mut JNIEnv<'local>,
+    asset_manager: &JObject<'local>,
+) -> io::Result<AndroidAssetReader<'local, 'env>> {
+    let asset_path = format!("{BUILTIN_MODEL_DIR}/{}", generated::BUILTIN_MODEL_FILE);
+    let path = env
+        .new_string(asset_path)
+        .map_err(|error| io::Error::other(error.to_string()))?;
+    let stream = match env.call_method(
         asset_manager,
         "open",
         "(Ljava/lang/String;)Ljava/io/InputStream;",
-        &[(&path_jstring).into()],
-    );
-
-    match result {
-        Ok(stream_val) => {
-            let stream_obj = stream_val.l()?;
-            let target_file_path = target_root.join(asset_path);
-
-            let mut file = std::fs::File::create(&target_file_path)?;
-            let mut buffer = [0u8; 8192];
-            let buffer_j = env.new_byte_array(8192)?;
-
-            loop {
-                let bytes_read = env
-                    .call_method(&stream_obj, "read", "([B)I", &[(&buffer_j).into()])?
-                    .i()?;
-
-                if bytes_read == -1 {
-                    break;
-                }
-
-                let bytes_read_usize = bytes_read as usize;
-                let buffer_slice = unsafe {
-                    std::slice::from_raw_parts_mut(buffer.as_mut_ptr() as *mut i8, bytes_read_usize)
-                };
-
-                env.get_byte_array_region(&buffer_j, 0, buffer_slice)?;
-
-                use std::io::Write;
-                file.write_all(&buffer[0..bytes_read_usize])?;
-            }
-
-            env.call_method(&stream_obj, "close", "()V", &[])?;
-            log::info!("Extracted: {:?}", target_file_path);
-            Ok(())
+        &[(&path).into()],
+    ) {
+        Ok(value) => value
+            .l()
+            .map_err(|error| io::Error::other(error.to_string()))?,
+        Err(error) => {
+            let _ = env.exception_clear();
+            return Err(io::Error::other(format!("opening bundled asset: {error}")));
         }
-        Err(_) => Ok(()),
+    };
+    let buffer = env
+        .new_byte_array(64 * 1024)
+        .map_err(|error| io::Error::other(error.to_string()))?;
+    Ok(AndroidAssetReader {
+        env,
+        stream,
+        buffer,
+    })
+}
+
+struct AndroidAssetReader<'local, 'env> {
+    env: &'env mut JNIEnv<'local>,
+    stream: JObject<'local>,
+    buffer: JByteArray<'local>,
+}
+
+impl Read for AndroidAssetReader<'_, '_> {
+    fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
+        if output.is_empty() {
+            return Ok(0);
+        }
+        let wanted = output.len().min(64 * 1024) as i32;
+        let count = self
+            .env
+            .call_method(
+                &self.stream,
+                "read",
+                "([BII)I",
+                &[(&self.buffer).into(), 0_i32.into(), wanted.into()],
+            )
+            .and_then(|value| value.i())
+            .map_err(|error| {
+                let _ = self.env.exception_clear();
+                io::Error::other(format!("reading bundled asset: {error}"))
+            })?;
+        if count < 0 {
+            return Ok(0);
+        }
+        let mut signed = vec![0_i8; count as usize];
+        self.env
+            .get_byte_array_region(&self.buffer, 0, &mut signed)
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        for (target, source) in output.iter_mut().zip(signed) {
+            *target = source as u8;
+        }
+        Ok(count as usize)
+    }
+}
+
+impl Drop for AndroidAssetReader<'_, '_> {
+    fn drop(&mut self) {
+        let _ = self.env.call_method(&self.stream, "close", "()V", &[]);
+        let _ = self.env.exception_clear();
     }
 }

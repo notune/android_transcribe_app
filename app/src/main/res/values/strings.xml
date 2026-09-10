@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Offline Voice Input</string>
+    <string name="app_name">Offline Speech to Text</string>
     <string name="welcome_title">Voice Input &amp; Subtitles</string>
     <string name="welcome_subtitle">Fully offline, private, and fast.</string>
     
     <string name="section_ime">Alternative: Voice keyboard</string>
-    <string name="desc_ime">Prefer a dedicated keyboard? Enable the Offline Voice Input keyboard, then switch to it from your keyboard switcher when you want voice input as its own keyboard.</string>
+    <string name="desc_ime">Prefer a dedicated keyboard? Enable the Offline Speech to Text keyboard, then switch to it from your keyboard switcher when you want voice input as its own keyboard.</string>
     <string name="btn_ime_settings">Open Keyboard Settings</string>
     
     <string name="section_subs">Live Subtitles</string>
@@ -44,7 +44,7 @@
     <string name="subtitle_lines_4">4 lines</string>
     <string name="subtitle_lines_all">All</string>
 
-    <string name="recognition_service_label">Offline Voice Input</string>
+    <string name="recognition_service_label">Offline Speech to Text</string>
 
     <!-- Speech model management (transcribe.cpp GGUF backend) -->
     <string name="models_title">Speech models</string>
@@ -100,7 +100,7 @@
     <string name="section_voice">Voice input</string>
     <string name="voice_status_ready">Ready. In any app, tap the microphone on a supported keyboard and your speech is typed into the text field.</string>
     <string name="voice_status_need_mic">Microphone access is needed before voice input can work.</string>
-    <string name="voice_status_almost">Almost there. When you tap your keyboard\'s mic, pick “Offline Voice Input” and choose “Always”. Tap “Try voice input” below to set it now.</string>
+    <string name="voice_status_almost">Almost there. When you tap your keyboard\'s mic, pick “Offline Speech to Text” and choose “Always”. Tap “Try voice input” below to set it now.</string>
     <string name="btn_voice_try">Try voice input</string>
     <string name="btn_voice_grant">Grant microphone access</string>
     <string name="btn_voice_help">Setup help</string>
@@ -110,5 +110,6 @@
     <string name="voice_test_failed">Couldn\'t start voice input on this device.</string>
 
     <string name="voice_help_title">Voice input setup</string>
-    <string name="voice_help_body">How to use it\n• Open any app and tap the microphone on a supported keyboard/app. A small panel slides up, you speak, tap to stop, and the text is inserted. (Enable “Auto-stop after silence” in the settings to have it stop by itself.)\n\nWhich keyboards open the voice panel\n• Microsoft SwiftKey (not open source) and website voice search open the panel directly.\n• AnySoftKeyboard is the open-source way to get the panel: its mic key opens it as long as no voice keyboard is enabled on your system.\n\nOther open-source keyboards\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard and Unexpected Keyboard don\'t open the panel: their mic key switches to the “Offline Voice Input” keyboard instead. Enable it once (see “Alternative: Voice keyboard”), speak there, and use its keyboard-switch key to go back. FUTO Keyboard ships its own voice input.\n• Gboard only uses Google\'s own voice typing and can\'t use this app at all.\n\nIf SwiftKey\'s own voice typing opens instead\n• Settings → Rich input → turn off “Multi-modal voice typing”.\n• Then tap the mic again and pick “Offline Voice Input”.\n\nIf Android asks which app to use\n• Choose “Offline Voice Input” and tap “Always”.\n\nIf another app always opens instead\n• Open Settings → Apps → that app → “Open by default” → Clear defaults, then try again.</string>
+    <string name="voice_help_body">How to use it\n• Open any app and tap the microphone on a supported keyboard/app. A small panel slides up, you speak, tap to stop, and the text is inserted. (Enable “Auto-stop after silence” in the settings to have it stop by itself.)\n\nWhich keyboards open the voice panel\n• Microsoft SwiftKey (not open source) and website voice search open the panel directly.\n• AnySoftKeyboard is the open-source way to get the panel: its mic key opens it as long as no voice keyboard is enabled on your system.\n\nOther open-source keyboards\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard and Unexpected Keyboard don\'t open the panel: their mic key switches to the “Offline Speech to Text” keyboard instead. Enable it once (see “Alternative: Voice keyboard”), speak there, and use its keyboard-switch key to go back. FUTO Keyboard ships its own voice input.\n• Gboard only uses Google\'s own voice typing and can\'t use this app at all.\n\nIf SwiftKey\'s own voice typing opens instead\n• Settings → Rich input → turn off “Multi-modal voice typing”.\n• Then tap the mic again and pick “Offline Speech to Text”.\n\nIf Android asks which app to use\n• Choose “Offline Speech to Text” and tap “Always”.\n\nIf another app always opens instead\n• Open Settings → Apps → that app → “Open by default” → Clear defaults, then try again.</string>
+    <string name="retry_setup">Retry setup</string>
 </resources>
