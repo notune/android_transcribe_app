@@ -413,12 +413,13 @@ public class ModelsActivity extends AppCompatActivity {
 
         new Thread(() -> {
             boolean ok = false;
-            try (InputStream in = getContentResolver().openInputStream(uri);
-                 OutputStream out = new FileOutputStream(tmp)) {
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new IOException("Model provider returned no data");
+                try (OutputStream out = new FileOutputStream(tmp)) {
                 byte[] buf = new byte[1024 * 1024];
                 long copied = 0;
                 int read;
-                while (in != null && (read = in.read(buf)) != -1) {
+                while ((read = in.read(buf)) != -1) {
                     out.write(buf, 0, read);
                     copied += read;
                     if (size > 0) {
@@ -426,7 +427,8 @@ public class ModelsActivity extends AppCompatActivity {
                         runOnUiThread(() -> importBar.setProgress(pct));
                     }
                 }
-                ok = true;
+                ok = copied > 0 && (size <= 0 || copied == size);
+                }
             } catch (IOException e) {
                 Log.e(TAG, "Model import failed", e);
             }
@@ -437,8 +439,11 @@ public class ModelsActivity extends AppCompatActivity {
                 importButton.setEnabled(true);
                 importArea.setVisibility(View.GONE);
                 if (success) {
+                    writeConfig("active_model", name);
                     snackbar(getString(R.string.models_import_done, name));
                     refreshList();
+                    statusText.setText(getString(R.string.models_loading));
+                    reloadModelNative(ModelsActivity.this);
                 } else {
                     snackbar(getString(R.string.models_import_failed));
                 }

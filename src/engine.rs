@@ -459,19 +459,9 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
         .filter(|&n| n > 0)
         .unwrap_or_else(performance_core_count);
 
-    // Validate/install the bundled recovery path even when an imported model
-    // is selected. This keeps every app process safe to fall back offline.
-    notify_status(env, context, "Preparing offline model");
-    let builtin_path = assets::extract_builtin_model(env, context).map_err(|error| {
-        let msg = format!(
-            "offline model unavailable [{}]: {}",
-            error.category(),
-            error
-        );
-        notify_status(env, context, &format!("Error: {}", msg));
-        msg
-    })?;
-
+    // An imported model is a complete offline path in its own right. Try it
+    // before touching the bundled recovery asset so compact/import builds do
+    // not fail merely because they intentionally omit that large asset.
     if let Some(name) = read_config(&files_dir.join(ACTIVE_MODEL_FILE)) {
         let path = files_dir.join("models").join(&name);
         notify_status(env, context, &format!("Loading model {}...", name));
@@ -493,6 +483,17 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
             }
         }
     }
+
+    notify_status(env, context, "Preparing offline model");
+    let builtin_path = assets::extract_builtin_model(env, context).map_err(|error| {
+        let msg = format!(
+            "offline model unavailable [{}]: {}",
+            error.category(),
+            error
+        );
+        notify_status(env, context, &format!("Error: {}", msg));
+        msg
+    })?;
 
     notify_status(env, context, "Loading model...");
 

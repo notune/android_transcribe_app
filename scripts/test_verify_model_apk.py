@@ -13,7 +13,8 @@ ASSET = "assets/builtin-model/parakeet-tdt-0.6b-v3-Q4_K_M.gguf"
 
 
 class VerifyModelApkTest(unittest.TestCase):
-    def run_verify(self, entries, expected_bytes=b"model", manifest_package="app.offlinespeechtotext"):
+    def run_verify(self, entries, expected_bytes=b"model", manifest_package="app.offlinespeechtotext",
+                   asset_entry=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             apk = root / "candidate.apk"
@@ -29,9 +30,12 @@ class VerifyModelApkTest(unittest.TestCase):
                 "sha256": hashlib.sha256(expected_bytes).hexdigest(),
                 "application_id": "app.offlinespeechtotext",
             }))
+            command = [sys.executable, str(SCRIPT), "--apk", str(apk), "--metadata", str(metadata),
+                       "--manifest-package", manifest_package]
+            if asset_entry:
+                command.extend(["--asset-entry", asset_entry])
             return subprocess.run(
-                [sys.executable, str(SCRIPT), "--apk", str(apk), "--metadata", str(metadata),
-                 "--manifest-package", manifest_package],
+                command,
                 text=True, capture_output=True,
             )
 
@@ -55,6 +59,16 @@ class VerifyModelApkTest(unittest.TestCase):
     def test_rejects_wrong_manifest_package(self):
         result = self.run_verify([(ASSET, b"model")], manifest_package="dev.notune.transcribe")
         self.assertNotEqual(result.returncode, 0)
+
+    def test_accepts_asset_pack_entry_and_rejects_duplicate_model(self):
+        bundle_entry = "model_assets/assets/builtin-model/parakeet-tdt-0.6b-v3-Q4_K_M.gguf"
+        result = self.run_verify([(bundle_entry, b"model")], asset_entry=bundle_entry)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        duplicate = self.run_verify(
+            [(bundle_entry, b"model"), (ASSET, b"model")], asset_entry=bundle_entry
+        )
+        self.assertNotEqual(duplicate.returncode, 0)
 
 
 if __name__ == "__main__":

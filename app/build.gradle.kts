@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.security.MessageDigest
 
@@ -41,7 +42,14 @@ android {
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            // CI uses the decoded release keystore. Local verification uses
+            // the standard debug key so release packaging has the same final
+            // filename and can exercise the exact artifact verifier.
+            signingConfig = if (rootProject.file("release.keystore").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -76,7 +84,8 @@ android {
 val isBundle = gradle.startParameter.taskNames.any {
     it.contains("bundle", ignoreCase = true)
 }
-if (!isBundle) {
+val omitBundledModel = providers.gradleProperty("omitBundledModel").orNull == "true"
+if (!isBundle && !omitBundledModel) {
     android.sourceSets.getByName("main") {
         assets.srcDirs(
             "src/main/assets",
@@ -99,6 +108,11 @@ dependencies {
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")
     }
+}
+
+val bundletool by configurations.creating
+dependencies {
+    bundletool("com.android.tools.build:bundletool:1.18.1")
 }
 
 // ---------------------------------------------------------------------------
@@ -303,32 +317,73 @@ tasks.named("preBuild") {
     dependsOn(generateModelMetadata)
 }
 
-tasks.register("verifyCandidateModelApk") {
-    description = "Verify the candidate APK package and bundled model bytes"
-    group = "verification"
-    dependsOn("assembleCandidate")
+fun registerModelArchiveVerification(
+    taskName: String,
+    buildTask: String,
+    archivePath: String,
+    archiveLabel: String,
+    assetEntry: String? = null,
+    isBundle: Boolean = false,
+) {
+    tasks.register(taskName) {
+        description = "Verify the $archiveLabel package and bundled model bytes"
+        group = "verification"
+        dependsOn(buildTask)
 
-    doLast {
-        val apk = layout.buildDirectory.file("outputs/apk/candidate/app-candidate.apk").get().asFile
-        val metadata = generatedModelDir.get().file("model_spec.json").asFile
-        if (!apk.isFile) throw GradleException("Candidate APK not found: ${apk.absolutePath}")
+        doLast {
+            val archive = layout.buildDirectory.file(archivePath).get().asFile
+            val metadata = generatedModelDir.get().file("model_spec.json").asFile
+            if (!archive.isFile) throw GradleException("$archiveLabel not found: ${archive.absolutePath}")
 
-        val apkanalyzer = File(android.sdkDirectory, "cmdline-tools/latest/bin/apkanalyzer")
-        val manifestProcess = ProcessBuilder(
-            apkanalyzer.absolutePath, "manifest", "application-id", apk.absolutePath
-        ).redirectErrorStream(true).start()
-        val manifestPackage = manifestProcess.inputStream.bufferedReader().use { it.readText() }.trim()
-        if (manifestProcess.waitFor() != 0) {
-            throw GradleException("apkanalyzer failed: $manifestPackage")
-        }
-        val verifyProcess = ProcessBuilder(
-            "python3", rootProject.file("scripts/verify_model_apk.py").absolutePath,
-            "--apk", apk.absolutePath,
-            "--metadata", metadata.absolutePath,
-            "--manifest-package", manifestPackage
-        ).inheritIO().start()
-        if (verifyProcess.waitFor() != 0) {
-            throw GradleException("Candidate APK model verification failed")
+            val manifestPackage = if (isBundle) {
+                val output = ByteArrayOutputStream()
+                project.javaexec {
+                    classpath = bundletool
+                    mainClass.set("com.android.tools.build.bundletool.BundleToolMain")
+                    args(
+                        "dump", "manifest", "--bundle=${archive.absolutePath}",
+                        "--module=base", "--xpath=/manifest/@package",
+                    )
+                    standardOutput = output
+                }
+                output.toString(Charsets.UTF_8).trim()
+            } else {
+                val apkanalyzer = File(android.sdkDirectory, "cmdline-tools/latest/bin/apkanalyzer")
+                val manifestProcess = ProcessBuilder(
+                    apkanalyzer.absolutePath, "manifest", "application-id", archive.absolutePath
+                ).redirectErrorStream(true).start()
+                val result = manifestProcess.inputStream.bufferedReader().use { it.readText() }.trim()
+                if (manifestProcess.waitFor() != 0) {
+                    throw GradleException("apkanalyzer failed for $archiveLabel: $result")
+                }
+                result
+            }
+            val command = mutableListOf(
+                "python3", rootProject.file("scripts/verify_model_apk.py").absolutePath,
+                "--apk", archive.absolutePath,
+                "--metadata", metadata.absolutePath,
+                "--manifest-package", manifestPackage,
+            )
+            if (assetEntry != null) command += listOf("--asset-entry", assetEntry)
+            val verifyProcess = ProcessBuilder(command).inheritIO().start()
+            if (verifyProcess.waitFor() != 0) {
+                throw GradleException("$archiveLabel model verification failed")
+            }
         }
     }
 }
+
+registerModelArchiveVerification(
+    "verifyCandidateModelApk", "assembleCandidate",
+    "outputs/apk/candidate/app-candidate.apk", "candidate APK",
+)
+registerModelArchiveVerification(
+    "verifyReleaseModelApk", "assembleRelease",
+    "outputs/apk/release/app-release.apk", "release APK",
+)
+registerModelArchiveVerification(
+    "verifyReleaseModelBundle", "bundleRelease",
+    "outputs/bundle/release/app-release.aab", "release AAB",
+    "model_assets/assets/builtin-model/${modelPackFiles.single().name}",
+    true,
+)

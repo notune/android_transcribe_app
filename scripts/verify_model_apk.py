@@ -20,6 +20,10 @@ def main() -> None:
     parser.add_argument("--apk", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
     parser.add_argument("--manifest-package", required=True)
+    parser.add_argument(
+        "--asset-entry",
+        help="Archive entry containing the model (defaults to metadata asset_path)",
+    )
     args = parser.parse_args()
 
     metadata = json.loads(args.metadata.read_text(encoding="utf-8"))
@@ -43,10 +47,20 @@ def main() -> None:
     if expected_hash != expected_hash.lower():
         fail("expected SHA-256 must be lowercase")
 
+    archive_entry = args.asset_entry or asset_path
+    if Path(archive_entry).name != Path(asset_path).name:
+        fail(f"archive entry {archive_entry!r} does not match model file {Path(asset_path).name!r}")
+
     with zipfile.ZipFile(args.apk) as archive:
-        matches = [entry for entry in archive.infolist() if entry.filename == asset_path]
+        model_entries = [
+            entry for entry in archive.infolist()
+            if Path(entry.filename).name == Path(asset_path).name
+        ]
+        if len(model_entries) != 1:
+            fail(f"expected exactly one bundled {Path(asset_path).name}, found {len(model_entries)}")
+        matches = [entry for entry in model_entries if entry.filename == archive_entry]
         if len(matches) != 1:
-            fail(f"expected exactly one {asset_path}, found {len(matches)}")
+            fail(f"expected exactly one {archive_entry}, found {len(matches)}")
         entry = matches[0]
         if entry.file_size != expected_len:
             fail(f"asset length {entry.file_size} != {expected_len}")
@@ -62,7 +76,7 @@ def main() -> None:
         if actual_hash != expected_hash:
             fail(f"asset SHA-256 {actual_hash} != {expected_hash}")
 
-    print(f"verified {args.apk}: package={expected_package} asset={asset_path} bytes={expected_len} sha256={expected_hash}")
+    print(f"verified {args.apk}: package={expected_package} asset={archive_entry} bytes={expected_len} sha256={expected_hash}")
 
 
 if __name__ == "__main__":

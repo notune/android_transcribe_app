@@ -76,23 +76,23 @@ jobs:
       run: |
         echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
-    - name: Build Release APK
+    - name: Test and verify Release APK
       if: startsWith(github.ref, 'refs/tags/')
       env:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASS: ${{ secrets.KEY_PASS }}
         STORE_PASS: ${{ secrets.STORE_PASS }}
       run: |
-        ./gradlew assembleRelease
+        ./gradlew testReleaseUnitTest verifyReleaseModelApk
 
-    - name: Build Release AAB
+    - name: Build and verify Release AAB
       if: startsWith(github.ref, 'refs/tags/')
       env:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASS: ${{ secrets.KEY_PASS }}
         STORE_PASS: ${{ secrets.STORE_PASS }}
       run: |
-        ./gradlew bundleRelease
+        ./gradlew verifyReleaseModelBundle
 
     - name: Extract Version Name
       if: startsWith(github.ref, 'refs/tags/')
