@@ -10,7 +10,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.ipf.offlinespeechtotext"
+        applicationId = "app.offlinespeechtotext"
         minSdk = 26
         targetSdk = 35
         versionCode = 19
@@ -286,7 +286,7 @@ val generateModelMetadata by tasks.registering {
                 "pub const BUILTIN_MODEL_SHA256: &str = \"${model.sha256}\";\n"
         )
         File(outputDir, "model_spec.json").writeText(
-            "{\"application_id\":\"dev.ipf.offlinespeechtotext\"," +
+            "{\"application_id\":\"app.offlinespeechtotext\"," +
                 "\"asset_path\":\"assets/builtin-model/${model.name}\"," +
                 "\"file_name\":\"${model.name}\",\"byte_length\":${asset.length()}," +
                 "\"sha256\":\"${model.sha256}\"}\n"

@@ -13,7 +13,7 @@ ASSET = "assets/builtin-model/parakeet-tdt-0.6b-v3-Q4_K_M.gguf"
 
 
 class VerifyModelApkTest(unittest.TestCase):
-    def run_verify(self, entries, expected_bytes=b"model", manifest_package="dev.ipf.offlinespeechtotext"):
+    def run_verify(self, entries, expected_bytes=b"model", manifest_package="app.offlinespeechtotext"):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             apk = root / "candidate.apk"
@@ -27,7 +27,7 @@ class VerifyModelApkTest(unittest.TestCase):
                 "asset_path": ASSET,
                 "byte_length": len(expected_bytes),
                 "sha256": hashlib.sha256(expected_bytes).hexdigest(),
-                "application_id": "dev.ipf.offlinespeechtotext",
+                "application_id": "app.offlinespeechtotext",
             }))
             return subprocess.run(
                 [sys.executable, str(SCRIPT), "--apk", str(apk), "--metadata", str(metadata),
