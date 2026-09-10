@@ -43,12 +43,32 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_initNative
     });
 }
 
+#[no_mangle]
+pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_retrySetupNative(
+    env: JNIEnv,
+    _class: JClass,
+    activity: JObject,
+) {
+    let vm = match env.get_java_vm() {
+        Ok(vm) => Arc::new(vm),
+        Err(_) => return,
+    };
+    let activity_ref = match env.new_global_ref(&activity) {
+        Ok(reference) => reference,
+        Err(_) => return,
+    };
+    std::thread::spawn(move || {
+        engine::reset();
+        let _ = engine::ensure_loaded_from_thread(&vm, &activity_ref);
+    });
+}
+
 /// Benchmark: transcribes the given samples once on a worker thread and calls
 /// back with audio seconds vs compute seconds. Engine loading (if it is still
 /// in progress) is waited for but not counted into the measured time.
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkNative(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
     activity: JObject,
     samples: jni::objects::JFloatArray,
@@ -56,7 +76,11 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkN
 ) {
     let len = length as usize;
     let mut buffer = vec![0.0f32; len];
-    if len == 0 || env.get_float_array_region(&samples, 0, &mut buffer).is_err() {
+    if len == 0
+        || env
+            .get_float_array_region(&samples, 0, &mut buffer)
+            .is_err()
+    {
         return;
     }
 

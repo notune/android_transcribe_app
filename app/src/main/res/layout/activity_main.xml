@@ -223,7 +223,7 @@
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:layout_marginBottom="8dp"/>
 
-                    <!-- Native engine warm-up state, updated from Rust. -->
+                    <!-- Offline model setup state, updated from Rust. -->
                     <TextView
                         android:id="@+id/text_status"
                         android:layout_width="match_parent"
@@ -231,6 +231,24 @@
                         android:text="@string/status_checking"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_marginBottom="4dp"/>
+
+                    <TextView
+                        android:id="@+id/text_setup_detail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorError"
+                        android:layout_marginBottom="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:id="@+id/btn_retry_setup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/retry_setup"
+                        android:visibility="gone"
                         android:layout_marginBottom="16dp"/>
 
                     <Button
