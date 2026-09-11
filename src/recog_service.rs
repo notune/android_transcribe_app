@@ -8,12 +8,16 @@
 //! So this module adds trailing-silence endpointing on top of the same `engine` model,
 //! and finalises automatically (it also honours an explicit `stopListening`/`cancel`).
 
+use std::fs::File;
+use std::io::{ErrorKind, Read};
+use std::os::fd::FromRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use jni::objects::{GlobalRef, JClass, JObject};
+use jni::sys::jint;
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
 
@@ -39,6 +43,19 @@ const MAX_SESSION_MS: u64 = 60000;
 /// Throttle interval for `rmsChanged` UI callbacks.
 const LEVEL_UPDATE_MS: u64 = 50;
 
+// --- Caller-supplied audio (RecognizerIntent.EXTRA_AUDIO_SOURCE) --------------
+/// Rate the model runs at; caller audio is resampled to it.
+const TARGET_SAMPLE_RATE: u32 = 16000;
+/// Read size for the caller's descriptor.
+const READ_CHUNK_BYTES: usize = 8192;
+/// How long to block waiting for caller audio before re-checking for cancellation.
+const POLL_TIMEOUT_MS: i32 = 100;
+
+// Mirror of the android.media.AudioFormat encodings a caller may name.
+const ENCODING_PCM_16BIT: i32 = 2;
+const ENCODING_PCM_8BIT: i32 = 3;
+const ENCODING_PCM_FLOAT: i32 = 4;
+
 // Mirror of android.speech.SpeechRecognizer error codes we report.
 const ERROR_AUDIO: i32 = 3;
 const ERROR_SERVER: i32 = 4;
@@ -56,6 +73,9 @@ struct Endpoint {
     finalized: AtomicBool,
     cancelled: AtomicBool,
     started_at: Instant,
+    /// A caller streaming its own audio owns the endpoint: the session runs until the audio is
+    /// closed or `stopListening` arrives, so trailing-silence auto-stop must not cut it short.
+    caller_endpointed: bool,
     jvm: Arc<jni::JavaVM>,
     target: GlobalRef,
 }
@@ -137,41 +157,10 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService
         Err(_) => return,
     };
 
-    // Tear down any session that is still around (e.g. the keyboard called
-    // startListening twice without cancel) so its monitor/finaliser can never
-    // deliver stale results to this new session.
-    {
-        let mut guard = SESSION.lock().unwrap();
-        if let Some(old) = guard.take() {
-            old.shared.cancelled.store(true, Ordering::SeqCst);
-            old.shared.finalized.store(true, Ordering::SeqCst);
-            *old.stream.lock().unwrap() = None;
-        }
-    }
-
-    let now = Instant::now();
-    let shared = Arc::new(Endpoint {
-        audio_buffer: Mutex::new(Vec::new()),
-        last_voice: Mutex::new(now),
-        noise_floor: Mutex::new(0.0),
-        last_level_sent: Mutex::new(now),
-        speech_started: AtomicBool::new(false),
-        finalized: AtomicBool::new(false),
-        cancelled: AtomicBool::new(false),
-        started_at: now,
-        jvm: jvm.clone(),
-        target,
-    });
-    let stream_holder: Arc<Mutex<Option<SendStream>>> = Arc::new(Mutex::new(None));
-
-    // Tell the keyboard we're ready to receive speech.
-    {
-        let mut env2 = match jvm.attach_current_thread() {
-            Ok(e) => e,
-            Err(_) => return,
-        };
-        call_void(&mut env2, shared.target.as_obj(), "onReadyForSpeech");
-    }
+    let (shared, stream_holder) = match begin_session(&jvm, target, false) {
+        Some(session) => session,
+        None => return,
+    };
 
     // Open the microphone (16 kHz mono, matching the model + voice_session).
     let host = cpal::default_host();
@@ -221,6 +210,68 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService
     });
 }
 
+/// Called from `onStartListening` when the caller passed
+/// `RecognizerIntent.EXTRA_AUDIO_SOURCE`. Transcribes the audio arriving on `fd` instead of
+/// opening the microphone, which is what lets an app that is not the system-selected recognizer's
+/// owner use this engine at all — see the Java side for why the microphone path cannot serve it.
+#[no_mangle]
+pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService_startListeningFromAudioSource(
+    env: JNIEnv,
+    _class: JClass,
+    service: JObject,
+    fd: jint,
+    sample_rate: jint,
+    channel_count: jint,
+    encoding: jint,
+) {
+    let jvm = match env.get_java_vm() {
+        Ok(vm) => Arc::new(vm),
+        Err(_) => return,
+    };
+    let target = match env.new_global_ref(&service) {
+        Ok(r) => r,
+        Err(_) => return,
+    };
+
+    let format = match SourceFormat::new(sample_rate, channel_count, encoding) {
+        Some(format) => format,
+        None => {
+            log::error!(
+                "unsupported audio source: {} Hz, {} channels, encoding {}",
+                sample_rate,
+                channel_count,
+                encoding
+            );
+            drop(File::from_raw_fd(fd));
+            if let Ok(mut env2) = jvm.attach_current_thread() {
+                call_error(&mut env2, target.as_obj(), ERROR_AUDIO);
+            }
+            return;
+        }
+    };
+
+    let (shared, stream_holder) = match begin_session(&jvm, target, true) {
+        Some(session) => session,
+        None => {
+            drop(File::from_raw_fd(fd));
+            return;
+        }
+    };
+
+    let reader_shared = shared.clone();
+    let reader_stream = stream_holder.clone();
+    std::thread::spawn(move || read_caller_audio(reader_shared, reader_stream, fd, format));
+
+    let mon_shared = shared.clone();
+    let mon_stream = stream_holder.clone();
+    std::thread::spawn(move || endpoint_monitor(mon_shared, mon_stream));
+
+    *SESSION.lock().unwrap() = Some(Session {
+        shared,
+        stream: stream_holder,
+    });
+}
+
 /// Called from `onStopListening`: the keyboard asked us to finish now. Finalise
 /// with whatever we've captured so far.
 #[no_mangle]
@@ -256,6 +307,350 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService
     class: JClass,
 ) {
     Java_dev_notune_transcribe_VoiceRecognitionService_cancelNative(env, class);
+}
+
+// --- Session lifecycle --------------------------------------------------------
+
+/// Replaces any leftover session with fresh shared state and tells the caller we are ready.
+/// Returns `None` when the JVM cannot be attached, in which case no session was installed.
+fn begin_session(
+    jvm: &Arc<jni::JavaVM>,
+    target: GlobalRef,
+    caller_endpointed: bool,
+) -> Option<(Arc<Endpoint>, Arc<Mutex<Option<SendStream>>>)> {
+    // Tear down any session that is still around (e.g. the keyboard called
+    // startListening twice without cancel) so its monitor/finaliser can never
+    // deliver stale results to this new session.
+    {
+        let mut guard = SESSION.lock().unwrap();
+        if let Some(old) = guard.take() {
+            old.shared.cancelled.store(true, Ordering::SeqCst);
+            old.shared.finalized.store(true, Ordering::SeqCst);
+            *old.stream.lock().unwrap() = None;
+        }
+    }
+
+    let now = Instant::now();
+    let shared = Arc::new(Endpoint {
+        audio_buffer: Mutex::new(Vec::new()),
+        last_voice: Mutex::new(now),
+        noise_floor: Mutex::new(0.0),
+        last_level_sent: Mutex::new(now),
+        speech_started: AtomicBool::new(false),
+        finalized: AtomicBool::new(false),
+        cancelled: AtomicBool::new(false),
+        started_at: now,
+        caller_endpointed,
+        jvm: jvm.clone(),
+        target,
+    });
+
+    // Tell the caller we're ready to receive speech.
+    let mut env = jvm.attach_current_thread().ok()?;
+    call_void(&mut env, shared.target.as_obj(), "onReadyForSpeech");
+
+    Some((shared, Arc::new(Mutex::new(None))))
+}
+
+// --- Caller-supplied audio ----------------------------------------------------
+
+/// The PCM layout a caller declared for `EXTRA_AUDIO_SOURCE`.
+struct SourceFormat {
+    sample_rate: u32,
+    channels: usize,
+    bytes_per_sample: usize,
+    encoding: i32,
+}
+
+impl SourceFormat {
+    fn new(sample_rate: i32, channels: i32, encoding: i32) -> Option<Self> {
+        let bytes_per_sample = match encoding {
+            ENCODING_PCM_8BIT => 1,
+            ENCODING_PCM_16BIT => 2,
+            ENCODING_PCM_FLOAT => 4,
+            _ => return None,
+        };
+        if !(4000..=192_000).contains(&sample_rate) || !(1..=8).contains(&channels) {
+            return None;
+        }
+        Some(Self {
+            sample_rate: sample_rate as u32,
+            channels: channels as usize,
+            bytes_per_sample,
+            encoding,
+        })
+    }
+
+    fn frame_bytes(&self) -> usize {
+        self.bytes_per_sample * self.channels
+    }
+}
+
+/// Feeds the endpoint from the caller's descriptor until the audio is closed, the session is
+/// cancelled, or reading fails. Closing the descriptor ends the utterance, the same end of audio
+/// the microphone path gets from its own recorder stopping.
+fn read_caller_audio(
+    shared: Arc<Endpoint>,
+    stream: Arc<Mutex<Option<SendStream>>>,
+    fd: i32,
+    format: SourceFormat,
+) {
+    // SAFETY: the descriptor was detached from the caller's ParcelFileDescriptor, so this File is
+    // its sole owner and closes it on drop.
+    let mut source = unsafe { File::from_raw_fd(fd) };
+    let mut resampler = Resampler::new(format.sample_rate, TARGET_SAMPLE_RATE);
+    let mut raw = [0u8; READ_CHUNK_BYTES];
+    let mut carry: Vec<u8> = Vec::new();
+    let mut mono: Vec<f32> = Vec::new();
+    let mut frames: Vec<f32> = Vec::new();
+
+    while wait_readable(fd, &shared) {
+        match source.read(&mut raw) {
+            Ok(0) => break, // the caller closed the audio: the utterance is complete
+            Ok(read) => {
+                carry.extend_from_slice(&raw[..read]);
+                mono.clear();
+                drain_mono_frames(&mut carry, &format, &mut mono);
+                if mono.is_empty() {
+                    continue;
+                }
+                frames.clear();
+                resampler.push(&mono, &mut frames);
+                if !frames.is_empty() {
+                    audio_callback(&shared, &frames);
+                }
+            }
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => {
+                log::error!("audio source read failed: {}", e);
+                break;
+            }
+        }
+    }
+
+    finalize(shared, stream);
+}
+
+/// Blocks until the descriptor has audio to read. Returns false once the session has ended, so a
+/// cancel never leaves this thread parked on a descriptor the caller stopped writing to.
+fn wait_readable(fd: i32, shared: &Arc<Endpoint>) -> bool {
+    loop {
+        if shared.cancelled.load(Ordering::SeqCst) || shared.finalized.load(Ordering::SeqCst) {
+            return false;
+        }
+
+        let mut poll_fd = libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        // SAFETY: a single initialised pollfd naming a descriptor this thread owns.
+        let ready = unsafe { libc::poll(&mut poll_fd, 1, POLL_TIMEOUT_MS) };
+
+        if ready > 0 {
+            return true;
+        }
+        if ready < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == ErrorKind::Interrupted {
+                continue;
+            }
+            log::error!("audio source poll failed: {}", err);
+            return false;
+        }
+        // Timed out with nothing to read: loop round to re-check for cancellation.
+    }
+}
+
+/// Decodes every whole frame buffered in `carry` into mono samples, leaving a partial frame behind.
+fn drain_mono_frames(carry: &mut Vec<u8>, format: &SourceFormat, out: &mut Vec<f32>) {
+    let frame_bytes = format.frame_bytes();
+    let complete = carry.len() / frame_bytes;
+    if complete == 0 {
+        return;
+    }
+
+    for frame in carry[..complete * frame_bytes].chunks_exact(frame_bytes) {
+        let mut sum = 0.0f32;
+        for sample in frame.chunks_exact(format.bytes_per_sample) {
+            sum += decode_sample(sample, format.encoding);
+        }
+        out.push(sum / format.channels as f32);
+    }
+
+    carry.drain(..complete * frame_bytes);
+}
+
+fn decode_sample(bytes: &[u8], encoding: i32) -> f32 {
+    match encoding {
+        ENCODING_PCM_8BIT => (bytes[0] as f32 - 128.0) / 128.0,
+        ENCODING_PCM_FLOAT => f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+        _ => i16::from_le_bytes([bytes[0], bytes[1]]) as f32 / 32768.0,
+    }
+}
+
+/// Linear resampler that keeps its fractional read position across chunks, so a caller sending
+/// something other than 16 kHz still produces a continuous stream for the model.
+struct Resampler {
+    step: f64,
+    pos: f64,
+    pending: Vec<f32>,
+}
+
+impl Resampler {
+    fn new(from: u32, to: u32) -> Self {
+        Self {
+            step: from as f64 / to as f64,
+            pos: 0.0,
+            pending: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, input: &[f32], out: &mut Vec<f32>) {
+        if self.step == 1.0 {
+            out.extend_from_slice(input);
+            return;
+        }
+
+        self.pending.extend_from_slice(input);
+        while self.pos + 1.0 < self.pending.len() as f64 {
+            let index = self.pos as usize;
+            let frac = (self.pos - index as f64) as f32;
+            out.push(self.pending[index] * (1.0 - frac) + self.pending[index + 1] * frac);
+            self.pos += self.step;
+        }
+
+        let consumed = self.pos as usize;
+        if consumed > 0 {
+            self.pending.drain(..consumed);
+            self.pos -= consumed as f64;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_samples_eq(actual: &[f32], expected: &[f32]) {
+        assert_eq!(actual.len(), expected.len());
+        for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
+            assert!(
+                (actual - expected).abs() < 1e-6,
+                "sample {index}: expected {expected}, got {actual}"
+            );
+        }
+    }
+
+    #[test]
+    fn source_format_rejects_unsupported_declarations() {
+        assert!(SourceFormat::new(3_999, 1, ENCODING_PCM_16BIT).is_none());
+        assert!(SourceFormat::new(192_001, 1, ENCODING_PCM_16BIT).is_none());
+        assert!(SourceFormat::new(16_000, 0, ENCODING_PCM_16BIT).is_none());
+        assert!(SourceFormat::new(16_000, 9, ENCODING_PCM_16BIT).is_none());
+        assert!(SourceFormat::new(16_000, 1, -1).is_none());
+    }
+
+    #[test]
+    fn source_format_accepts_boundary_rates_channels_and_encodings() {
+        let low = SourceFormat::new(4_000, 1, ENCODING_PCM_8BIT).unwrap();
+        let high = SourceFormat::new(192_000, 8, ENCODING_PCM_FLOAT).unwrap();
+        let pcm16 = SourceFormat::new(16_000, 2, ENCODING_PCM_16BIT).unwrap();
+
+        assert_eq!(low.frame_bytes(), 1);
+        assert_eq!(high.frame_bytes(), 32);
+        assert_eq!(pcm16.frame_bytes(), 4);
+    }
+
+    #[test]
+    fn decode_sample_normalizes_supported_pcm_encodings() {
+        assert_samples_eq(
+            &[
+                decode_sample(&[0], ENCODING_PCM_8BIT),
+                decode_sample(&[128], ENCODING_PCM_8BIT),
+                decode_sample(&[255], ENCODING_PCM_8BIT),
+            ],
+            &[-1.0, 0.0, 127.0 / 128.0],
+        );
+        assert_samples_eq(
+            &[
+                decode_sample(&i16::MIN.to_le_bytes(), ENCODING_PCM_16BIT),
+                decode_sample(&0i16.to_le_bytes(), ENCODING_PCM_16BIT),
+                decode_sample(&i16::MAX.to_le_bytes(), ENCODING_PCM_16BIT),
+            ],
+            &[-1.0, 0.0, i16::MAX as f32 / 32768.0],
+        );
+        assert_samples_eq(
+            &[decode_sample(&0.25f32.to_le_bytes(), ENCODING_PCM_FLOAT)],
+            &[0.25],
+        );
+    }
+
+    #[test]
+    fn drain_mono_frames_downmixes_multichannel_pcm() {
+        let format = SourceFormat::new(16_000, 2, ENCODING_PCM_16BIT).unwrap();
+        let mut carry = Vec::new();
+        carry.extend_from_slice(&16_384i16.to_le_bytes());
+        carry.extend_from_slice(&(-16_384i16).to_le_bytes());
+        carry.extend_from_slice(&8_192i16.to_le_bytes());
+        carry.extend_from_slice(&16_384i16.to_le_bytes());
+        let mut out = Vec::new();
+
+        drain_mono_frames(&mut carry, &format, &mut out);
+
+        assert_samples_eq(&out, &[0.0, 0.375]);
+        assert!(carry.is_empty());
+    }
+
+    #[test]
+    fn drain_mono_frames_preserves_partial_frames_between_chunks() {
+        let format = SourceFormat::new(16_000, 2, ENCODING_PCM_16BIT).unwrap();
+        let frame = [1_024i16.to_le_bytes(), 3_072i16.to_le_bytes()].concat();
+        let mut carry = frame[..3].to_vec();
+        let mut out = Vec::new();
+
+        drain_mono_frames(&mut carry, &format, &mut out);
+        assert!(out.is_empty());
+        assert_eq!(carry, frame[..3]);
+
+        carry.extend_from_slice(&frame[3..]);
+        drain_mono_frames(&mut carry, &format, &mut out);
+        assert_samples_eq(&out, &[0.0625]);
+        assert!(carry.is_empty());
+    }
+
+    #[test]
+    fn resampler_passes_through_target_rate_audio() {
+        let mut resampler = Resampler::new(16_000, 16_000);
+        let mut out = Vec::new();
+
+        resampler.push(&[0.0, 0.25], &mut out);
+        resampler.push(&[0.5, 1.0], &mut out);
+
+        assert_samples_eq(&out, &[0.0, 0.25, 0.5, 1.0]);
+    }
+
+    #[test]
+    fn resampler_upsamples_continuously_across_chunks() {
+        let mut resampler = Resampler::new(8_000, 16_000);
+        let mut out = Vec::new();
+
+        resampler.push(&[0.0, 1.0, 2.0], &mut out);
+        resampler.push(&[3.0], &mut out);
+
+        assert_samples_eq(&out, &[0.0, 0.5, 1.0, 1.5, 2.0, 2.5]);
+    }
+
+    #[test]
+    fn resampler_downsamples_continuously_across_chunks() {
+        let mut resampler = Resampler::new(32_000, 16_000);
+        let mut out = Vec::new();
+
+        resampler.push(&[0.0, 1.0, 2.0, 3.0, 4.0], &mut out);
+        resampler.push(&[5.0, 6.0], &mut out);
+
+        assert_samples_eq(&out, &[0.0, 2.0, 4.0]);
+    }
 }
 
 // --- Audio + endpointing ------------------------------------------------------
@@ -319,9 +714,15 @@ fn endpoint_monitor(shared: Arc<Endpoint>, stream: Arc<Mutex<Option<SendStream>>
         let speech = shared.speech_started.load(Ordering::SeqCst);
         let silence = shared.last_voice.lock().unwrap().elapsed();
 
-        let done = (speech && silence >= Duration::from_millis(SILENCE_MS))
-            || elapsed >= Duration::from_millis(MAX_SESSION_MS)
-            || (!speech && elapsed >= Duration::from_millis(NO_SPEECH_TIMEOUT_MS));
+        // A caller streaming its own audio decides when the utterance ends; only the hard cap,
+        // which bounds how much audio a session may buffer, still applies to it.
+        let done = if shared.caller_endpointed {
+            elapsed >= Duration::from_millis(MAX_SESSION_MS)
+        } else {
+            (speech && silence >= Duration::from_millis(SILENCE_MS))
+                || elapsed >= Duration::from_millis(MAX_SESSION_MS)
+                || (!speech && elapsed >= Duration::from_millis(NO_SPEECH_TIMEOUT_MS))
+        };
 
         if done {
             finalize(shared, stream);
