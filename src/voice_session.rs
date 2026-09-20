@@ -6,6 +6,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use jni::objects::{GlobalRef, JObject};
 use jni::JNIEnv;
 
+use crate::audio::compact_for_inference;
 use crate::engine;
 
 // --- Optional auto-stop endpointing (same level heuristics as recog_service) --
@@ -201,8 +202,7 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
                     }
                     let speech = ep.speech_started.load(Ordering::SeqCst);
                     let silence = ep.last_voice.lock().unwrap().elapsed();
-                    let done = (speech
-                        && silence >= Duration::from_millis(AUTO_STOP_SILENCE_MS))
+                    let done = (speech && silence >= Duration::from_millis(AUTO_STOP_SILENCE_MS))
                         || (!speech
                             && started_at.elapsed()
                                 >= Duration::from_millis(AUTO_STOP_NO_SPEECH_MS));
@@ -211,12 +211,8 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
                         // this monitor can't both fire.
                         if session_active.swap(false, Ordering::SeqCst) {
                             if let Ok(mut env) = jvm.attach_current_thread() {
-                                let _ = env.call_method(
-                                    target_ref.as_obj(),
-                                    "onAutoStop",
-                                    "()V",
-                                    &[],
-                                );
+                                let _ =
+                                    env.call_method(target_ref.as_obj(), "onAutoStop", "()V", &[]);
                             }
                         }
                         return;
@@ -270,8 +266,12 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
             }
         }
 
-        if let Some(eng_arc) = engine::get_engine() {
-            let res = engine::transcribe_shared(&eng_arc, buffer);
+        let inference_audio = compact_for_inference(&buffer);
+        if inference_audio.is_empty() {
+            notify_status(&mut env, obj, "Ready");
+            notify_text(&mut env, obj, "");
+        } else if let Some(eng_arc) = engine::get_engine() {
+            let res = engine::transcribe_shared(&eng_arc, inference_audio);
 
             match res {
                 Ok(text) => {
