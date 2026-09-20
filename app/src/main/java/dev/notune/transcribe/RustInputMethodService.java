@@ -497,6 +497,24 @@ public class RustInputMethodService extends InputMethodService {
     // Commits transcribed text into the active input connection, optionally
     // selecting it afterwards (select_transcription setting).
     private void commitTranscribedText(InputConnection ic, String committed) {
+        EditorInfo editor = getCurrentInputEditorInfo();
+        TextFitter.FieldKind kind = FieldKinds.of(editor);
+        CharSequence before = null;
+        CharSequence after = null;
+        int caps = 0;
+        if (kind == TextFitter.FieldKind.PROSE || kind == TextFitter.FieldKind.SEARCH) {
+            // Editor context is optional. Unreadable context must not block insertion.
+            try { before = ic.getTextBeforeCursor(64, 0); } catch (RuntimeException ignored) { }
+            try { after = ic.getTextAfterCursor(16, 0); } catch (RuntimeException ignored) { }
+            // Request only the field's modes. Requesting CHARACTERS unconditionally
+            // makes Android report capitals even in the middle of ordinary prose.
+            int requestedCaps = editor == null ? 0 : editor.inputType
+                    & (TextFitter.CAP_MODE_CHARACTERS | TextFitter.CAP_MODE_WORDS
+                    | TextFitter.CAP_MODE_SENTENCES);
+            try { caps = ic.getCursorCapsMode(requestedCaps); }
+            catch (RuntimeException ignored) { }
+        }
+        committed = TextFitter.fit(committed, before, after, kind, caps).inserted();
         ic.commitText(committed, 1);
 
         if (!pendingSwitchBack && new File(getFilesDir(), "select_transcription").exists()) {
