@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -13,8 +14,10 @@ use crate::engine;
 const MIN_SPEECH_LEVEL: f32 = 0.12;
 /// How far above the running noise floor a level must be to count as speech.
 const SPEECH_MARGIN: f32 = 0.08;
-/// Trailing silence after speech that triggers auto-stop.
-const AUTO_STOP_SILENCE_MS: u64 = 2000;
+const AUTO_STOP_SECONDS_FILE: &str = "auto_stop_seconds";
+const MIN_AUTO_STOP_SECONDS: f32 = 1.5;
+const MAX_AUTO_STOP_SECONDS: f32 = 8.0;
+const DEFAULT_AUTO_STOP_SECONDS: f32 = 3.0;
 /// If no speech is ever detected, auto-stop after this long.
 const AUTO_STOP_NO_SPEECH_MS: u64 = 8000;
 
@@ -39,6 +42,7 @@ pub struct VoiceSessionState {
     /// True while the current recording runs; flipped off on stop/cancel so
     /// the auto-stop monitor (if any) exits.
     pub session_active: Arc<AtomicBool>,
+    files_dir: Option<PathBuf>,
 }
 
 fn notify_status(env: &mut JNIEnv, obj: &JObject, msg: &str) {
@@ -67,11 +71,14 @@ fn notify_text(env: &mut JNIEnv, obj: &JObject, text: &str) {
     }
 }
 
-pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
+pub fn init_session(mut env: JNIEnv, target: JObject) -> VoiceSessionState {
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Info),
     );
 
+    let files_dir = crate::assets::files_dir(&mut env, &target)
+        .map_err(|e| log::warn!("Failed to resolve filesDir for auto-stop setting: {}", e))
+        .ok();
     let vm = env.get_java_vm().expect("Failed to get JavaVM");
     let vm_arc = Arc::new(vm);
     let target_ref = env.new_global_ref(&target).expect("Failed to ref target");
@@ -83,6 +90,7 @@ pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
         target_ref: target_ref.clone(),
         last_level_sent: Arc::new(Mutex::new(std::time::Instant::now())),
         session_active: Arc::new(AtomicBool::new(false)),
+        files_dir,
     };
 
     // Load engine in background
@@ -96,11 +104,27 @@ pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
     state
 }
 
+fn parse_auto_stop_seconds(value: &str) -> Option<f32> {
+    let seconds = value.trim().parse::<f32>().ok()?;
+    (seconds.is_finite() && (MIN_AUTO_STOP_SECONDS..=MAX_AUTO_STOP_SECONDS).contains(&seconds))
+        .then_some(seconds)
+}
+
+fn auto_stop_silence(files_dir: Option<&Path>) -> Duration {
+    let seconds = files_dir
+        .and_then(|dir| std::fs::read_to_string(dir.join(AUTO_STOP_SECONDS_FILE)).ok())
+        .as_deref()
+        .and_then(parse_auto_stop_seconds)
+        .unwrap_or(DEFAULT_AUTO_STOP_SECONDS);
+    Duration::from_secs_f32(seconds)
+}
+
 /// Begin microphone capture. With `auto_stop` set, a monitor thread watches
 /// for trailing silence after speech (or a no-speech timeout) and invokes the
 /// Java-side `onAutoStop()` callback, which is expected to stop the recording
 /// the same way a manual tap would.
 pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop: bool) {
+    let auto_stop_silence = auto_stop_silence(state.files_dir.as_deref());
     let host = cpal::default_host();
     let device = match host.default_input_device() {
         Some(d) => d,
@@ -201,8 +225,7 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
                     }
                     let speech = ep.speech_started.load(Ordering::SeqCst);
                     let silence = ep.last_voice.lock().unwrap().elapsed();
-                    let done = (speech
-                        && silence >= Duration::from_millis(AUTO_STOP_SILENCE_MS))
+                    let done = (speech && silence >= auto_stop_silence)
                         || (!speech
                             && started_at.elapsed()
                                 >= Duration::from_millis(AUTO_STOP_NO_SPEECH_MS));
@@ -291,4 +314,34 @@ pub fn cancel_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
     state.stream = None;
     state.audio_buffer.lock().unwrap().clear();
     notify_status(&mut env, state.target_ref.as_obj(), "Canceled");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duration_reads_saved_value_and_defaults_invalid_input() {
+        let dir =
+            std::env::temp_dir().join(format!("notune-auto-stop-setting-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let setting = dir.join(AUTO_STOP_SECONDS_FILE);
+
+        std::fs::write(&setting, "4.5\n").unwrap();
+        assert_eq!(auto_stop_silence(Some(&dir)), Duration::from_millis(4500));
+
+        std::fs::write(&setting, "0.2").unwrap();
+        assert_eq!(auto_stop_silence(Some(&dir)), Duration::from_secs(3));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn duration_accepts_only_the_published_range() {
+        assert_eq!(parse_auto_stop_seconds("1.5"), Some(1.5));
+        assert_eq!(parse_auto_stop_seconds("8"), Some(8.0));
+        assert_eq!(parse_auto_stop_seconds("1.49"), None);
+        assert_eq!(parse_auto_stop_seconds("8.01"), None);
+        assert_eq!(parse_auto_stop_seconds("NaN"), None);
+    }
 }

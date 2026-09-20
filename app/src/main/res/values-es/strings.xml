@@ -35,7 +35,7 @@
     <string name="setting_record_background_desc">Seguir grabando cuando el teclado de voz está oculto; el texto se inserta al volver</string>
 
     <string name="setting_auto_stop">Parada automática tras silencio</string>
-    <string name="setting_auto_stop_desc">Cerrar la ventana de entrada de voz automáticamente ~2 segundos después de dejar de hablar</string>
+    <string name="setting_auto_stop_desc">Finalizar la entrada de voz tras el tiempo de silencio seleccionado</string>
 
     <string name="setting_subtitle_lines">Longitud de subtítulos</string>
     <string name="setting_subtitle_lines_desc">Cuántas líneas muestran los subtítulos en directo; el texto antiguo se desplaza</string>

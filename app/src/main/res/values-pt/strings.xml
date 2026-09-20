@@ -35,7 +35,7 @@
     <string name="setting_record_background_desc">Continuar gravando quando o teclado de voz está oculto; o texto é inserido ao voltar</string>
 
     <string name="setting_auto_stop">Parada automática após silêncio</string>
-    <string name="setting_auto_stop_desc">Fechar a janela de entrada de voz automaticamente ~2 segundos após você parar de falar</string>
+    <string name="setting_auto_stop_desc">Encerrar a entrada de voz após o período de silêncio selecionado</string>
 
     <string name="setting_subtitle_lines">Comprimento das legendas</string>
     <string name="setting_subtitle_lines_desc">Quantas linhas as legendas ao vivo mostram; o texto mais antigo rola para fora</string>

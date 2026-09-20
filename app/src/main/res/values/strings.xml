@@ -36,7 +36,8 @@
     <string name="setting_record_background_desc">Keep recording when the voice keyboard is hidden; the text is inserted when you return</string>
 
     <string name="setting_auto_stop">Auto-stop after silence</string>
-    <string name="setting_auto_stop_desc">End the voice input popup automatically ~2 seconds after you stop speaking</string>
+    <string name="setting_auto_stop_desc">End voice input after the selected amount of silence</string>
+    <string name="setting_auto_stop_value">Stop recording after silence: %1$s s</string>
 
     <string name="setting_subtitle_lines">Subtitle length</string>
     <string name="setting_subtitle_lines_desc">How many lines the live subtitles show; older text scrolls away</string>

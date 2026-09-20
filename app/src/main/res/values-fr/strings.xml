@@ -35,7 +35,7 @@
     <string name="setting_record_background_desc">Continuer l\'enregistrement quand le clavier vocal est masqué ; le texte est inséré à votre retour</string>
 
     <string name="setting_auto_stop">Arrêt automatique après un silence</string>
-    <string name="setting_auto_stop_desc">Fermer automatiquement la fenêtre de saisie vocale ~2 secondes après la fin de la parole</string>
+    <string name="setting_auto_stop_desc">Terminer la saisie vocale après la durée de silence sélectionnée</string>
 
     <string name="setting_subtitle_lines">Longueur des sous-titres</string>
     <string name="setting_subtitle_lines_desc">Nombre de lignes affichées par les sous-titres en direct ; le texte plus ancien défile</string>

@@ -35,7 +35,7 @@
     <string name="setting_record_background_desc">Продолжать запись, когда голосовая клавиатура скрыта; текст вставляется по возвращении</string>
 
     <string name="setting_auto_stop">Автостоп при тишине</string>
-    <string name="setting_auto_stop_desc">Автоматически закрывать окно голосового ввода примерно через 2 секунды после окончания речи</string>
+    <string name="setting_auto_stop_desc">Завершать голосовой ввод после выбранной продолжительности тишины</string>
 
     <string name="setting_subtitle_lines">Длина субтитров</string>
     <string name="setting_subtitle_lines_desc">Сколько строк показывают субтитры; более старый текст прокручивается</string>

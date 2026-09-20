@@ -95,7 +95,8 @@ public class MainActivity extends AppCompatActivity {
         bindMarkerSwitch(R.id.switch_pause_audio, "pause_audio", false);
         // Record-in-background defaults to ON; its marker file is the opt-out.
         bindMarkerSwitch(R.id.switch_record_background, "stop_on_hide", true);
-        bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false);
+        View autoStopSlider = bindAutoStopSlider();
+        bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false, autoStopSlider);
 
         // Live subtitle line limit: 2 (default), 4, or 0 = unlimited.
         RadioGroup subsLinesGroup = findViewById(R.id.rg_subtitle_lines);
@@ -283,9 +284,15 @@ public class MainActivity extends AppCompatActivity {
      * file's presence means the switch is OFF (used for default-on settings).
      */
     private void bindMarkerSwitch(int switchId, String fileName, boolean inverted) {
+        bindMarkerSwitch(switchId, fileName, inverted, null);
+    }
+
+    private void bindMarkerSwitch(int switchId, String fileName, boolean inverted,
+                                  View dependentControl) {
         CompoundButton sw = findViewById(switchId);
         File marker = new File(getFilesDir(), fileName);
         sw.setChecked(marker.exists() != inverted);
+        setControlEnabled(dependentControl, sw.isChecked());
         sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
             boolean shouldExist = isChecked != inverted;
             if (shouldExist) {
@@ -297,7 +304,50 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 marker.delete();
             }
+            setControlEnabled(dependentControl, isChecked);
         });
+    }
+
+    private View bindAutoStopSlider() {
+        com.google.android.material.slider.Slider slider =
+                findViewById(R.id.slider_auto_stop);
+        TextView label = findViewById(R.id.text_auto_stop_value);
+        File file = new File(getFilesDir(), "auto_stop_seconds");
+        float current = AutoStopSetting.DEFAULT_SECONDS;
+        try {
+            if (file.exists()) {
+                current = AutoStopSetting.parse(new String(
+                        java.nio.file.Files.readAllBytes(file.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8));
+            }
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to read auto-stop duration", e);
+        }
+        slider.setValue(current);
+        setAutoStopLabel(label, current);
+        slider.addOnChangeListener((s, value, fromUser) -> {
+            setAutoStopLabel(label, value);
+            if (!fromUser) return;
+            try {
+                java.nio.file.Files.write(file.toPath(),
+                        String.format(java.util.Locale.US, "%.1f", value)
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to write auto-stop duration", e);
+            }
+        });
+        return slider;
+    }
+
+    private void setAutoStopLabel(TextView label, float seconds) {
+        label.setText(getString(R.string.setting_auto_stop_value,
+                String.format(java.util.Locale.getDefault(), "%.1f", seconds)));
+    }
+
+    private void setControlEnabled(View control, boolean enabled) {
+        if (control == null) return;
+        control.setEnabled(enabled);
+        control.setAlpha(enabled ? 1.0f : 0.45f);
     }
 
     private void checkAndRequestPermissions() {
