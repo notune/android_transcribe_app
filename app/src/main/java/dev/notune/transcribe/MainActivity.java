@@ -91,6 +91,11 @@ public class MainActivity extends AppCompatActivity {
         // Settings stored as marker files in filesDir (readable from the :ime
         // process and native code without a content provider).
         bindMarkerSwitch(R.id.switch_auto_record, "auto_record", false);
+        bindPauseSlider(R.id.slider_pause_sentence, R.id.text_pause_sentence_value,
+                R.string.setting_pause_sentence_value, "pause_sentence_seconds",
+                PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS);
+        bindPauseSlider(R.id.slider_pause_split, R.id.text_pause_split_value,
+                R.string.setting_pause_split_value, "pause_split_seconds", 3.0f);
         bindMarkerSwitch(R.id.switch_select_transcription, "select_transcription", false);
         bindMarkerSwitch(R.id.switch_pause_audio, "pause_audio", false);
         // Record-in-background defaults to ON; its marker file is the opt-out.
@@ -276,6 +281,37 @@ public class MainActivity extends AppCompatActivity {
 
     private void snackbar(String message) {
         Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show();
+    }
+
+    /** Stores one decimal seconds setting where both the IME and native code can read it. */
+    private void bindPauseSlider(int sliderId, int labelId, int valueStringId,
+                                 String fileName, float defaultValue) {
+        com.google.android.material.slider.Slider slider = findViewById(sliderId);
+        TextView label = findViewById(labelId);
+        File file = new File(getFilesDir(), fileName);
+        float current = defaultValue;
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.FileReader(file))) {
+            String line = reader.readLine();
+            if (line != null) current = SentencePauseSetting.parse(line, defaultValue);
+        } catch (java.io.FileNotFoundException ignored) {
+            // The default applies until the user moves the slider.
+        } catch (IOException e) {
+            Log.w(TAG, "Could not read " + fileName, e);
+        }
+        slider.setValue(current);
+        label.setText(getString(valueStringId,
+                String.format(java.util.Locale.US, "%.1f", current)));
+        slider.addOnChangeListener((s, value, fromUser) -> {
+            label.setText(getString(valueStringId,
+                    String.format(java.util.Locale.US, "%.1f", value)));
+            if (!fromUser) return;
+            try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+                writer.write(String.format(java.util.Locale.US, "%.1f", value));
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to write " + fileName, e);
+            }
+        });
     }
 
     /**

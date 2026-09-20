@@ -26,6 +26,13 @@
     <string name="setting_auto_record">Auto-start recording</string>
     <string name="setting_auto_record_desc">Automatically begin recording when the keyboard opens</string>
 
+    <string name="setting_pause_sentence">How long a pause ends a sentence</string>
+    <string name="setting_pause_sentence_desc">A shorter pause keeps the next words in the same sentence.</string>
+    <string name="setting_pause_sentence_value">Pause that ends a sentence: %1$s s</string>
+    <string name="setting_pause_split">Pause before processing words</string>
+    <string name="setting_pause_split_desc">Processing starts after this much silence while recording continues.</string>
+    <string name="setting_pause_split_value">Pause before processing words: %1$s s</string>
+
     <string name="setting_select_transcription">Select transcription</string>
     <string name="setting_select_transcription_desc">Highlight transcribed text so it can be deleted with a single backspace</string>
 

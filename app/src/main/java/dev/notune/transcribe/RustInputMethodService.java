@@ -80,6 +80,11 @@ public class RustInputMethodService extends InputMethodService {
     // process audio. Flushed from onStartInputView once a field is focused
     // again so the text is never lost.
     private String pendingCommitText = null;
+    private volatile long activeSessionId = 0;
+    private volatile boolean sessionTerminal = true;
+    private boolean retryAttempted = false;
+    private final DictationBuffer dictationBuffer = new DictationBuffer();
+    private volatile float sentencePauseSeconds = PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
 
     @Override
     public void onCreate() {
@@ -132,7 +137,7 @@ public class RustInputMethodService extends InputMethodService {
             switchKeyboardButton.setOnClickListener(v -> {
                 if (isRecording) {
                     pendingSwitchBack = true;
-                    stopRecording();
+                    stopDictation();
                     updateRecordButtonUI(false);
                 } else {
                     switchToPreviousInputMethod();
@@ -240,7 +245,7 @@ public class RustInputMethodService extends InputMethodService {
                 }
 
                 if (isRecording) {
-                    stopRecording();
+                    stopDictation();
                     if (pauseAudioActive) {
                         audioPauser.abandon(this);
                         pauseAudioActive = false;
@@ -251,8 +256,7 @@ public class RustInputMethodService extends InputMethodService {
                         audioPauser.request(this);
                         pauseAudioActive = true;
                     }
-                    startRecording();
-                    updateRecordButtonUI(true);
+                    startDictation();
                 }
             });
 
@@ -290,8 +294,7 @@ public class RustInputMethodService extends InputMethodService {
                     audioPauser.request(this);
                     pauseAudioActive = true;
                 }
-                startRecording();
-                updateRecordButtonUI(true);
+                startDictation();
             }
         }
     }
@@ -304,10 +307,10 @@ public class RustInputMethodService extends InputMethodService {
             if (isStopOnHideEnabled()) {
                 // Opt-in behavior: discard the recording when the keyboard hides.
                 try {
-                    cancelRecording();
+                    cancelRecording(activeSessionId);
                 } catch (Throwable t) {
                     Log.w(TAG, "cancelRecording failed, falling back to stopRecording", t);
-                    try { stopRecording(); } catch (Throwable ignored) { }
+                    try { stopRecording(activeSessionId); } catch (Throwable ignored) { }
                 }
                 updateRecordButtonUI(false);
             } else {
@@ -347,6 +350,31 @@ public class RustInputMethodService extends InputMethodService {
     public void onFinishInput() {
         super.onFinishInput();
         inputActive = false;
+    }
+
+    private void startDictation() {
+        // Keep the current result and retry identity until processing finishes.
+        if (!sessionTerminal) return;
+        activeSessionId = Math.max(activeSessionId + 1,
+                Math.max(1, android.os.SystemClock.elapsedRealtimeNanos()));
+        sessionTerminal = false;
+        retryAttempted = false;
+        dictationBuffer.reset(activeSessionId);
+        sentencePauseSeconds = readSentencePauseSeconds();
+        boolean started = false;
+        try { started = startRecording(activeSessionId); }
+        catch (Throwable t) { Log.e(TAG, "startRecording failed", t); }
+        if (started) {
+            updateRecordButtonUI(true);
+        } else {
+            sessionTerminal = true;
+            updateRecordButtonUI(false);
+        }
+    }
+
+    private void stopDictation() {
+        if (activeSessionId > 0) stopRecording(activeSessionId);
+        updateRecordButtonUI(false);
     }
 
     private void updateRecordButtonUI(boolean recording) {
@@ -397,9 +425,57 @@ public class RustInputMethodService extends InputMethodService {
     // Native methods
     private native void initNative(RustInputMethodService service);
     private native void cleanupNative();
-    private native void startRecording();
-    private native void stopRecording();
-    private native void cancelRecording();
+    private native boolean startRecording(long sessionId);
+    private native boolean stopRecording(long sessionId);
+    private native boolean cancelRecording(long sessionId);
+    private native boolean retryRecording(long sessionId);
+
+    public void onDictationStatus(long sessionId, String status) {
+        if (sessionId != activeSessionId) return;
+        onStatusUpdate(status);
+    }
+
+    public void onAutoStop(long sessionId) {
+        if (sessionId != activeSessionId || sessionTerminal) return;
+        mainHandler.post(() -> {
+            if (sessionId == activeSessionId && isRecording) stopDictation();
+        });
+    }
+
+    public synchronized boolean onTranscriptPiece(long sessionId, long pieceSequence,
+                                                   String text, float pauseBeforeSeconds) {
+        return !sessionTerminal && dictationBuffer.accept(sessionId, pieceSequence, text,
+                pauseBeforeSeconds, sentencePauseSeconds);
+    }
+
+    public void onDictationComplete(long sessionId, int outcome, String text, String error) {
+        mainHandler.post(() -> finishDictation(sessionId, outcome, error));
+    }
+
+    private void finishDictation(long sessionId, int outcome, String error) {
+        if (sessionId != activeSessionId || sessionTerminal) return;
+        if (outcome == 1 && !retryAttempted) {
+            retryAttempted = true;
+            if (retryRecording(sessionId)) return;
+        }
+        sessionTerminal = true;
+        if (outcome != 0) {
+            dictationBuffer.discard();
+            updateRecordButtonUI(false);
+            if (outcome == 1) cancelRecording(sessionId);
+            if (outcome != 2 && statusView != null) {
+                statusView.setText(error == null || error.isEmpty()
+                        ? "Dictation could not be completed" : "Error: " + error);
+            }
+            return;
+        }
+        String completed = dictationBuffer.finish(sessionId);
+        onTextTranscribed(completed);
+    }
+
+    public void onDictationLevel(long sessionId, float level) {
+        if (sessionId == activeSessionId) onAudioLevel(level);
+    }
 
     // Called from Rust
     public void onStatusUpdate(String status) {
@@ -479,7 +555,8 @@ public class RustInputMethodService extends InputMethodService {
                 // a web field in Firefox/Gemini dropped focus while we processed
                 // audio). Committing now would be silently dropped, so defer the
                 // text until a field is focused again instead of losing it.
-                pendingCommitText = committed;
+                pendingCommitText = pendingCommitText == null
+                        ? committed : pendingCommitText + committed;
             }
             if (pauseAudioActive) {
                 audioPauser.abandon(this);
@@ -536,5 +613,18 @@ public class RustInputMethodService extends InputMethodService {
     /** "Record in background" is default ON; the marker file is the opt-out. */
     private boolean isStopOnHideEnabled() {
         return new File(getFilesDir(), "stop_on_hide").exists();
+    }
+
+    private float readSentencePauseSeconds() {
+        File file = new File(getFilesDir(), "pause_sentence_seconds");
+        if (!file.exists()) return PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.FileReader(file))) {
+            float value = Float.parseFloat(reader.readLine());
+            return Float.isFinite(value) && value >= 1.5f && value <= 8.0f
+                    ? value : PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
+        } catch (Throwable t) {
+            return PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
+        }
     }
 }

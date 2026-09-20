@@ -16,45 +16,66 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
     let state = voice_session::init_session(env, service);
     *IME_STATE.lock().unwrap() = Some(state);
 }
-
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_cleanupNative(
-    _env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
 ) {
-    *IME_STATE.lock().unwrap() = None;
+    let mut guard = IME_STATE.lock().unwrap();
+    if let Some(state) = guard.as_mut() {
+        voice_session::cleanup_session(env, state);
+    }
+    *guard = None;
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_startRecording(
     env: JNIEnv,
     _class: JClass,
-) {
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
     let mut guard = IME_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
-        // The IME keyboard is manual tap-to-stop; no silence auto-stop.
-        voice_session::start_recording(env, state, false);
+        return voice_session::start_recording(env, state, session_id, false) as jni::sys::jboolean;
     }
+    0
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_stopRecording(
     env: JNIEnv,
     _class: JClass,
-) {
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
     let mut guard = IME_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
-        voice_session::stop_recording(env, state);
+        return voice_session::stop_recording(env, state, session_id) as jni::sys::jboolean;
     }
+    0
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_cancelRecording(
     env: JNIEnv,
     _class: JClass,
-) {
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
     let mut guard = IME_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
-        voice_session::cancel_recording(env, state);
+        return voice_session::cancel_recording(env, state, session_id) as jni::sys::jboolean;
     }
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_retryRecording(
+    env: JNIEnv,
+    _class: JClass,
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
+    let mut guard = IME_STATE.lock().unwrap();
+    if let Some(state) = guard.as_mut() {
+        return voice_session::retry_recording(env, state, session_id) as jni::sys::jboolean;
+    }
+    0
 }

@@ -20,42 +20,66 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_initN
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_cleanupNative(
-    _env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
 ) {
-    *RECOG_STATE.lock().unwrap() = None;
+    let mut guard = RECOG_STATE.lock().unwrap();
+    if let Some(state) = guard.as_mut() {
+        voice_session::cleanup_session(env, state);
+    }
+    *guard = None;
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_startRecording(
     env: JNIEnv,
     _class: JClass,
+    session_id: jni::sys::jlong,
     auto_stop: jni::sys::jboolean,
-) {
+) -> jni::sys::jboolean {
     let mut guard = RECOG_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
-        voice_session::start_recording(env, state, auto_stop != 0);
+        return voice_session::start_recording(env, state, session_id, auto_stop != 0)
+            as jni::sys::jboolean;
     }
+    0
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_stopRecording(
     env: JNIEnv,
     _class: JClass,
-) {
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
     let mut guard = RECOG_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
-        voice_session::stop_recording(env, state);
+        return voice_session::stop_recording(env, state, session_id) as jni::sys::jboolean;
     }
+    0
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_cancelRecording(
     env: JNIEnv,
     _class: JClass,
-) {
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
     let mut guard = RECOG_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
-        crate::voice_session::cancel_recording(env, state);
+        return voice_session::cancel_recording(env, state, session_id) as jni::sys::jboolean;
     }
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_retryRecording(
+    env: JNIEnv,
+    _class: JClass,
+    session_id: jni::sys::jlong,
+) -> jni::sys::jboolean {
+    let mut guard = RECOG_STATE.lock().unwrap();
+    if let Some(state) = guard.as_mut() {
+        return voice_session::retry_recording(env, state, session_id) as jni::sys::jboolean;
+    }
+    0
 }

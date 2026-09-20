@@ -33,6 +33,11 @@ public class RecognizeActivity extends AppCompatActivity {
     private MicLevelView micLevel;
     private final AudioFocusPauser audioPauser = new AudioFocusPauser();
     private boolean pauseAudioActive = false;
+    private volatile long sessionId = 0;
+    private volatile boolean sessionTerminal = false;
+    private boolean retryAttempted = false;
+    private final DictationBuffer dictationBuffer = new DictationBuffer();
+    private volatile float sentencePauseSeconds = PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +55,7 @@ public class RecognizeActivity extends AppCompatActivity {
             // discard current recording
             if (isRecording) {
                 isRecording = false;
-                cancelRecording();   // new native method
+                cancelRecording(sessionId);
             }
             if (pauseAudioActive) {
                 audioPauser.abandon(this);
@@ -71,13 +76,19 @@ public class RecognizeActivity extends AppCompatActivity {
         }
 
         initNative(this);
+        sessionId = Math.max(1, android.os.SystemClock.elapsedRealtimeNanos());
+        dictationBuffer.reset(sessionId);
+        sentencePauseSeconds = readSentencePauseSeconds();
         isRecording = true;
         status.setText("Listening... (Tap to stop)");
         if (isPauseAudioEnabled()) {
             audioPauser.request(this);
             pauseAudioActive = true;
         }
-        startRecording(isAutoStopEnabled());
+        if (!startRecording(sessionId, isAutoStopEnabled())) {
+            isRecording = false;
+            status.setText("Could not start recording");
+        }
     }
 
     /** Stop capture and transcribe — used by both tap-to-stop and auto-stop. */
@@ -85,7 +96,7 @@ public class RecognizeActivity extends AppCompatActivity {
         if (!isRecording) return;
         isRecording = false;
         status.setText("Processing...");
-        stopRecording();
+        stopRecording(sessionId);
         if (pauseAudioActive) {
             audioPauser.abandon(this);
             pauseAudioActive = false;
@@ -93,8 +104,8 @@ public class RecognizeActivity extends AppCompatActivity {
     }
 
     // Called from Rust (monitor thread) when trailing silence is detected.
-    public void onAutoStop() {
-        runOnUiThread(this::finishRecording);
+    public void onAutoStop(long callbackSessionId) {
+        if (callbackSessionId == sessionId) runOnUiThread(this::finishRecording);
     }
 
     @Override
@@ -107,7 +118,7 @@ public class RecognizeActivity extends AppCompatActivity {
         // is a keyboard-only feature; a popup must not record unseen.)
         if (isRecording && !isFinishing()) {
             isRecording = false;
-            try { cancelRecording(); } catch (Throwable t) { /* ignore */ }
+            try { cancelRecording(sessionId); } catch (Throwable t) { /* ignore */ }
             if (pauseAudioActive) {
                 audioPauser.abandon(this);
                 pauseAudioActive = false;
@@ -148,6 +159,52 @@ public class RecognizeActivity extends AppCompatActivity {
         runOnUiThread(() -> micLevel.setLevel(level));
     }
 
+    public void onDictationStatus(long callbackSessionId, String text) {
+        if (callbackSessionId == sessionId) onStatusUpdate(text);
+    }
+
+    public void onDictationLevel(long callbackSessionId, float level) {
+        if (callbackSessionId == sessionId) onAudioLevel(level);
+    }
+
+    public synchronized boolean onTranscriptPiece(long callbackSessionId, long pieceSequence,
+                                                   String text, float pauseBeforeSeconds) {
+        return !sessionTerminal && dictationBuffer.accept(callbackSessionId, pieceSequence, text,
+                pauseBeforeSeconds, sentencePauseSeconds);
+    }
+
+    public void onDictationComplete(long callbackSessionId, int outcome,
+                                    String text, String error) {
+        runOnUiThread(() -> {
+            if (callbackSessionId != sessionId || sessionTerminal) return;
+            if (outcome == 1 && !retryAttempted) {
+                retryAttempted = true;
+                if (retryRecording(sessionId)) {
+                    status.setText("Retrying...");
+                    return;
+                }
+            }
+            sessionTerminal = true;
+            if (outcome != 0) {
+                dictationBuffer.discard();
+                if (outcome == 1) cancelRecording(sessionId);
+                if (outcome != 2) status.setText(error == null || error.isEmpty()
+                        ? "Dictation could not be completed" : "Error: " + error);
+                setResult(Activity.RESULT_CANCELED);
+                finish();
+                return;
+            }
+            String completed = dictationBuffer.finish(callbackSessionId);
+            if (!completed.isEmpty()) onTextTranscribed(completed);
+            else {
+                status.setText(error == null || error.isEmpty()
+                        ? "Nothing was recognized" : "Error: " + error);
+                setResult(Activity.RESULT_CANCELED);
+                finish();
+            }
+        });
+    }
+
     // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
@@ -178,10 +235,22 @@ public class RecognizeActivity extends AppCompatActivity {
         return new java.io.File(getFilesDir(), "auto_stop").exists();
     }
 
+    private float readSentencePauseSeconds() {
+        java.io.File file = new java.io.File(getFilesDir(), "pause_sentence_seconds");
+        if (!file.exists()) return PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.FileReader(file))) {
+            return SentencePauseSetting.parse(reader.readLine());
+        } catch (Throwable t) {
+            return PieceJoiner.DEFAULT_SENTENCE_PAUSE_SECONDS;
+        }
+    }
+
     // Native methods
     private native void initNative(RecognizeActivity activity);
     private native void cleanupNative();
-    private native void startRecording(boolean autoStop);
-    private native void stopRecording();
-    private native void cancelRecording();
+    private native boolean startRecording(long sessionId, boolean autoStop);
+    private native boolean stopRecording(long sessionId);
+    private native boolean cancelRecording(long sessionId);
+    private native boolean retryRecording(long sessionId);
 }
