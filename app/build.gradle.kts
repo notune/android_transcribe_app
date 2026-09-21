@@ -80,6 +80,8 @@ if (!isBundle) {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+
     // Material Components (Material 3 / Material You). Pulls in AppCompat.
     implementation("com.google.android.material:material:1.12.0")
 

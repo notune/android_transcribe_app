@@ -23,6 +23,8 @@
             android:text="Tap to speak"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:maxLines="1"
+            android:ellipsize="end"
             android:paddingStart="4dp"/>
 
         <ProgressBar
@@ -33,44 +35,94 @@
             android:visibility="gone"/>
     </LinearLayout>
 
-    <!-- Record area: pulsing mic-level glow behind a circular record button -->
+    <!-- Recovery actions share the fixed record area without covering the microphone. -->
     <FrameLayout
-        android:id="@+id/ime_record_container"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:clickable="true"
-        android:focusable="true">
+        android:layout_height="200dp">
 
-        <dev.notune.transcribe.MicLevelView
-            android:id="@+id/ime_mic_level"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:layout_gravity="center"/>
+        <!-- Record area: pulsing mic-level glow behind a circular record button -->
+        <FrameLayout
+            android:id="@+id/ime_record_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="true"
+            android:focusable="true">
 
-        <View
-            android:id="@+id/ime_record_circle"
-            android:layout_width="104dp"
-            android:layout_height="104dp"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_ime_record"/>
+            <dev.notune.transcribe.MicLevelView
+                android:id="@+id/ime_mic_level"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_gravity="center"/>
 
-        <ImageView
-            android:id="@+id/ime_mic_icon"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@drawable/ic_mic"
-            android:layout_gravity="center"
-            android:contentDescription="@string/section_ime"/>
+            <View
+                android:id="@+id/ime_record_circle"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_ime_record"/>
 
-        <TextView
-            android:id="@+id/ime_hint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Tap to Record"
-            android:layout_gravity="center_horizontal|bottom"
-            android:layout_marginBottom="12dp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textAppearance="?attr/textAppearanceBodySmall"/>
+            <ImageView
+                android:id="@+id/ime_mic_icon"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_mic"
+                android:layout_gravity="center"
+                android:contentDescription="@string/section_ime"/>
+
+            <TextView
+                android:id="@+id/ime_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tap to Record"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginBottom="12dp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textAppearance="?attr/textAppearanceBodySmall"/>
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/ime_recovery_panel"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_gravity="top"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            android:gravity="end"
+            android:clickable="true">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/ime_recovery_insert"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:text="@string/dictation_insert" />
+
+                <Button
+                    android:id="@+id/ime_recovery_copy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:text="@string/dictation_copy" />
+
+                <Button
+                    android:id="@+id/ime_recovery_discard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:text="@string/dictation_discard" />
+            </LinearLayout>
+        </LinearLayout>
     </FrameLayout>
 
     <!-- Bottom key row -->
