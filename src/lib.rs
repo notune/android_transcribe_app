@@ -3,6 +3,7 @@ pub mod audio;
 pub mod engine;
 pub mod ime;
 pub mod main_activity;
+pub mod microphone_speech;
 pub mod models;
 pub mod recog_service;
 pub mod recognize;

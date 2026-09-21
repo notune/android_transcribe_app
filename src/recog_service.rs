@@ -17,19 +17,10 @@ use jni::objects::{GlobalRef, JClass, JObject};
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
 
-use crate::engine;
+use crate::{engine, microphone_speech};
 use crate::voice_session::SendStream;
 
 // --- Endpointing / VAD tuning -------------------------------------------------
-// These are deliberately simple heuristics on the smoothed mic level. Mic gain
-// varies a lot between devices, so they may need tuning; finalisation always
-// transcribes whatever was captured, so a mis-tuned threshold only affects the
-// auto-stop *timing*, never whether text is returned.
-//
-/// Absolute smoothed level (0..1) that must be exceeded to count as speech.
-const MIN_SPEECH_LEVEL: f32 = 0.12;
-/// How far above the running noise floor a level must be to count as speech.
-const SPEECH_MARGIN: f32 = 0.08;
 /// Trailing silence after speech that triggers auto-finalisation.
 const SILENCE_MS: u64 = 1500;
 /// If no speech is ever detected, finalise after this long anyway.
@@ -50,7 +41,7 @@ const ERROR_NO_MATCH: i32 = 7;
 struct Endpoint {
     audio_buffer: Mutex<Vec<f32>>,
     last_voice: Mutex<Instant>,
-    noise_floor: Mutex<f32>,
+    detector: Mutex<microphone_speech::RoomSpeechDetector>,
     last_level_sent: Mutex<Instant>,
     speech_started: AtomicBool,
     finalized: AtomicBool,
@@ -124,7 +115,7 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService
 /// silence-based endpoint monitor.
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService_startListening(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     service: JObject,
 ) {
@@ -150,10 +141,13 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_VoiceRecognitionService
     }
 
     let now = Instant::now();
+    let ratio = microphone_speech::read_ratio(
+        crate::assets::files_dir(&mut env, &service).ok().as_deref(),
+    );
     let shared = Arc::new(Endpoint {
         audio_buffer: Mutex::new(Vec::new()),
         last_voice: Mutex::new(now),
-        noise_floor: Mutex::new(0.0),
+        detector: Mutex::new(microphone_speech::RoomSpeechDetector::new(ratio)),
         last_level_sent: Mutex::new(now),
         speech_started: AtomicBool::new(false),
         finalized: AtomicBool::new(false),
@@ -275,8 +269,7 @@ fn audio_callback(shared: &Arc<Endpoint>, data: &[f32]) {
     let rms = (sum / (data.len().max(1) as f32)).sqrt();
     let level = (rms * 6.0).clamp(0.0, 1.0);
 
-    let floor = *shared.noise_floor.lock().unwrap();
-    let is_speech = level > MIN_SPEECH_LEVEL && level > floor + SPEECH_MARGIN;
+    let is_speech = shared.detector.lock().unwrap().push(data);
 
     if is_speech {
         *shared.last_voice.lock().unwrap() = Instant::now();
@@ -290,10 +283,6 @@ fn audio_callback(shared: &Arc<Endpoint>, data: &[f32]) {
                 call_void(&mut env, shared.target.as_obj(), "onBeginningOfSpeech");
             }
         }
-    } else {
-        // Slowly adapt the noise floor while no speech is present.
-        let mut nf = shared.noise_floor.lock().unwrap();
-        *nf = *nf * 0.95 + level * 0.05;
     }
 
     // Throttled mic-level updates for the keyboard's waveform UI.

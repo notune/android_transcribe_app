@@ -577,6 +577,37 @@
                             android:layout_height="wrap_content"/>
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="16dp">
+
+                        <TextView
+                            android:id="@+id/text_speech_threshold_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/setting_speech_threshold_value"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"/>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/setting_speech_threshold_desc"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_marginTop="2dp"/>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/slider_speech_threshold"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="1.5"
+                            android:valueTo="5.0"
+                            android:stepSize="0.5"
+                            android:layout_marginTop="4dp"/>
+                    </LinearLayout>
+
                     <!-- Subtitle line count -->
                     <LinearLayout
                         android:layout_width="match_parent"

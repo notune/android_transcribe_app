@@ -38,6 +38,9 @@
     <string name="setting_auto_stop">Auto-stop after silence</string>
     <string name="setting_auto_stop_desc">End the voice input popup automatically ~2 seconds after you stop speaking</string>
 
+    <string name="setting_speech_threshold_value">Speech threshold: %1$s× background</string>
+    <string name="setting_speech_threshold_desc">Lower detects quieter speech; higher ignores more background noise. 3.0× is the default.</string>
+
     <string name="setting_subtitle_lines">Subtitle length</string>
     <string name="setting_subtitle_lines_desc">How many lines the live subtitles show; older text scrolls away</string>
     <string name="subtitle_lines_2">2 lines</string>

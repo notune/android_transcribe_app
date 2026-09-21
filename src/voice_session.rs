@@ -6,13 +6,9 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use jni::objects::{GlobalRef, JObject};
 use jni::JNIEnv;
 
-use crate::engine;
+use crate::{engine, microphone_speech};
 
-// --- Optional auto-stop endpointing (same level heuristics as recog_service) --
-/// Absolute smoothed level (0..1) that must be exceeded to count as speech.
-const MIN_SPEECH_LEVEL: f32 = 0.12;
-/// How far above the running noise floor a level must be to count as speech.
-const SPEECH_MARGIN: f32 = 0.08;
+// --- Optional auto-stop endpointing -------------------------------------------
 /// Trailing silence after speech that triggers auto-stop.
 const AUTO_STOP_SILENCE_MS: u64 = 2000;
 /// If no speech is ever detected, auto-stop after this long.
@@ -26,7 +22,7 @@ unsafe impl Sync for SendStream {}
 /// auto-stop monitor thread.
 struct Endpointing {
     last_voice: Mutex<Instant>,
-    noise_floor: Mutex<f32>,
+    detector: Mutex<microphone_speech::RoomSpeechDetector>,
     speech_started: AtomicBool,
 }
 
@@ -39,6 +35,7 @@ pub struct VoiceSessionState {
     /// True while the current recording runs; flipped off on stop/cancel so
     /// the auto-stop monitor (if any) exits.
     pub session_active: Arc<AtomicBool>,
+    pub files_dir: Option<std::path::PathBuf>,
 }
 
 fn notify_status(env: &mut JNIEnv, obj: &JObject, msg: &str) {
@@ -67,7 +64,7 @@ fn notify_text(env: &mut JNIEnv, obj: &JObject, text: &str) {
     }
 }
 
-pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
+pub fn init_session(mut env: JNIEnv, target: JObject) -> VoiceSessionState {
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Info),
     );
@@ -83,6 +80,7 @@ pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
         target_ref: target_ref.clone(),
         last_level_sent: Arc::new(Mutex::new(std::time::Instant::now())),
         session_active: Arc::new(AtomicBool::new(false)),
+        files_dir: crate::assets::files_dir(&mut env, &target).ok(),
     };
 
     // Load engine in background
@@ -131,7 +129,9 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
     let endpoint = if auto_stop {
         Some(Arc::new(Endpointing {
             last_voice: Mutex::new(Instant::now()),
-            noise_floor: Mutex::new(0.0),
+            detector: Mutex::new(microphone_speech::RoomSpeechDetector::new(
+                microphone_speech::read_ratio(state.files_dir.as_deref()),
+            )),
             speech_started: AtomicBool::new(false),
         }))
     } else {
@@ -157,15 +157,10 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
             let level = (rms * 6.0).clamp(0.0, 1.0);
 
             if let Some(ep) = &endpoint_cb {
-                let floor = *ep.noise_floor.lock().unwrap();
-                let is_speech = level > MIN_SPEECH_LEVEL && level > floor + SPEECH_MARGIN;
+                let is_speech = ep.detector.lock().unwrap().push(data);
                 if is_speech {
                     *ep.last_voice.lock().unwrap() = Instant::now();
                     ep.speech_started.store(true, Ordering::SeqCst);
-                } else {
-                    // Slowly adapt the noise floor while no speech is present.
-                    let mut nf = ep.noise_floor.lock().unwrap();
-                    *nf = *nf * 0.95 + level * 0.05;
                 }
             }
 
