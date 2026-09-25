@@ -158,6 +158,8 @@ public class RecognizeActivity extends AppCompatActivity {
                 return;
             }
 
+            TranscriptionHistory.get(this).insert(text, TranscriptionHistory.SOURCE_POPUP);
+
             ArrayList<String> results = new ArrayList<>();
             results.add(text);
 

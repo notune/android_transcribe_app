@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colourful dark sample background for the bubble style preview. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <gradient
+                android:angle="315"
+                android:startColor="#FF1A1B2E"
+                android:centerColor="#FF102A43"
+                android:endColor="#FF2D1B36" />
+        </shape>
+    </item>
+    <item android:width="90dp" android:height="90dp" android:gravity="top|start"
+        android:left="12dp" android:top="8dp">
+        <shape android:shape="oval"><solid android:color="#FF1565C0" /></shape>
+    </item>
+    <item android:width="70dp" android:height="70dp" android:gravity="bottom|end"
+        android:right="20dp" android:bottom="6dp">
+        <shape android:shape="oval"><solid android:color="#FFE65100" /></shape>
+    </item>
+    <item android:height="14dp" android:gravity="center_vertical"
+        android:left="0dp" android:right="0dp">
+        <shape><solid android:color="#FF7E57C2" /></shape>
+    </item>
+</layer-list>

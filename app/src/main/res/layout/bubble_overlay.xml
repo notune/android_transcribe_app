@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flow bubble. The root fills the window (the touch target); the disc is the
+     visible part and can be smaller (XS size, shrink). BubbleStyler paints it. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubble_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:contentDescription="@string/bubble_idle">
+
+    <FrameLayout
+        android:id="@+id/bubble_disc"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no">
+
+        <ImageView
+            android:id="@+id/bubble_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_mic"
+            android:importantForAccessibility="no" />
+
+        <ProgressBar
+            android:id="@+id/bubble_progress"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+    </FrameLayout>
+</FrameLayout>

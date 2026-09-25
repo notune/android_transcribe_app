@@ -138,6 +138,7 @@ public class VoiceRecognitionService extends RecognitionService {
         mainHandler.post(() -> {
             Callback cb = mCallback;
             if (cb == null) return;
+            TranscriptionHistory.get(this).insert(text, TranscriptionHistory.SOURCE_SERVICE);
             ArrayList<String> hypotheses = new ArrayList<>();
             hypotheses.add(text);
             Bundle bundle = new Bundle();

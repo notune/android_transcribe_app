@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flow bubble colours. Kept here (never in Java). The Material style takes
+     its colours from the theme (Material You); the others use these. -->
+<resources>
+    <color name="bubble_icon">#FFFFFFFF</color>
+
+    <!-- Black & white: "dark" is used on the light theme, "light" on the dark one. -->
+    <color name="bubble_mono_dark_fill">#FF111111</color>
+    <color name="bubble_mono_dark_icon">#FFFFFFFF</color>
+    <color name="bubble_mono_dark_processing">#FF666666</color>
+    <color name="bubble_mono_light_fill">#FFF5F5F5</color>
+    <color name="bubble_mono_light_icon">#FF111111</color>
+    <color name="bubble_mono_light_processing">#FFB3B3B3</color>
+
+
+    <!-- Blur: tint over real blur, and the frosted fallback without blur. -->
+    <color name="bubble_blur_tint_light">#8CFFFFFF</color>
+    <color name="bubble_blur_tint_dark">#73000000</color>
+    <color name="bubble_frost_light">#D9F4F4F4</color>
+    <color name="bubble_frost_dark">#D9202020</color>
+    <color name="bubble_blur_edge_light">#26000000</color>
+    <color name="bubble_blur_edge_dark">#33FFFFFF</color>
+
+    <!-- Snooze target when no style colour applies. -->
+    <color name="bubble_snooze_target">#99303030</color>
+</resources>

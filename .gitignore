@@ -40,3 +40,6 @@ app/src/main/jniLibs/
 # macOS
 .DS_Store
 ._*
+
+# Release signing password (keep with release.keystore, never commit)
+release.keystore.password.txt

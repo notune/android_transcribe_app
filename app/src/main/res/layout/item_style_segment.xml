@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One option of a single-choice segmented button (MaterialButtonToggleGroup).
+     Long labels ("Black & white", translations) wrap to two lines. -->
+<com.google.android.material.button.MaterialButton xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.Material3.Button.OutlinedButton"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:singleLine="false"
+    android:maxLines="2"
+    android:ellipsize="none"
+    android:gravity="center"
+    android:minHeight="48dp"
+    android:paddingStart="2dp"
+    android:paddingEnd="2dp"
+    android:textAppearance="?attr/textAppearanceLabelMedium" />

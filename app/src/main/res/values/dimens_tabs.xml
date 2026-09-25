@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bottom padding of tab pages so content can scroll clear of the floating tab bar. -->
+    <dimen name="tab_bar_clearance">104dp</dimen>
+    <!-- Height of the floating tab bar. -->
+    <dimen name="tab_bar_height">64dp</dimen>
+</resources>

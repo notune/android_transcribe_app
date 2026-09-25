@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
@@ -15,6 +16,7 @@ import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -51,6 +53,27 @@ public class MainActivity extends AppCompatActivity {
     private Button benchButton;
     private TextView benchResultText;
 
+    // --- Tabs: Home, Style, History, Settings (floating tab bar) ---------------------
+    private static final String STATE_TAB = "tab";
+    private static final int[] TAB_PAGES = {
+            R.id.page_home, R.id.page_style, R.id.page_history, R.id.page_settings};
+    private static final int[] TAB_ICONS = {
+            R.drawable.ic_home, R.drawable.ic_palette, R.drawable.ic_history, R.drawable.ic_settings};
+    private static final int[] TAB_LABELS = {
+            R.string.tab_home, R.string.tab_style, R.string.history_title, R.string.section_settings};
+    /** Tab width at natural size, the gap on each side, and the pill's inner padding. */
+    private static final int TAB_ITEM_DP = 76;
+    private static final int TAB_ITEM_GAP_DP = 2;
+    private static final int TAB_BAR_PAD_DP = 6;
+    /** Screen margin on each side when the pill has to shrink. */
+    private static final int TAB_BAR_MARGIN_DP = 16;
+    /** Below this tab width, labels hide and only icons show. */
+    private static final int MIN_LABELLED_TAB_DP = 48;
+    private final View[] tabItems = new View[TAB_PAGES.length];
+    private int currentTab;
+    private StylePage stylePage;
+    private HistoryPage historyPage;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,6 +106,16 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_models).setOnClickListener(v ->
                 startActivity(new Intent(this, ModelsActivity.class)));
+
+        findViewById(R.id.btn_custom_words).setOnClickListener(v ->
+                startActivity(new Intent(this, CustomWordsActivity.class)));
+
+        setupBubbleSection();
+        setupBubbleUnloadRadio();
+        stylePage = new StylePage(this, findViewById(R.id.page_style));
+        historyPage = new HistoryPage(this, findViewById(R.id.page_history));
+        setupRetentionRadio();
+        setupTabs(savedInstanceState != null ? savedInstanceState.getInt(STATE_TAB, 0) : 0);
 
         benchButton = findViewById(R.id.btn_benchmark);
         benchResultText = findViewById(R.id.text_bench_result);
@@ -136,6 +169,8 @@ public class MainActivity extends AppCompatActivity {
             }
             if (newMode != ThemePrefs.getMode(this)) {
                 ThemePrefs.setMode(this, newMode);
+                // The Flow bubble follows this setting too.
+                InsertionAccessibilityService.notifyPrefsChanged();
             }
         });
 
@@ -146,11 +181,105 @@ public class MainActivity extends AppCompatActivity {
         initNative(this);
     }
 
+    /** Builds the floating tinted-blur tab bar and shows {@code initial}. */
+    private void setupTabs(int initial) {
+        BackdropBlurView bar = findViewById(R.id.tab_bar);
+        float density = getResources().getDisplayMetrics().density;
+        bar.setSource(findViewById(R.id.pages), 24 * density);
+        bar.setCornerRadius(32 * density);
+        int surface = themeColor(com.google.android.material.R.attr.colorSurfaceContainer);
+        // Tinted blur: the theme's surface colour over a real backdrop blur.
+        bar.setTint(androidx.core.graphics.ColorUtils.setAlphaComponent(surface, 0xB8),
+                androidx.core.graphics.ColorUtils.setAlphaComponent(surface, 0xF2));
+
+        // Natural size: fixed-width tabs. On a screen narrower than that, the
+        // pill takes the screen minus margins and the tabs share it evenly;
+        // labels shrink (autosize) and, only when a tab gets tiny, hide.
+        int naturalDp = TAB_PAGES.length * (TAB_ITEM_DP + 2 * TAB_ITEM_GAP_DP) + 2 * TAB_BAR_PAD_DP;
+        int availableDp = getResources().getConfiguration().screenWidthDp - 2 * TAB_BAR_MARGIN_DP;
+        boolean narrow = availableDp < naturalDp;
+        int itemDp = narrow
+                ? (availableDp - 2 * TAB_BAR_PAD_DP) / TAB_PAGES.length - 2 * TAB_ITEM_GAP_DP
+                : TAB_ITEM_DP;
+        if (narrow) {
+            android.widget.FrameLayout.LayoutParams lp =
+                    (android.widget.FrameLayout.LayoutParams) bar.getLayoutParams();
+            lp.width = Math.round(availableDp * density);
+            bar.setLayoutParams(lp);
+        }
+
+        android.view.ViewGroup items = findViewById(R.id.tab_items);
+        android.view.LayoutInflater inflater = getLayoutInflater();
+        for (int i = 0; i < TAB_PAGES.length; i++) {
+            View item = inflater.inflate(R.layout.item_tab, items, false);
+            ((ImageView) item.findViewById(R.id.tab_icon)).setImageResource(TAB_ICONS[i]);
+            TextView label = item.findViewById(R.id.tab_label);
+            label.setText(TAB_LABELS[i]);
+            if (itemDp < MIN_LABELLED_TAB_DP) label.setVisibility(View.GONE);
+            item.setContentDescription(getString(TAB_LABELS[i]));
+            android.view.ViewGroup.LayoutParams ilp = item.getLayoutParams();
+            ilp.width = Math.round(itemDp * density);
+            item.setLayoutParams(ilp);
+            final int index = i;
+            item.setOnClickListener(v -> selectTab(index));
+            items.addView(item);
+            tabItems[i] = item;
+        }
+        selectTab(initial);
+        hideTabBarWithKeyboard(bar);
+    }
+
+    /**
+     * Hides the tab bar while the on-screen keyboard is open, as navigation bars
+     * usually do, so it never sits between the keyboard and the Flow bubble.
+     */
+    private void hideTabBarWithKeyboard(View bar) {
+        View root = findViewById(android.R.id.content);
+        android.graphics.Rect visible = new android.graphics.Rect();
+        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            root.getWindowVisibleDisplayFrame(visible);
+            int screen = root.getRootView().getHeight();
+            boolean keyboard = screen - visible.bottom > screen * 0.15f;
+            bar.setVisibility(keyboard ? View.GONE : View.VISIBLE);
+        });
+    }
+
+    private void selectTab(int index) {
+        for (int i = 0; i < tabItems.length; i++) tabItems[i].setSelected(i == index);
+        showPage(index);
+    }
+
+    private void showPage(int index) {
+        currentTab = index;
+        for (int i = 0; i < TAB_PAGES.length; i++) {
+            findViewById(TAB_PAGES[i]).setVisibility(i == index ? View.VISIBLE : View.GONE);
+        }
+        if (TAB_PAGES[index] == R.id.page_style) stylePage.refresh();
+        if (TAB_PAGES[index] == R.id.page_history) historyPage.loadHistory();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // Keeps the tab across the recreate that an Appearance change triggers.
+        outState.putInt(STATE_TAB, currentTab);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (currentTab != 0) {
+            selectTab(0);
+            return;
+        }
+        super.onBackPressed();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         // Re-check on return from the keyboard chooser, settings, or a test run.
         updateVoiceInputStatus();
+        updateBubbleStatus();
     }
 
     /**
@@ -306,10 +435,148 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setupBubbleSection() {
+        findViewById(R.id.btn_bubble_mic).setOnClickListener(v -> checkAndRequestPermissions());
+        findViewById(R.id.btn_bubble_a11y).setOnClickListener(v -> showA11yConsent());
+        findViewById(R.id.btn_bubble_end_snooze).setOnClickListener(v -> {
+            BubblePrefs.setSnoozeUntil(this, 0);
+            InsertionAccessibilityService.notifyPrefsChanged();
+            updateBubbleStatus();
+        });
+
+        CompoundButton sw = findViewById(R.id.switch_bubble);
+        sw.setChecked(BubblePrefs.isEnabled(this));
+        sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            BubblePrefs.setEnabled(this, isChecked);
+            InsertionAccessibilityService.notifyPrefsChanged();
+        });
+
+        CompoundButton search = findViewById(R.id.switch_bubble_hide_search);
+        search.setChecked(BubblePrefs.isHideInSearch(this));
+        search.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            BubblePrefs.setHideInSearch(this, isChecked);
+            InsertionAccessibilityService.notifyPrefsChanged();
+        });
+
+        CompoundButton noKeyboard = findViewById(R.id.switch_bubble_no_keyboard);
+        noKeyboard.setChecked(BubblePrefs.isShowWithoutKeyboard(this));
+        noKeyboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            BubblePrefs.setShowWithoutKeyboard(this, isChecked);
+            InsertionAccessibilityService.notifyPrefsChanged();
+        });
+    }
+
+    /**
+     * Prominent disclosure before the user turns on the accessibility service.
+     * Consent is stored first; the bubble stays off until both consent and the
+     * running service are present.
+     */
+    private void showA11yConsent() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.a11y_consent_title)
+                .setMessage(R.string.a11y_consent_body)
+                .setPositiveButton(R.string.a11y_consent_accept, (d, w) -> {
+                    BubblePrefs.setA11yConsent(this, true);
+                    InsertionAccessibilityService.notifyPrefsChanged();
+                    if (!InsertionAccessibilityService.isRunning()) {
+                        InsertionAccessibilityService.openSettings(this);
+                    }
+                    updateBubbleStatus();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** Refreshes the setup steps and the snooze row of the Flow bubble card. */
+    private void updateBubbleStatus() {
+        boolean micGranted = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED;
+        setStep(R.id.img_bubble_mic, R.id.text_bubble_mic, R.id.btn_bubble_mic, micGranted,
+                getString(micGranted ? R.string.bubble_mic_ok : R.string.bubble_mic_needed));
+
+        boolean a11yActive = InsertionAccessibilityService.isRunning()
+                && BubblePrefs.hasA11yConsent(this);
+        setStep(R.id.img_bubble_a11y, R.id.text_bubble_a11y, R.id.btn_bubble_a11y, a11yActive,
+                getString(a11yActive ? R.string.bubble_a11y_active : R.string.bubble_a11y_inactive));
+
+        long until = BubblePrefs.getSnoozeUntil(this);
+        View row = findViewById(R.id.row_bubble_snooze);
+        if (until > System.currentTimeMillis()) {
+            String time = android.text.format.DateFormat.getTimeFormat(this)
+                    .format(new java.util.Date(until));
+            ((TextView) findViewById(R.id.text_bubble_snooze))
+                    .setText(getString(R.string.bubble_snoozed_until, time));
+            row.setVisibility(View.VISIBLE);
+        } else {
+            row.setVisibility(View.GONE);
+        }
+    }
+
+    private void setStep(int iconId, int textId, int buttonId, boolean ok, String message) {
+        ImageView icon = findViewById(iconId);
+        icon.setImageResource(ok ? R.drawable.ic_check_circle : R.drawable.ic_error);
+        int tint = ok
+                ? ContextCompat.getColor(this, R.color.status_ok)
+                : themeColor(com.google.android.material.R.attr.colorError);
+        ImageViewCompat.setImageTintList(icon, ColorStateList.valueOf(tint));
+        ((TextView) findViewById(textId)).setText(message);
+        findViewById(buttonId).setVisibility(ok ? View.GONE : View.VISIBLE);
+    }
+
+    private void setupRetentionRadio() {
+        RadioGroup rg = findViewById(R.id.rg_retention);
+        int retention = HistoryPrefs.getRetention(this);
+        switch (retention) {
+            case 0: rg.check(R.id.rb_ret_off); break;
+            case 10: rg.check(R.id.rb_ret_10); break;
+            case 25: rg.check(R.id.rb_ret_25); break;
+            case 50: rg.check(R.id.rb_ret_50); break;
+            case 100: rg.check(R.id.rb_ret_100); break;
+            default: rg.check(R.id.rb_ret_unlimited); break;
+        }
+        rg.setOnCheckedChangeListener((group, checkedId) -> {
+            int val;
+            if (checkedId == R.id.rb_ret_off) val = 0;
+            else if (checkedId == R.id.rb_ret_10) val = 10;
+            else if (checkedId == R.id.rb_ret_25) val = 25;
+            else if (checkedId == R.id.rb_ret_50) val = 50;
+            else if (checkedId == R.id.rb_ret_100) val = 100;
+            else val = -1;
+            HistoryPrefs.setRetention(this, val);
+            TranscriptionHistory.get(this).prune();
+            historyPage.loadHistory();
+        });
+    }
+
+    private void setupBubbleUnloadRadio() {
+        RadioGroup rg = findViewById(R.id.rg_bubble_unload);
+        switch (BubblePrefs.getUnloadMinutes(this)) {
+            case 0: rg.check(R.id.rb_unload_never); break;
+            case 5: rg.check(R.id.rb_unload_5); break;
+            case 30: rg.check(R.id.rb_unload_30); break;
+            default: rg.check(R.id.rb_unload_15); break;
+        }
+        rg.setOnCheckedChangeListener((group, checkedId) -> {
+            int val;
+            if (checkedId == R.id.rb_unload_never) val = 0;
+            else if (checkedId == R.id.rb_unload_5) val = 5;
+            else if (checkedId == R.id.rb_unload_30) val = 30;
+            else val = 15;
+            BubblePrefs.setUnloadMinutes(this, val);
+            notifyBubbleRefresh();
+        });
+    }
+
+    /** Tells a visible bubble to re-read its settings (size / unload interval). */
+    private void notifyBubbleRefresh() {
+        InsertionAccessibilityService.notifyPrefsChanged();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == PERM_REQ_CODE) {
             updateVoiceInputStatus();
+            updateBubbleStatus();
         }
     }
 

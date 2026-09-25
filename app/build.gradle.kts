@@ -5,6 +5,11 @@ plugins {
     id("com.android.application")
 }
 
+// ABIs to build. Release ships arm64-v8a only; pass e.g.
+// -PtargetAbis=arm64-v8a,x86_64 to also run on an x86_64 emulator.
+val targetAbis: List<String> = (project.findProperty("targetAbis")?.toString() ?: "arm64-v8a")
+    .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
 android {
     namespace = "dev.notune.transcribe"
     compileSdk = 35
@@ -16,7 +21,7 @@ android {
         versionCode = 19
         versionName = "0.1.18"
         ndk {
-            abiFilters += "arm64-v8a"
+            abiFilters += targetAbis
         }
     }
 
@@ -42,6 +47,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
     }
 
     // Source sets — the Rust-built .so files land in jniLibs via cargo-ndk
@@ -92,6 +103,10 @@ dependencies {
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")
     }
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.5.0")
 }
 
 // ---------------------------------------------------------------------------
@@ -126,23 +141,37 @@ val cargoNdkBuild by tasks.registering(Exec::class) {
     val jniLibsDir = project.file("src/main/jniLibs")
 
     commandLine(
-        "cargo", "ndk",
-        "-t", "arm64-v8a",
-        "-o", jniLibsDir.absolutePath,
-        "build", "--release"
+        listOf("cargo", "ndk") +
+            targetAbis.flatMap { listOf("-t", it) } +
+            listOf("-o", jniLibsDir.absolutePath, "build", "--release")
     )
 
     // Copy libc++_shared.so from NDK (needed because Rust links against it dynamically)
     doLast {
         val ndkPath = environment["ANDROID_NDK_HOME"] as String
-        val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so")
-        if (libcpp.exists()) {
-            val destDir = File(jniLibsDir, "arm64-v8a")
-            destDir.mkdirs()
-            libcpp.copyTo(File(destDir, "libc++_shared.so"), overwrite = true)
-            println("Copied libc++_shared.so from NDK")
-        } else {
-            throw GradleException("libc++_shared.so not found in NDK at: ${libcpp.absolutePath}")
+        val os = System.getProperty("os.name").lowercase()
+        val hostTag = when {
+            os.contains("windows") -> "windows-x86_64"
+            os.contains("mac") -> "darwin-x86_64"
+            else -> "linux-x86_64"
+        }
+        val abiTriples = mapOf(
+            "arm64-v8a" to "aarch64-linux-android",
+            "armeabi-v7a" to "arm-linux-androideabi",
+            "x86_64" to "x86_64-linux-android",
+            "x86" to "i686-linux-android",
+        )
+        targetAbis.forEach { abi ->
+            val triple = abiTriples[abi] ?: throw GradleException("Unsupported ABI: $abi")
+            val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/$hostTag/sysroot/usr/lib/$triple/libc++_shared.so")
+            if (libcpp.exists()) {
+                val destDir = File(jniLibsDir, abi)
+                destDir.mkdirs()
+                libcpp.copyTo(File(destDir, "libc++_shared.so"), overwrite = true)
+                println("Copied libc++_shared.so ($abi) from NDK")
+            } else {
+                throw GradleException("libc++_shared.so not found in NDK at: ${libcpp.absolutePath}")
+            }
         }
     }
 

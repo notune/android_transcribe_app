@@ -68,32 +68,39 @@ fn notify_text(env: &mut JNIEnv, obj: &JObject, text: &str) {
 }
 
 pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
-    android_logger::init_once(
-        android_logger::Config::default().with_max_level(log::LevelFilter::Info),
-    );
-
-    let vm = env.get_java_vm().expect("Failed to get JavaVM");
-    let vm_arc = Arc::new(vm);
-    let target_ref = env.new_global_ref(&target).expect("Failed to ref target");
-
-    let state = VoiceSessionState {
-        stream: None,
-        audio_buffer: Arc::new(Mutex::new(Vec::new())),
-        jvm: vm_arc.clone(),
-        target_ref: target_ref.clone(),
-        last_level_sent: Arc::new(Mutex::new(std::time::Instant::now())),
-        session_active: Arc::new(AtomicBool::new(false)),
-    };
+    let state = init_session_lazy(env, target);
 
     // Load engine in background
-    let vm_clone = vm_arc.clone();
-    let target_ref_clone = target_ref.clone();
+    let vm_clone = state.jvm.clone();
+    let target_ref_clone = state.target_ref.clone();
 
     std::thread::spawn(move || {
         let _ = engine::ensure_loaded_from_thread(&vm_clone, &target_ref_clone);
     });
 
     state
+}
+
+/// Like [`init_session`], but leaves the model unloaded: the caller decides
+/// when to load (the Flow bubble warms up only when a text field is focused).
+/// A recording can still start right away — [`stop_recording`] waits for or
+/// triggers the load before it transcribes.
+pub fn init_session_lazy(env: JNIEnv, target: JObject) -> VoiceSessionState {
+    android_logger::init_once(
+        android_logger::Config::default().with_max_level(log::LevelFilter::Info),
+    );
+
+    let vm = env.get_java_vm().expect("Failed to get JavaVM");
+    let target_ref = env.new_global_ref(&target).expect("Failed to ref target");
+
+    VoiceSessionState {
+        stream: None,
+        audio_buffer: Arc::new(Mutex::new(Vec::new())),
+        jvm: Arc::new(vm),
+        target_ref,
+        last_level_sent: Arc::new(Mutex::new(std::time::Instant::now())),
+        session_active: Arc::new(AtomicBool::new(false)),
+    }
 }
 
 /// Begin microphone capture. With `auto_stop` set, a monitor thread watches

@@ -79,6 +79,34 @@
     <string name="models_threads_desc">Threads utilisés pour la transcription. « Automatique » choisit une valeur adaptée au processeur de cet appareil. Si la transcription est lente, essayez d\'autres valeurs ; plus de threads n\'est pas toujours plus rapide.</string>
     <string name="models_threads_auto">Automatique</string>
 
+    <!-- Custom words (Whisper recognition bias) -->
+    <string name="btn_custom_words">Mots personnalisés</string>
+    <string name="custom_words_title">Mots personnalisés</string>
+    <string name="custom_words_desc">Ajoutez des noms, des termes techniques ou des mots inhabituels pour améliorer la reconnaissance. Les modèles Whisper les reçoivent comme indice ; les autres modèles les ignorent.</string>
+    <string name="custom_words_active_model">Modèle actif : %1$s</string>
+    <string name="custom_words_builtin">intégré</string>
+    <string name="custom_words_not_whisper">Le modèle actif n\'est pas un modèle Whisper ; il peut donc ignorer les mots personnalisés.</string>
+    <string name="custom_words_help_title">Comment ça marche</string>
+    <string name="custom_words_help_body">Les mots personnalisés sont transmis aux modèles Whisper comme invite initiale, orientant la reconnaissance vers vos noms et termes. Ils n\'ont aucun effet sur les autres modèles.\n\nConfidentialité : la liste est stockée uniquement dans l\'espace privé de cette application et sert seulement sur cet appareil à guider le modèle hors ligne. Elle n\'est jamais envoyée ni partagée.</string>
+    <string name="custom_words_empty">Pas encore de mots personnalisés</string>
+    <string name="custom_words_add">Ajouter un mot</string>
+    <string name="custom_words_add_hint">Mot ou expression</string>
+    <string name="custom_words_edit">Modifier le mot</string>
+    <string name="custom_words_delete">Supprimer le mot</string>
+    <string name="custom_words_import">Importer une liste</string>
+    <string name="custom_words_import_hint">Un mot par ligne</string>
+    <string name="custom_words_saved">Enregistré</string>
+    <string name="custom_words_duplicate">Déjà dans la liste</string>
+    <string name="custom_words_empty_input">Saisissez un mot</string>
+    <string name="custom_words_too_long">Trop long (max %1$d caractères)</string>
+    <string name="custom_words_limit">Liste pleine (max %1$d mots)</string>
+    <string name="custom_words_import_done">%1$d mots importés</string>
+    <string name="custom_words_import_none">Rien de nouveau à importer</string>
+    <plurals name="custom_words_count">
+        <item quantity="one">%1$d mot</item>
+        <item quantity="other">%1$d mots</item>
+    </plurals>
+
     <string name="section_benchmark">Test de performance</string>
     <string name="desc_benchmark">Mesure la vitesse de transcription du modèle actif sur cet appareil à l\'aide d\'un enregistrement de test en anglais intégré (11 s).</string>
     <string name="btn_benchmark">Lancer le test</string>
@@ -105,4 +133,94 @@
 
     <string name="voice_help_title">Configuration de la saisie vocale</string>
     <string name="voice_help_body">Comment l\'utiliser\n• Ouvrez n\'importe quelle app et touchez le micro d\'un clavier/d\'une app pris en charge. Un petit panneau apparaît, vous parlez, touchez pour arrêter, et le texte est inséré. (Activez « Arrêt automatique après un silence » dans les paramètres pour qu\'il s\'arrête tout seul.)\n\nQuels claviers ouvrent le panneau vocal\n• Microsoft SwiftKey (non open source) et la recherche vocale des sites web ouvrent le panneau directement.\n• AnySoftKeyboard est la voie open source vers le panneau : sa touche micro l\'ouvre tant qu\'aucun clavier vocal n\'est activé sur votre système.\n\nAutres claviers open source\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard et Unexpected Keyboard n\'ouvrent pas le panneau : leur touche micro bascule vers le clavier « Offline Voice Input ». Activez-le une fois (voir « Alternative : clavier vocal »), parlez, puis revenez avec sa touche de changement de clavier. FUTO Keyboard embarque sa propre saisie vocale.\n• Gboard n\'utilise que la saisie vocale de Google et ne peut pas du tout utiliser cette app.\n\nSi la saisie vocale de SwiftKey s\'ouvre à la place\n• Paramètres → Saisie riche → désactivez « Saisie vocale multimodale ».\n• Touchez ensuite à nouveau le micro et choisissez « Offline Voice Input ».\n\nSi Android demande quelle app utiliser\n• Choisissez « Offline Voice Input » et touchez « Toujours ».\n\nSi une autre app s\'ouvre toujours\n• Ouvrez Paramètres → Applications → cette app → « Ouvrir par défaut » → Effacer les valeurs par défaut, puis réessayez.</string>
+
+    <string name="section_bubble">Bulle Flow</string>
+    <string name="desc_bubble">Une bulle micro apparaît au-dessus du clavier quand vous touchez un champ de texte. Touchez pour dicter, ou maintenez pour parler. Le texte va directement dans le champ et dans l\'historique.</string>
+    <string name="bubble_enable">Afficher la bulle dans les champs de texte</string>
+    <string name="bubble_need_mic">Autorisation du microphone requise.</string>
+    <string name="bubble_idle">Bulle micro – touchez pour enregistrer, maintenez pour parler</string>
+    <string name="bubble_recording">Enregistrement – touchez pour arrêter</string>
+    <string name="bubble_processing">Traitement…</string>
+    <string name="bubble_copied">Copié dans le presse-papiers</string>
+    <string name="bubble_inserted">Inséré dans le champ de texte</string>
+    <string name="bubble_loading">Chargement du modèle…</string>
+    <string name="bubble_load_failed">Impossible de charger le modèle. Veuillez réessayer.</string>
+    <string name="bubble_unload_title">Décharger si inactive</string>
+    <string name="bubble_unload_desc">Pour économiser la mémoire et la batterie, décharge le modèle quand la bulle est restée inactive un moment. La bulle reste visible et utilisable ; le prochain enregistrement peut prendre un instant pour recharger le modèle.</string>
+    <string name="bubble_unload_never">Jamais</string>
+    <string name="bubble_unload_5">5 min</string>
+    <string name="bubble_unload_15">15 min</string>
+    <string name="bubble_unload_30">30 min</string>
+    <string name="style_title">Style de la bulle</string>
+    <string name="btn_bubble_style">Style de la bulle</string>
+    <string name="style_preview_light">Clair</string>
+    <string name="style_preview_dark">Sombre</string>
+    <string name="style_material">Material</string>
+    <string name="style_mono">Noir et blanc</string>
+    <string name="style_blur">Flou</string>
+    <string name="style_tinted_blur">Flou teinté</string>
+    <string name="style_label">Style</string>
+    <string name="style_theme_note">Clair ou sombre suit le réglage Apparence de l\'application.</string>
+    <string name="style_blur_unsupported">Le flou n\'est pas pris en charge sur cet appareil ; un aspect dépoli est utilisé.</string>
+    <string name="style_size">Taille</string>
+    <string name="style_opacity">Opacité au repos</string>
+    <string name="style_shrink">Réduire au repos</string>
+    <string name="style_shrink_desc">Après 5 secondes sans utilisation, la bulle rétrécit.</string>
+    <string name="style_shrink_dot">Réduire en point</string>
+    <string name="style_shrink_dot_desc">Devient un petit point au bord de l\'écran.</string>
+    <string name="bubble_cancel">Annuler l\'enregistrement</string>
+    <string name="bubble_snooze_target">Déposez ici pour masquer la bulle pendant 10 minutes</string>
+    <string name="bubble_snoozed">Bulle masquée pendant 10 minutes. Secouez le téléphone pour la faire revenir.</string>
+    <string name="bubble_limit_warning">Il reste une minute d\'enregistrement</string>
+    <string name="bubble_hide_search">Masquer dans les champs de recherche</string>
+    <string name="bubble_hide_search_desc">Ne pas afficher la bulle dans les barres de recherche.</string>
+    <string name="bubble_no_keyboard">Afficher sans clavier à l\'écran</string>
+    <string name="bubble_no_keyboard_desc">Afficher aussi la bulle quand vous tapez avec un clavier physique.</string>
+    <string name="bubble_snoozed_until">Masquée jusqu\'à %1$s</string>
+    <string name="bubble_end_snooze">Réafficher maintenant</string>
+    <string name="bubble_mic_needed">Autorisation du micro requise</string>
+    <string name="bubble_mic_ok">Micro autorisé</string>
+    <string name="bubble_grant">Autoriser</string>
+    <string name="bubble_a11y_active">Service d\'accessibilité actif</string>
+    <string name="bubble_a11y_inactive">Service d\'accessibilité inactif</string>
+    <string name="bubble_a11y_turn_on">Activer</string>
+
+    <string name="a11y_consent_title">Autorisation d\'accessibilité</string>
+    <string name="a11y_consent_body">La bulle Flow utilise un service d\'accessibilité Android.\n\nCe qu\'il fait :\n• Détecte quand un champ de texte a le focus et que le clavier est ouvert, pour afficher la bulle\n• Lit le type de champ (par exemple mot de passe ou nombre) pour ignorer les champs sensibles\n• Insère le texte transcrit au curseur du champ actif. Pour cela, il lit le texte actuel de ce champ à ce moment-là\n\nCe qu\'il ne fait PAS :\n• Enregistrer ou envoyer le texte d\'un champ ; rien ne quitte votre appareil\n• Toucher aux champs de mot de passe ou autres champs sensibles\n• Modifier votre presse-papiers, sauf si l\'insertion échoue (le texte est alors copié pour que vous le colliez)\n\nVous allez être redirigé vers les paramètres d\'accessibilité pour activer le service.</string>
+    <string name="a11y_consent_accept">Je comprends, continuer</string>
+    <string name="a11y_service_description">Affiche la bulle micro quand un champ de texte a le focus et insère la parole transcrite au curseur. Le texte du champ n\'est lu que pour insérer ; il n\'est jamais enregistré ni envoyé.</string>
+
+    <string name="section_history">Historique de transcription</string>
+    <string name="history_title">Historique</string>
+    <string name="history_empty">Aucune transcription pour l\'instant</string>
+    <string name="history_clear_all">Tout effacer</string>
+    <string name="history_clear_title">Effacer l\'historique ?</string>
+    <string name="history_clear_body">Toutes les transcriptions enregistrées seront définitivement supprimées.</string>
+    <string name="history_clear_confirm">Tout supprimer</string>
+    <string name="history_copied">Copié</string>
+    <string name="history_copy">Copier</string>
+    <string name="history_delete">Supprimer</string>
+    <string name="history_meta">%1$s · %2$s</string>
+    <string name="history_source_bubble">Bulle</string>
+    <string name="history_source_popup">Panneau vocal</string>
+    <string name="history_source_ime">Clavier vocal</string>
+    <string name="history_source_file">Fichier audio</string>
+    <string name="btn_history">Voir l\'historique</string>
+
+    <string name="setting_history_retention">Rétention de l\'historique</string>
+    <string name="setting_history_retention_desc">Nombre de transcriptions à conserver. Les entrées plus anciennes sont supprimées automatiquement.</string>
+    <string name="retention_off">Désactivé</string>
+    <string name="retention_10">10</string>
+    <string name="retention_25">25</string>
+    <string name="retention_50">50</string>
+    <string name="retention_100">100</string>
+    <string name="retention_unlimited">Illimité</string>
+
+    <!-- Floating tab bar -->
+    <string name="tab_home">Accueil</string>
+    <string name="tab_style">Style</string>
+    <string name="section_recording">Enregistrement</string>
+    <string name="style_test_title">Essayer la bulle</string>
+    <string name="style_test_desc">Touchez le champ ci-dessous. La bulle apparaît au-dessus du clavier avec votre style actuel.</string>
+    <string name="style_test_hint">Dictez ici pour tester</string>
 </resources>

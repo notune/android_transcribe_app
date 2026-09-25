@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Apps where the Flow bubble never shows (banking and finance). A starter
+     list: verify each package name on Google Play before release. -->
+<resources>
+    <string-array name="bank_packages" translatable="false">
+        <!-- Brazil -->
+        <item>com.nu.production</item>
+        <item>com.itau</item>
+        <item>com.bradesco</item>
+        <item>br.com.bb.android</item>
+        <item>br.com.gabba.Caixa</item>
+        <item>com.santander.app</item>
+        <item>br.com.intermedium</item>
+        <item>com.picpay</item>
+        <item>com.mercadopago.wallet</item>
+        <item>com.c6bank.app</item>
+        <!-- Global -->
+        <item>com.paypal.android.p2pmobile</item>
+        <item>com.revolut.revolut</item>
+        <item>com.transferwise.android</item>
+        <item>de.number26.android</item>
+        <item>com.chase.sig.android</item>
+        <item>com.wf.wellsfargomobile</item>
+        <item>com.infonow.bofa</item>
+    </string-array>
+</resources>
