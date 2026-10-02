@@ -111,4 +111,25 @@
 
     <string name="voice_help_title">Voice input setup</string>
     <string name="voice_help_body">How to use it\n• Open any app and tap the microphone on a supported keyboard/app. A small panel slides up, you speak, tap to stop, and the text is inserted. (Enable “Auto-stop after silence” in the settings to have it stop by itself.)\n\nWhich keyboards open the voice panel\n• Microsoft SwiftKey (not open source) and website voice search open the panel directly.\n• AnySoftKeyboard is the open-source way to get the panel: its mic key opens it as long as no voice keyboard is enabled on your system.\n\nOther open-source keyboards\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard and Unexpected Keyboard don\'t open the panel: their mic key switches to the “Offline Voice Input” keyboard instead. Enable it once (see “Alternative: Voice keyboard”), speak there, and use its keyboard-switch key to go back. FUTO Keyboard ships its own voice input.\n• Gboard only uses Google\'s own voice typing and can\'t use this app at all.\n\nIf SwiftKey\'s own voice typing opens instead\n• Settings → Rich input → turn off “Multi-modal voice typing”.\n• Then tap the mic again and pick “Offline Voice Input”.\n\nIf Android asks which app to use\n• Choose “Offline Voice Input” and tap “Always”.\n\nIf another app always opens instead\n• Open Settings → Apps → that app → “Open by default” → Clear defaults, then try again.</string>
+    <string name="floating_mic_title">Floating mic button</string>
+    <string name="floating_mic_desc">Show a mic bubble over any app. Tap it, speak, tap again: your words are typed into the focused text field.</string>
+    <string name="floating_mic_switch">Show floating mic button</string>
+    <string name="floating_mic_cd">Dictate</string>
+    <string name="floating_mic_notif">The mic button is shown over your apps</string>
+    <string name="floating_mic_hide">Hide</string>
+    <string name="floating_mic_copied">No text field focused: the text was copied to the clipboard</string>
+    <string name="floating_mic_need_overlay">Allow “Display over other apps” for this app, then switch the button on again.</string>
+    <string name="floating_mic_need_mic">Grant the microphone permission first.</string>
+    <string name="floating_mic_a11y">Enable text insertion</string>
+    <string name="floating_mic_a11y_hint">Optional but recommended: enable “Offline Voice Input” under Accessibility so the text is typed directly into the field. Without it, the text is only copied to the clipboard.</string>
+    <string name="a11y_dictation_description">Types the text you dictate with the floating mic button into the focused field. It does not read or store anything on screen.</string>
+    <string name="floating_mic_size">Button size</string>
+    <string name="floating_mic_opacity">Opacity</string>
+    <string name="floating_mic_side">Position</string>
+    <string name="floating_mic_side_free">Free (drag it anywhere)</string>
+    <string name="floating_mic_side_left">Stuck to the left edge</string>
+    <string name="floating_mic_side_right">Stuck to the right edge</string>
+    <string name="floating_mic_layout_hint">Drag the button to move it. Its position is remembered separately for each screen layout (folded or unfolded, portrait or landscape), so it goes back to the right place when you fold, unfold or rotate your phone.</string>
+    <string name="floating_mic_reset">Reset positions</string>
+    <string name="floating_mic_reset_done">Button positions reset</string>
 </resources>

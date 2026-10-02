@@ -105,4 +105,25 @@
 
     <string name="voice_help_title">Configuration de la saisie vocale</string>
     <string name="voice_help_body">Comment l\'utiliser\n• Ouvrez n\'importe quelle app et touchez le micro d\'un clavier/d\'une app pris en charge. Un petit panneau apparaît, vous parlez, touchez pour arrêter, et le texte est inséré. (Activez « Arrêt automatique après un silence » dans les paramètres pour qu\'il s\'arrête tout seul.)\n\nQuels claviers ouvrent le panneau vocal\n• Microsoft SwiftKey (non open source) et la recherche vocale des sites web ouvrent le panneau directement.\n• AnySoftKeyboard est la voie open source vers le panneau : sa touche micro l\'ouvre tant qu\'aucun clavier vocal n\'est activé sur votre système.\n\nAutres claviers open source\n• HeliBoard, FlorisBoard, OpenBoard, Fossify Keyboard et Unexpected Keyboard n\'ouvrent pas le panneau : leur touche micro bascule vers le clavier « Offline Voice Input ». Activez-le une fois (voir « Alternative : clavier vocal »), parlez, puis revenez avec sa touche de changement de clavier. FUTO Keyboard embarque sa propre saisie vocale.\n• Gboard n\'utilise que la saisie vocale de Google et ne peut pas du tout utiliser cette app.\n\nSi la saisie vocale de SwiftKey s\'ouvre à la place\n• Paramètres → Saisie riche → désactivez « Saisie vocale multimodale ».\n• Touchez ensuite à nouveau le micro et choisissez « Offline Voice Input ».\n\nSi Android demande quelle app utiliser\n• Choisissez « Offline Voice Input » et touchez « Toujours ».\n\nSi une autre app s\'ouvre toujours\n• Ouvrez Paramètres → Applications → cette app → « Ouvrir par défaut » → Effacer les valeurs par défaut, puis réessayez.</string>
+    <string name="floating_mic_title">Bouton micro flottant</string>
+    <string name="floating_mic_desc">Affiche une bulle micro par-dessus toutes les apps. Touchez-la, parlez, touchez à nouveau : vos mots sont saisis dans le champ de texte actif.</string>
+    <string name="floating_mic_switch">Afficher le bouton micro flottant</string>
+    <string name="floating_mic_cd">Dicter</string>
+    <string name="floating_mic_notif">Le bouton micro est affiché par-dessus vos apps</string>
+    <string name="floating_mic_hide">Masquer</string>
+    <string name="floating_mic_copied">Aucun champ actif : le texte a été copié dans le presse-papiers</string>
+    <string name="floating_mic_need_overlay">Autorisez « Affichage par-dessus d\'autres apps » pour cette app, puis réactivez le bouton.</string>
+    <string name="floating_mic_need_mic">Accordez d\'abord l\'autorisation du micro.</string>
+    <string name="floating_mic_a11y">Activer la saisie du texte</string>
+    <string name="floating_mic_a11y_hint">Facultatif mais recommandé : activez « Offline Voice Input » dans Accessibilité pour que le texte soit saisi directement dans le champ. Sinon, il est seulement copié dans le presse-papiers.</string>
+    <string name="a11y_dictation_description">Saisit le texte dicté avec le bouton micro flottant dans le champ actif. Rien n\'est lu ni enregistré à l\'écran.</string>
+    <string name="floating_mic_size">Taille du bouton</string>
+    <string name="floating_mic_opacity">Opacité</string>
+    <string name="floating_mic_side">Position</string>
+    <string name="floating_mic_side_free">Libre (à déplacer où vous voulez)</string>
+    <string name="floating_mic_side_left">Collé au bord gauche</string>
+    <string name="floating_mic_side_right">Collé au bord droit</string>
+    <string name="floating_mic_layout_hint">Faites glisser le bouton pour le déplacer. Sa position est mémorisée séparément pour chaque disposition d\'écran (fermé ou ouvert, portrait ou paysage) : il retrouve sa place quand vous pliez, dépliez ou tournez le téléphone.</string>
+    <string name="floating_mic_reset">Réinitialiser les positions</string>
+    <string name="floating_mic_reset_done">Positions du bouton réinitialisées</string>
 </resources>

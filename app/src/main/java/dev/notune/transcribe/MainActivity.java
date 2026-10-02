@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
@@ -78,6 +79,66 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, LiveSubtitleActivity.class);
             startActivity(intent);
         });
+
+        CompoundButton floatingSwitch = findViewById(R.id.switch_floating_mic);
+        floatingSwitch.setChecked(FloatingMicPrefs.isEnabled(this));
+        floatingSwitch.setOnCheckedChangeListener((btn, on) -> {
+            if (!on) {
+                FloatingMicPrefs.setEnabled(this, false);
+                FloatingMicService.stop(this);
+                return;
+            }
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                btn.setChecked(false);
+                snackbar(getString(R.string.floating_mic_need_mic));
+                checkAndRequestPermissions();
+            } else if (!android.provider.Settings.canDrawOverlays(this)) {
+                btn.setChecked(false);
+                snackbar(getString(R.string.floating_mic_need_overlay));
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:" + getPackageName())));
+            } else {
+                FloatingMicPrefs.setEnabled(this, true);
+                FloatingMicService.start(this);
+            }
+        });
+        Slider sizeSlider = findViewById(R.id.slider_floating_size);
+        sizeSlider.setValue(FloatingMicPrefs.getSizeDp(this));
+        sizeSlider.setLabelFormatter(v -> Math.round(v) + " dp");
+        sizeSlider.addOnChangeListener((sl, value, fromUser) -> {
+            if (!fromUser) return;
+            FloatingMicPrefs.setSizeDp(this, Math.round(value));
+            FloatingMicService.refresh(this);
+        });
+
+        Slider opacitySlider = findViewById(R.id.slider_floating_opacity);
+        opacitySlider.setValue(FloatingMicPrefs.getOpacity(this));
+        opacitySlider.setLabelFormatter(v -> Math.round(v) + " %");
+        opacitySlider.addOnChangeListener((sl, value, fromUser) -> {
+            if (!fromUser) return;
+            FloatingMicPrefs.setOpacity(this, Math.round(value));
+            FloatingMicService.refresh(this);
+        });
+
+        RadioGroup sideGroup = findViewById(R.id.radio_floating_side);
+        int side = FloatingMicPrefs.getSide(this);
+        sideGroup.check(side == FloatingMicPrefs.SIDE_LEFT ? R.id.radio_side_left
+                : side == FloatingMicPrefs.SIDE_RIGHT ? R.id.radio_side_right : R.id.radio_side_free);
+        sideGroup.setOnCheckedChangeListener((g, id) -> {
+            FloatingMicPrefs.setSide(this, id == R.id.radio_side_left ? FloatingMicPrefs.SIDE_LEFT
+                    : id == R.id.radio_side_right ? FloatingMicPrefs.SIDE_RIGHT : FloatingMicPrefs.SIDE_FREE);
+            FloatingMicService.refresh(this);
+        });
+
+        findViewById(R.id.btn_floating_reset).setOnClickListener(v -> {
+            FloatingMicPrefs.resetPositions(this);
+            FloatingMicService.refresh(this);
+            snackbar(getString(R.string.floating_mic_reset_done));
+        });
+
+        findViewById(R.id.btn_floating_a11y).setOnClickListener(v ->
+                startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)));
 
         findViewById(R.id.btn_subs_advanced).setOnClickListener(v -> showSubsAdvancedDialog());
 

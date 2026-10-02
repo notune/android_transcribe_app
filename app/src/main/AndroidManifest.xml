@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -96,6 +97,26 @@
             android:name=".LiveSubtitleService"
             android:foregroundServiceType="mediaProjection"
             android:exported="false" />
+
+        <!-- Floating mic button (draggable bubble over every app) -->
+        <service
+            android:name=".FloatingMicService"
+            android:foregroundServiceType="microphone"
+            android:exported="false" />
+
+        <!-- Types the dictated text into the focused field -->
+        <service
+            android:name=".DictationAccessibilityService"
+            android:label="@string/floating_mic_title"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/dictation_accessibility" />
+        </service>
 
         <!-- Speech-to-text provider for other keyboards (SwiftKey, Gboard, …).
              Declared in the manifest so it is always discoverable via

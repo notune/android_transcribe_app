@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used only to type the transcribed text into the focused field of the app
+     the floating mic button is drawn over. Nothing is read or stored. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeViewFocused|typeWindowsChanged|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagRequestEnhancedWebAccessibility"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/a11y_dictation_description"
+    android:notificationTimeout="0" />

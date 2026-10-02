@@ -180,6 +180,133 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Floating mic button card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_title"
+                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                        android:layout_marginBottom="8dp"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_desc"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_marginBottom="8dp"/>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_floating_mic"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_switch"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_a11y_hint"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_marginTop="8dp"/>
+
+                    <Button
+                        android:id="@+id/btn_floating_a11y"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_a11y"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_size"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:layout_marginTop="16dp"/>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/slider_floating_size"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="36"
+                        android:valueTo="96"
+                        android:stepSize="2"
+                        android:value="56"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_opacity"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"/>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/slider_floating_opacity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="20"
+                        android:valueTo="100"
+                        android:stepSize="5"
+                        android:value="100"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_side"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"/>
+
+                    <RadioGroup
+                        android:id="@+id/radio_floating_side"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <RadioButton
+                            android:id="@+id/radio_side_free"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/floating_mic_side_free"/>
+
+                        <RadioButton
+                            android:id="@+id/radio_side_left"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/floating_mic_side_left"/>
+
+                        <RadioButton
+                            android:id="@+id/radio_side_right"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/floating_mic_side_right"/>
+                    </RadioGroup>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_layout_hint"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_marginTop="4dp"/>
+
+                    <Button
+                        android:id="@+id/btn_floating_reset"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/floating_mic_reset"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- 3. Speech model card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
