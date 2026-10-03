@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bubble_service_desc">Shows a floating bubble when a text field has focus. Tap to dictate offline with the app\'s Parakeet engine — the transcript is inserted into the field. No internet access, no keyboard switch.</string>
+</resources>

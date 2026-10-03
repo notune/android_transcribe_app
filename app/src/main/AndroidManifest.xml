@@ -129,5 +129,32 @@
                 android:resource="@xml/method" />
         </service>
 
+        <activity
+            android:name=".BubblePermissionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+
+        <receiver android:name=".BubbleResumeReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="dev.notune.transcribe.BUBBLE_RESUME"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Wispr Flow-style floating dictation bubble -->
+        <service
+            android:name=".BubbleService"
+            android:exported="true"
+            android:label="Dictation Bubble (offline)"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/bubble_accessibility_config" />
+        </service>
+
     </application>
 </manifest>
