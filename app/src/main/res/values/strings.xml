@@ -26,6 +26,15 @@
     <string name="setting_auto_record">Auto-start recording</string>
     <string name="setting_auto_record_desc">Automatically begin recording when the keyboard opens</string>
 
+    <string name="btn_vocab">Custom vocabulary</string>
+    <string name="vocab_title">Custom vocabulary</string>
+    <string name="vocab_desc">Words the model should spell this way. Type one and add.</string>
+    <string name="vocab_add">Add</string>
+    <string name="vocab_word">Word</string>
+    <string name="vocab_delete">Delete</string>
+    <string name="vocab_empty">No words yet</string>
+    <string name="vocab_need_word">Type a word first</string>
+
     <string name="setting_select_transcription">Select transcription</string>
     <string name="setting_select_transcription_desc">Highlight transcribed text so it can be deleted with a single backspace</string>
 

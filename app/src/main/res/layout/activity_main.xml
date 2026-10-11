@@ -238,6 +238,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/btn_models"/>
+
+                    <Button
+                        android:id="@+id/btn_vocab"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/btn_vocab"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

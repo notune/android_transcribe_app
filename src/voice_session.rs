@@ -275,6 +275,10 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
 
             match res {
                 Ok(text) => {
+                    let text = match crate::assets::files_dir(&mut env, obj) {
+                        Ok(dir) => crate::vocab::correct_from_files_dir(&dir, &text),
+                        Err(_) => text,
+                    };
                     notify_status(&mut env, obj, "Ready");
                     notify_text(&mut env, obj, &text);
                 }

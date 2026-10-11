@@ -17,14 +17,16 @@ height="80">](https://play.google.com/store/apps/details?id=dev.notune.transcrib
 - **Optional voice keyboard:** A built-in keyboard you can switch to for voice input wherever you prefer it.
 - **Supported Languages:** Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian.
 - **Custom models:** Import any [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) GGUF model (Whisper, Nemotron streaming, Canary, more Parakeet variants, …) from a downloaded file — the app stays fully offline; downloads happen in your browser.
+- **Custom vocabulary:** Optional local word list. After any model returns text, explicit aliases then conservative fuzzy matching rewrite the transcript. Works with every imported transcribe.cpp GGUF (Whisper, Canary, Nemotron, Parakeet, …), not a single architecture. Empty list is a passthrough. Not applied to live subtitles or file transcription.
 - **Efficient native backend:** All models run through [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) (ggml), wrapped in a safe Rust core.
 
 ## Screenshots
 
 <p float="left">
-  <img src=".screenshots/screenshot_home.png" width="30%" />
-  <img src=".screenshots/screenshot_recording.png" width="30%" />
-  <img src=".screenshots/screenshot_subtitles.png" width="30%" />
+  <img src=".screenshots/screenshot_home.png" width="22%" />
+  <img src=".screenshots/screenshot_recording.png" width="22%" />
+  <img src=".screenshots/screenshot_subtitles.png" width="22%" />
+  <img src=".screenshots/screenshot_vocab.png" width="22%" alt="Custom vocabulary" />
 </p>
 
 ## Usage
@@ -77,6 +79,17 @@ This relies on the undocumented `PROJECT_MEDIA` app-op; on some OEM builds it ma
 ### Custom speech models
 
 The built-in Parakeet model works out of the box. Under **Manage speech models** you can additionally import any [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) GGUF model: download a `.gguf` file in your browser (the in-app *Where to get models* dialog lists direct links, e.g. a tiny 135 MB English-only Parakeet, the multilingual Nemotron 3.5 streaming model with punctuation, or Whisper large-v3-turbo), then import it via the system file picker and select it. The app itself needs no internet permission — model files are simply copied into the app's private storage. An optional language hint (e.g. `en-US`, or `auto`) can be set for imported models.
+
+### Custom vocabulary
+
+**Custom vocabulary** on the home screen is a local word list (app-private JSON). Type the spelling you want and add. Matching always runs:
+
+1. explicit aliases (plus derived splits for all-caps acronyms, so `HCOM` also matches `h com` / `h come`)
+2. conservative fuzzy (Levenshtein + Soundex, with a stoplist so ordinary words like `come` / `open` are not replaced)
+
+This runs **after** transcription, on the text string, so it applies to every loaded GGUF — not only the bundled Parakeet model. It is applied on the voice IME, the `RECOGNIZE_SPEECH` popup, and `RecognitionService`. It is **not** applied inside `engine::transcribe_shared`, so live subtitles and file transcription stay verbatim.
+
+Fuzzy matching started from Handy (`src-tauri/src/audio_toolkit/text.rs`, MIT). Thresholds were not copied.
 
 ## Prerequisites
 
@@ -164,6 +177,7 @@ The built-in Parakeet TDT GGUF model (~485 MB) is automatically downloaded from 
     - GGUF conversion by [handy-computer](https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v3-gguf).
     - Licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **Inference Backend:** [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) by CJ Pais / Handy Computer.
+- **Custom vocabulary:** started from [Handy](https://github.com/cjpais/Handy) `apply_custom_words` (MIT, CJ Pais). Thresholds were not copied.
 
 ## License
 

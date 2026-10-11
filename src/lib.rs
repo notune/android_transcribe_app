@@ -9,3 +9,4 @@ pub mod recognize;
 pub mod subtitle;
 pub mod transcribe_file;
 pub mod voice_session;
+pub mod vocab;

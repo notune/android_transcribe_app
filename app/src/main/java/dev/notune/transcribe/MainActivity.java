@@ -83,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_models).setOnClickListener(v ->
                 startActivity(new Intent(this, ModelsActivity.class)));
+        findViewById(R.id.btn_vocab).setOnClickListener(v ->
+                startActivity(new Intent(this, VocabActivity.class)));
 
         benchButton = findViewById(R.id.btn_benchmark);
         benchResultText = findViewById(R.id.text_bench_result);

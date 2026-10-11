@@ -376,7 +376,13 @@ fn finalize(shared: Arc<Endpoint>, stream: Arc<Mutex<Option<SendStream>>>) {
         Some(eng_arc) => {
             let res = engine::transcribe_shared(&eng_arc, buffer);
             match res {
-                Ok(text) if !text.trim().is_empty() => call_results(&mut env, target, &text),
+                Ok(text) if !text.trim().is_empty() => {
+                    let text = match crate::assets::files_dir(&mut env, target) {
+                        Ok(dir) => crate::vocab::correct_from_files_dir(&dir, &text),
+                        Err(_) => text,
+                    };
+                    call_results(&mut env, target, &text);
+                }
                 Ok(_) => call_error(&mut env, target, ERROR_NO_MATCH),
                 Err(e) => {
                     log::error!("Transcription failed: {}", e);
