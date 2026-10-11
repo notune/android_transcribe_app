@@ -30,10 +30,10 @@ public class RecognizeActivity extends AppCompatActivity {
 
     private TextView status;
     private boolean isRecording = false;
+    private boolean awaitingTranscript = false;
     private MicLevelView micLevel;
     private final AudioFocusPauser audioPauser = new AudioFocusPauser();
     private boolean pauseAudioActive = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,6 +84,7 @@ public class RecognizeActivity extends AppCompatActivity {
     private void finishRecording() {
         if (!isRecording) return;
         isRecording = false;
+        awaitingTranscript = true;
         status.setText("Processing...");
         stopRecording();
         if (pauseAudioActive) {
@@ -100,11 +101,10 @@ public class RecognizeActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        // The popup is no longer visible (user switched apps or went home).
-        // It runs in its own task (singleTask), so it would otherwise keep
-        // recording invisibly in the background and never reappear. Discard
-        // and close so the next mic tap starts fresh. (Background recording
-        // is a keyboard-only feature; a popup must not record unseen.)
+        // Translucent overlay on One UI search: tapping stop / processing can
+        // pause us. Do not cancel an in-flight transcribe or the result is
+        // dropped and the field stays empty.
+        if (awaitingTranscript) return;
         if (isRecording && !isFinishing()) {
             isRecording = false;
             try { cancelRecording(); } catch (Throwable t) { /* ignore */ }
@@ -148,11 +148,10 @@ public class RecognizeActivity extends AppCompatActivity {
         runOnUiThread(() -> micLevel.setLevel(level));
     }
 
-    // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
+            awaitingTranscript = false;
             if (text == null || text.trim().isEmpty()) {
-                // Nothing was recognized (e.g. auto-stop after silence only).
                 setResult(Activity.RESULT_CANCELED);
                 finish();
                 return;

@@ -26,6 +26,9 @@
     <string name="setting_auto_record">Auto-start recording</string>
     <string name="setting_auto_record_desc">Automatically begin recording when the keyboard opens</string>
 
+    <string name="setting_auto_switch_back">Return to previous keyboard</string>
+    <string name="setting_auto_switch_back_desc">After a successful dictation, switch back to whichever keyboard opened the voice input</string>
+
     <string name="setting_select_transcription">Select transcription</string>
     <string name="setting_select_transcription_desc">Highlight transcribed text so it can be deleted with a single backspace</string>
 

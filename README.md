@@ -54,7 +54,7 @@ Tap **Try voice input** on the home screen to test the whole flow in one tap.
 
 ### Dedicated voice keyboard (optional)
 
-Prefer voice input as its own keyboard? Enable the **Offline Voice Input** keyboard via *Open Keyboard Settings* on the home screen, switch to it from your keyboard switcher, then tap **Tap to Record**. By default the recording keeps running even if you switch apps or the keyboard closes (turn off *Record in background* in settings if you don't want that) — the text is inserted when you come back.
+Prefer voice input as its own keyboard? Enable the **Offline Voice Input** keyboard via *Open Keyboard Settings* on the home screen, switch to it from your keyboard switcher, then tap **Tap to Record**. By default the recording keeps running even if you switch apps or the keyboard closes (turn off *Record in background* in settings if you don't want that) — the text is inserted when you come back. The IME runs in the app process so a large GGUF is not loaded twice. Optional **Return to previous keyboard** switches back after a successful commit (delayed so the host field keeps the text).
 
 ### Live subtitles
 

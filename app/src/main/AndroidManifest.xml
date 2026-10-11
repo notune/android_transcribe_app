@@ -114,12 +114,12 @@
                 android:resource="@xml/recognition_service" />
         </service>
 
-        <!-- IME Service -->
+        <!-- IME Service. Same process as the app so a large GGUF is not loaded
+             twice (a second :ime process is a common LMK victim). -->
         <service
             android:name=".RustInputMethodService"
             android:label="Offline Voice Input"
             android:permission="android.permission.BIND_INPUT_METHOD"
-            android:process=":ime"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />

@@ -240,7 +240,7 @@ public class RustInputMethodService extends InputMethodService {
                 }
 
                 if (isRecording) {
-                    stopRecording();
+                    try { stopRecording(); } catch (Throwable t) { Log.e(TAG, "stopRecording", t); }
                     if (pauseAudioActive) {
                         audioPauser.abandon(this);
                         pauseAudioActive = false;
@@ -251,15 +251,19 @@ public class RustInputMethodService extends InputMethodService {
                         audioPauser.request(this);
                         pauseAudioActive = true;
                     }
-                    startRecording();
-                    updateRecordButtonUI(true);
+                    try {
+                        startRecording();
+                        updateRecordButtonUI(true);
+                    } catch (Throwable t) {
+                        Log.e(TAG, "startRecording failed", t);
+                    }
                 }
             });
 
             tintRecordButton(false);
             updateUiState();
             return view;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e(TAG, "Error in onCreateInputView", e);
             TextView errorView = new TextView(this);
             errorView.setText("Error loading keyboard: " + e.getMessage());
@@ -290,8 +294,13 @@ public class RustInputMethodService extends InputMethodService {
                     audioPauser.request(this);
                     pauseAudioActive = true;
                 }
-                startRecording();
-                updateRecordButtonUI(true);
+                try {
+                    startRecording();
+                    updateRecordButtonUI(true);
+                } catch (Throwable t) {
+                    Log.e(TAG, "startRecording failed", t);
+                    pauseAudioActive = false;
+                }
             }
         }
     }
@@ -453,11 +462,9 @@ public class RustInputMethodService extends InputMethodService {
         }
     }
 
-    // Called from Rust
     public void onTextTranscribed(String text) {
         mainHandler.post(() -> {
             if (text == null || text.trim().isEmpty()) {
-                // Nothing recognized — don't insert a stray space.
                 updateRecordButtonUI(false);
                 if (statusView != null) statusView.setText("Tap to Record");
                 if (pauseAudioActive) {
@@ -472,13 +479,10 @@ public class RustInputMethodService extends InputMethodService {
             }
             String committed = text + " ";
             InputConnection ic = getCurrentInputConnection();
-            if (inputActive && ic != null) {
+            if (ic != null) {
                 commitTranscribedText(ic, committed);
+                pendingCommitText = null;
             } else {
-                // No editor is focused right now (common on long transcribes where
-                // a web field in Firefox/Gemini dropped focus while we processed
-                // audio). Committing now would be silently dropped, so defer the
-                // text until a field is focused again instead of losing it.
                 pendingCommitText = committed;
             }
             if (pauseAudioActive) {
@@ -487,10 +491,8 @@ public class RustInputMethodService extends InputMethodService {
             }
             updateRecordButtonUI(false);
             if (statusView != null) statusView.setText("Tap to Record");
-            if (pendingSwitchBack) {
-                pendingSwitchBack = false;
-                switchToPreviousInputMethod();
-            }
+            // One UI drops commitText if we switch IME in the same frame.
+            mainHandler.postDelayed(this::maybeSwitchBackAfterSuccess, 280);
         });
     }
 
@@ -521,6 +523,7 @@ public class RustInputMethodService extends InputMethodService {
         if (ic != null) {
             commitTranscribedText(ic, pendingCommitText);
             pendingCommitText = null;
+            maybeSwitchBackAfterSuccess();
         }
     }
     public void onAudioLevel(float level) {
@@ -536,5 +539,20 @@ public class RustInputMethodService extends InputMethodService {
     /** "Record in background" is default ON; the marker file is the opt-out. */
     private boolean isStopOnHideEnabled() {
         return new File(getFilesDir(), "stop_on_hide").exists();
+    }
+
+    /** Optional: return to HeliBoard/previous IME after a successful commit. */
+    private boolean isAutoSwitchBackEnabled() {
+        return new File(getFilesDir(), "auto_switch_back").exists();
+    }
+
+    private void maybeSwitchBackAfterSuccess() {
+        if (!(pendingSwitchBack || isAutoSwitchBackEnabled())) return;
+        pendingSwitchBack = false;
+        try {
+            switchToPreviousInputMethod();
+        } catch (Throwable t) {
+            Log.w(TAG, "switchToPreviousInputMethod failed", t);
+        }
     }
 }
