@@ -31,8 +31,7 @@ public class RustInputMethodService extends InputMethodService {
 
     static {
         try {
-            System.loadLibrary("c++_shared");
-            System.loadLibrary("android_transcribe_app");
+            NativeLibraries.load();
         } catch (UnsatisfiedLinkError e) {
             Log.e(TAG, "Failed to load native libraries", e);
         }

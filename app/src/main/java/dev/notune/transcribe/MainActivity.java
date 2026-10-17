@@ -34,12 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_VOICE_TEST = 202;
 
     static {
-        try {
-            System.loadLibrary("c++_shared");
-        } catch (UnsatisfiedLinkError e) {
-            Log.w(TAG, "Failed to load c++_shared", e);
-        }
-        System.loadLibrary("android_transcribe_app");
+        NativeLibraries.load();
     }
 
     private TextView statusText;
