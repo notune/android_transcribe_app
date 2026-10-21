@@ -173,6 +173,7 @@ public class RecognizeActivity extends AppCompatActivity {
     // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             if (text == null || text.trim().isEmpty()) {
                 // Nothing was recognized (e.g. auto-stop after silence only).
                 // Say so: otherwise the panel just vanishes as if it broke.
