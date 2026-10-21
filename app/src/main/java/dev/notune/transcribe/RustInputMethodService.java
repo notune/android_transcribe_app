@@ -83,6 +83,26 @@ public class RustInputMethodService extends InputMethodService {
     // again so the text is never lost.
     private String pendingCommitText = null;
 
+    private boolean captureFinishing;
+    private long recordingGeneration;
+
+    /** Reject callbacks from cancelled/replaced recordings on the UI thread. */
+    private final class RecordingCallbacks extends android.content.ContextWrapper {
+        private final long generation;
+        RecordingCallbacks(long generation) {
+            super(RustInputMethodService.this);
+            this.generation = generation;
+        }
+        public void onStatusUpdate(String status) { handleStatus(generation, status); }
+        public void onTextTranscribed(String text) { handleText(generation, text); }
+        public void onAudioLevel(float level) { handleLevel(generation, level); }
+        public void onAutoStop() {
+            mainHandler.post(() -> {
+                if (generation == recordingGeneration && isRecording) finishCapture();
+            });
+        }
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -249,7 +269,7 @@ public class RustInputMethodService extends InputMethodService {
                         audioPauser.request(this);
                         pauseAudioActive = true;
                     }
-                    startRecording();
+                    beginRecording();
                     updateRecordButtonUI(true);
                 }
             });
@@ -280,12 +300,20 @@ public class RustInputMethodService extends InputMethodService {
         }
     }
 
+    /** Starts a recording, with no live text from an earlier one. */
+    private void beginRecording() {
+        if (captureFinishing) return;
+        startRecording(new RecordingCallbacks(++recordingGeneration));
+    }
+
     /**
      * Stops capture and hands the audio to transcription. Audio focus is
      * released right away, so paused media can resume while the (possibly
      * long) transcription runs.
      */
     private void finishCapture() {
+        captureFinishing = true;
+        lastStatus = "Transcribing...";
         stopRecording();
         releaseAudioFocus();
         updateRecordButtonUI(false);
@@ -364,14 +392,14 @@ public class RustInputMethodService extends InputMethodService {
             // text area); never auto-start a recording from here.
             return;
         }
-        if (new File(getFilesDir(), "auto_record").exists()) {
+        if (!captureFinishing && new File(getFilesDir(), "auto_record").exists()) {
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
                     == PackageManager.PERMISSION_GRANTED) {
                 if (isPauseAudioEnabled()) {
                     audioPauser.request(this);
                     pauseAudioActive = true;
                 }
-                startRecording();
+                beginRecording();
                 updateRecordButtonUI(true);
             }
         }
@@ -384,6 +412,8 @@ public class RustInputMethodService extends InputMethodService {
         if (isRecording) {
             if (isStopOnHideEnabled()) {
                 // Opt-in behavior: discard the recording when the keyboard hides.
+                ++recordingGeneration;
+                captureFinishing = false;
                 try {
                     cancelRecording();
                 } catch (Throwable t) {
@@ -461,6 +491,10 @@ public class RustInputMethodService extends InputMethodService {
             hintView.setText(R.string.ime_tap_to_record);
             if (micLevelView != null) micLevelView.setLevel(0f);
         }
+        // Ready is posted before the final text callback. At that point
+        // captureFinishing is still true, so handleStatus keeps Record
+        // disabled. Refresh again after the result clears that flag.
+        updateUiState();
     }
 
     /** Tints the round record button + mic: idle = primary, recording = error. */
@@ -490,23 +524,34 @@ public class RustInputMethodService extends InputMethodService {
     // Native methods
     private native void initNative(RustInputMethodService service);
     private native void cleanupNative(RustInputMethodService self);
-    private native void startRecording();
+    private native void startRecording(RecordingCallbacks callbacks);
     private native void stopRecording();
     private native void cancelRecording();
 
     // Called from Rust
     public void onStatusUpdate(String status) {
+        handleStatus(recordingGeneration, status);
+    }
+
+    private void handleStatus(long generation, String status) {
         mainHandler.post(() -> {
+            if (generation != recordingGeneration || status == null) return;
+            if (status.startsWith("Error")) {
+                captureFinishing = false;
+                if (isRecording) {
+                    ++recordingGeneration;
+                    cancelRecording();
+                    updateRecordButtonUI(false);
+                }
+                releaseAudioFocus();
+                if (pendingSwitchBack) {
+                    pendingSwitchBack = false;
+                    switchAwayFromVoiceKeyboard();
+                }
+            }
             Log.d(TAG, "Status: " + status);
             lastStatus = status;
             updateUiState();
-            if (pendingSwitchBack && status.startsWith("Error")) {
-                pendingSwitchBack = false;
-                switchAwayFromVoiceKeyboard();
-            }
-            if (status != null && status.startsWith("Error")) {
-                releaseAudioFocus();
-            }
         });
     }
 
@@ -540,7 +585,7 @@ public class RustInputMethodService extends InputMethodService {
         // most errors are transient (no audio, storage was full while
         // extracting the model, mic busy), and the next attempt retries.
         if (recordContainer != null) {
-            boolean disable = isTranscribing || isWaiting;
+            boolean disable = isTranscribing || isWaiting || captureFinishing;
             recordContainer.setEnabled(!disable);
             recordContainer.setAlpha(disable ? 0.5f : 1.0f);
         }
@@ -552,7 +597,13 @@ public class RustInputMethodService extends InputMethodService {
 
     // Called from Rust
     public void onTextTranscribed(String text) {
+        handleText(recordingGeneration, text);
+    }
+
+    private void handleText(long generation, String text) {
         mainHandler.post(() -> {
+            if (generation != recordingGeneration) return;
+            captureFinishing = false;
             if (text == null || text.trim().isEmpty()) {
                 // Nothing recognized — don't insert a stray space.
                 updateRecordButtonUI(false);
@@ -598,14 +649,19 @@ public class RustInputMethodService extends InputMethodService {
         ic.commitText(committed, 1);
 
         if (!pendingSwitchBack && new File(getFilesDir(), "select_transcription").exists()) {
-            android.view.inputmethod.ExtractedText et = ic.getExtractedText(
-                new android.view.inputmethod.ExtractedTextRequest(), 0);
-            if (et != null) {
-                int end = et.startOffset + et.selectionStart;
-                int start = end - committed.length();
-                if (start >= 0) {
-                    ic.setSelection(start, end);
-                }
+            selectBeforeCursor(ic, committed.length());
+        }
+    }
+
+    // Selects the `length` characters before the cursor.
+    private void selectBeforeCursor(InputConnection ic, int length) {
+        android.view.inputmethod.ExtractedText et = ic.getExtractedText(
+            new android.view.inputmethod.ExtractedTextRequest(), 0);
+        if (et != null) {
+            int end = et.startOffset + et.selectionStart;
+            int start = end - length;
+            if (start >= 0) {
+                ic.setSelection(start, end);
             }
         }
     }
@@ -621,10 +677,13 @@ public class RustInputMethodService extends InputMethodService {
             pendingCommitText = null;
         }
     }
-    public void onAudioLevel(float level) {
-        if (micLevelView != null) {
-            mainHandler.post(() -> micLevelView.setLevel(level));
-        }
+    public void onAudioLevel(float level) { handleLevel(recordingGeneration, level); }
+
+    private void handleLevel(long generation, float level) {
+        mainHandler.post(() -> {
+            if (generation == recordingGeneration && micLevelView != null)
+                micLevelView.setLevel(level);
+        });
     }
 
     private boolean isPauseAudioEnabled() {
