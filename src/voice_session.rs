@@ -112,6 +112,7 @@ pub fn start_recording(
     mut env: JNIEnv,
     state: &mut VoiceSessionState,
     auto_stop: bool,
+    live_enabled: bool,
 ) {
     let host = cpal::default_host();
     let device = match host.default_input_device() {
@@ -197,11 +198,13 @@ pub fn start_recording(
             // Transcribes while the user speaks if the model streams; also
             // reloads the model now, rather than after, if its settings
             // changed in the app since this process loaded it.
-            state.live = Some(LiveStream::start(
-                state.jvm.clone(),
-                state.target_ref.clone(),
-                state.audio_buffer.clone(),
-            ));
+            if live_enabled {
+                state.live = Some(LiveStream::start(
+                    state.jvm.clone(),
+                    state.target_ref.clone(),
+                    state.audio_buffer.clone(),
+                ));
+            }
 
             if let Some(ep) = endpoint {
                 let jvm = state.jvm.clone();

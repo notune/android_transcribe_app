@@ -1,6 +1,6 @@
 --- a/src/voice_session.rs
 +++ b/src/voice_session.rs
-@@ -156,9 +156,29 @@
+@@ -157,9 +157,29 @@
      let last_sent = state.last_level_sent.clone();
      let endpoint_cb = endpoint.clone();
 
@@ -32,12 +32,12 @@
              // compute RMS
 --- a/src/live.rs
 +++ b/src/live.rs
-@@ -251,6 +251,11 @@
+@@ -258,6 +258,11 @@
                          break 'feed;
                      }
                  }
-+                if fed >= 32_000 && !partial.is_empty() {
-+                    log::warn!("TEST ONLY injected stream failure after partial: {:?}", partial);
++                if fed >= 32_000 && !shown.is_empty() {
++                    log::warn!("TEST ONLY injected stream failure after partial: {:?}", shown.text());
 +                    failure = Some("TEST ONLY feed failure after partial".to_string());
 +                    break 'feed;
 +                }

@@ -112,6 +112,26 @@ public class MainActivity extends AppCompatActivity {
         // Record-in-background defaults to ON; its marker file is the opt-out.
         bindMarkerSwitch(R.id.switch_record_background, "stop_on_hide", true);
         bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false);
+        bindMarkerSwitch(R.id.switch_popup_streaming, "popup_batch", true);
+
+        // This is independent of engine streaming and popup behavior.
+        File continuousTyping = new File(getFilesDir(), "continuous_typing");
+        RadioGroup keyboardOutput = findViewById(R.id.rg_keyboard_output);
+        keyboardOutput.check(continuousTyping.exists()
+                ? R.id.rb_type_continuously : R.id.rb_insert_at_end);
+        keyboardOutput.setOnCheckedChangeListener((group, checkedId) -> {
+            try {
+                if (checkedId == R.id.rb_type_continuously) {
+                    continuousTyping.createNewFile();
+                } else if (continuousTyping.exists() && !continuousTyping.delete()) {
+                    throw new IOException("Could not remove continuous_typing");
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Could not save keyboard output mode", e);
+                group.check(continuousTyping.exists()
+                        ? R.id.rb_type_continuously : R.id.rb_insert_at_end);
+            }
+        });
 
         // Live subtitle line limit: 2 (default), 4, or 0 = unlimited.
         RadioGroup subsLinesGroup = findViewById(R.id.rg_subtitle_lines);

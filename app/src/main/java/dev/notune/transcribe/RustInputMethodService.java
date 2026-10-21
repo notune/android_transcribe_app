@@ -83,18 +83,28 @@ public class RustInputMethodService extends InputMethodService {
     // again so the text is never lost.
     private String pendingCommitText = null;
 
-    private boolean captureFinishing;
+    // One composing region covers the dictation. Updates replace it; only
+    // final delivery commits it, preserving editor Undo and selected text.
+    private boolean streamActive, streamComposing, streamDiscarded;
+    private boolean streamCompositionSeen, streamDeferred, captureFinishing;
+    private String streamCommitted = "", streamTentative = "", streamLead;
+    private final StringBuilder streamTypedHere = new StringBuilder();
+    private String streamOriginalSelection = "";
+    private int streamStart = -1, streamOriginalEnd = -1;
     private long recordingGeneration;
+    // Snapshot per recording: a settings change applies on the next start.
+    // This controls field insertion only, never native streaming inference.
+    private boolean continuousTypingThisRecording;
 
-    /** Reject callbacks from cancelled/replaced recordings on the UI thread. */
     private final class RecordingCallbacks extends android.content.ContextWrapper {
         private final long generation;
         RecordingCallbacks(long generation) {
             super(RustInputMethodService.this);
             this.generation = generation;
         }
-        public void onStatusUpdate(String status) { handleStatus(generation, status); }
-        public void onTextTranscribed(String text) { handleText(generation, text); }
+        public void onStatusUpdate(String s) { handleStatus(generation, s); }
+        public void onTextTranscribed(String s) { handleText(generation, s); }
+        public void onStreamText(String c, String t) { handleStream(generation, c, t); }
         public void onAudioLevel(float level) { handleLevel(generation, level); }
         public void onAutoStop() {
             mainHandler.post(() -> {
@@ -218,8 +228,10 @@ public class RustInputMethodService extends InputMethodService {
             spaceButton.setOnClickListener(v -> insertSpace());
 
             enterButton.setOnClickListener(v -> {
+                stopForEditorChange();
                 InputConnection ic = getCurrentInputConnection();
                 if (ic != null) {
+                    dropTentative(ic);
                     android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
                     if (editorInfo == null) {
                         ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
@@ -286,16 +298,20 @@ public class RustInputMethodService extends InputMethodService {
     }
 
     private void deleteBackward() {
+        stopForEditorChange();
         InputConnection ic = getCurrentInputConnection();
         if (ic != null) {
+            dropTentative(ic);
             ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_DEL));
             ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_DEL));
         }
     }
 
     private void insertSpace() {
+        stopForEditorChange();
         InputConnection ic = getCurrentInputConnection();
         if (ic != null) {
+            dropTentative(ic);
             ic.commitText(" ", 1);
         }
     }
@@ -303,6 +319,9 @@ public class RustInputMethodService extends InputMethodService {
     /** Starts a recording, with no live text from an earlier one. */
     private void beginRecording() {
         if (captureFinishing) return;
+        resetStream();
+        streamDiscarded = false;
+        continuousTypingThisRecording = new File(getFilesDir(), "continuous_typing").exists();
         startRecording(new RecordingCallbacks(++recordingGeneration));
     }
 
@@ -412,8 +431,7 @@ public class RustInputMethodService extends InputMethodService {
         if (isRecording) {
             if (isStopOnHideEnabled()) {
                 // Opt-in behavior: discard the recording when the keyboard hides.
-                ++recordingGeneration;
-                captureFinishing = false;
+                discardStreamText();
                 try {
                     cancelRecording();
                 } catch (Throwable t) {
@@ -467,10 +485,16 @@ public class RustInputMethodService extends InputMethodService {
         // A field is focused and the input connection is live again — commit any
         // text that finished transcribing while nothing was focused.
         flushPendingText();
+        if (streamActive) applyStreamText();
     }
 
     @Override
     public void onFinishInput() {
+        if (streamActive) {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) dropTentative(ic);
+            clearStreamRegion();
+        }
         super.onFinishInput();
         inputActive = false;
     }
@@ -535,23 +559,35 @@ public class RustInputMethodService extends InputMethodService {
 
     private void handleStatus(long generation, String status) {
         mainHandler.post(() -> {
-            if (generation != recordingGeneration || status == null) return;
-            if (status.startsWith("Error")) {
+            if (generation != recordingGeneration) return;
+            if (status != null && status.startsWith("Error")) {
                 captureFinishing = false;
                 if (isRecording) {
                     ++recordingGeneration;
                     cancelRecording();
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) ic.finishComposingText();
+                    resetStream();
                     updateRecordButtonUI(false);
-                }
-                releaseAudioFocus();
-                if (pendingSwitchBack) {
-                    pendingSwitchBack = false;
-                    switchAwayFromVoiceKeyboard();
                 }
             }
             Log.d(TAG, "Status: " + status);
             lastStatus = status;
             updateUiState();
+            if (pendingSwitchBack && status.startsWith("Error")) {
+                pendingSwitchBack = false;
+                switchAwayFromVoiceKeyboard();
+            }
+            if (status != null && status.startsWith("Error")) {
+                releaseAudioFocus();
+                if (streamActive && !isRecording) {
+                    // The stream ended without a result: keep the text that
+                    // was committed, drop the guess after it.
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) dropTentative(ic);
+                    resetStream();
+                }
+            }
         });
     }
 
@@ -602,8 +638,12 @@ public class RustInputMethodService extends InputMethodService {
 
     private void handleText(long generation, String text) {
         mainHandler.post(() -> {
-            if (generation != recordingGeneration) return;
+            if (generation != recordingGeneration || streamDiscarded) return;
             captureFinishing = false;
+            if (streamActive) {
+                finishStream(text == null ? "" : text);
+                return;
+            }
             if (text == null || text.trim().isEmpty()) {
                 // Nothing recognized — don't insert a stray space.
                 updateRecordButtonUI(false);
@@ -677,6 +717,204 @@ public class RustInputMethodService extends InputMethodService {
             pendingCommitText = null;
         }
     }
+    public void onStreamText(String committed, String tentative) {
+        handleStream(recordingGeneration, committed, tentative);
+    }
+
+    private void handleStream(long generation, String committed, String tentative) {
+        mainHandler.post(() -> {
+            if (generation != recordingGeneration || streamDiscarded
+                    || !continuousTypingThisRecording) return;
+            streamActive = true;
+            streamCommitted = committed;
+            streamTentative = tentative;
+            applyStreamText();
+        });
+    }
+
+    /** Replace a single verified region, never append revised words. */
+    private void applyStreamText() {
+        InputConnection ic = getCurrentInputConnection();
+        if (!inputActive || ic == null) return;
+        if (streamDeferred) {
+            if (hintView != null) hintView.setText(streamCommitted + streamTentative);
+            return;
+        }
+        if (!prepareStreamRegion(ic)) return;
+        if (streamComposing && !ownsStreamRegion(ic)) {
+            stopForEditorChange();
+            return;
+        }
+        String text = streamLead + streamCommitted + streamTentative;
+        android.text.SpannableString shown = new android.text.SpannableString(text);
+        int tentativeStart = streamLead.length() + streamCommitted.length();
+        if (tentativeStart < text.length()) {
+            shown.setSpan(new android.text.style.UnderlineSpan(), tentativeStart, text.length(),
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    | android.text.Spanned.SPAN_COMPOSING);
+        }
+        // A Spannable avoids Android's default underline over the firm prefix.
+        streamTypedHere.setLength(0);
+        streamTypedHere.append(text);
+        streamComposing = true;
+        if (!ic.setComposingText(shown, 1)) {
+            // Do not guess what an unsupported editor inserted.
+            stopForEditorChange();
+        }
+    }
+
+    private boolean prepareStreamRegion(InputConnection ic) {
+        if (streamStart >= 0) return true;
+        android.view.inputmethod.ExtractedText extracted = ic.getExtractedText(
+                new android.view.inputmethod.ExtractedTextRequest(), 0);
+        if (extracted == null || extracted.selectionStart < 0 || extracted.selectionEnd < 0) {
+            streamDeferred = true;
+            if (hintView != null) hintView.setText(streamCommitted + streamTentative);
+            return false; // Conservative fallback: final insertion only.
+        }
+        CharSequence selected = ic.getSelectedText(0);
+        String originalSelection = LiveSelectionSnapshot.capture(
+                extracted.selectionStart, extracted.selectionEnd, selected);
+        if (originalSelection == null) {
+            // A range without a complete snapshot cannot be restored on
+            // Cancel. Do not replace it; use final-only insertion instead.
+            streamDeferred = true;
+            if (hintView != null) hintView.setText(streamCommitted + streamTentative);
+            return false;
+        }
+        streamStart = extracted.startOffset
+                + Math.min(extracted.selectionStart, extracted.selectionEnd);
+        streamOriginalEnd = extracted.startOffset
+                + Math.max(extracted.selectionStart, extracted.selectionEnd);
+        streamOriginalSelection = originalSelection;
+        CharSequence before = ic.getTextBeforeCursor(1, 0);
+        streamLead = before != null && before.length() > 0
+                && !Character.isWhitespace(before.charAt(before.length() - 1)) ? " " : "";
+        return true;
+    }
+
+    private boolean ownsStreamRegion(InputConnection ic) {
+        CharSequence selected = ic.getSelectedText(0);
+        if (selected != null && selected.length() > 0) return false;
+        CharSequence before = ic.getTextBeforeCursor(streamTypedHere.length(), 0);
+        return before != null && before.toString().equals(streamTypedHere.toString());
+    }
+
+    private void finishStream(String text) {
+        InputConnection ic = getCurrentInputConnection();
+        boolean anyText = !text.trim().isEmpty();
+        if (inputActive && ic != null) {
+            if (streamComposing && !ownsStreamRegion(ic)) {
+                stopForEditorChange();
+                return;
+            }
+            if (streamComposing) {
+                String finalText = anyText ? streamLead + text.trim() + " "
+                        : streamOriginalSelection;
+                ic.beginBatchEdit();
+                streamComposing = false;
+                ic.commitText(finalText, 1);
+                ic.finishComposingText();
+                ic.endBatchEdit();
+                if (anyText && !pendingSwitchBack
+                        && new File(getFilesDir(), "select_transcription").exists()) {
+                    selectBeforeCursor(ic, finalText.length());
+                }
+            } else if (anyText) {
+                commitTranscribedText(ic, text.trim() + " ");
+            }
+        } else if (anyText) {
+            pendingCommitText = text.trim() + " ";
+        }
+        resetStream();
+        captureFinishing = false;
+        releaseAudioFocus();
+        updateRecordButtonUI(false);
+        if (statusView != null) statusView.setText(anyText
+                ? R.string.ime_tap_to_record : R.string.voice_no_speech);
+        if (pendingSwitchBack) {
+            pendingSwitchBack = false;
+            switchAwayFromVoiceKeyboard();
+        }
+    }
+
+    /** Remove the owned composition and restore the selection it replaced. */
+    private void dropTentative(InputConnection ic) {
+        if (!streamComposing) return;
+        boolean owned = ownsStreamRegion(ic);
+        streamComposing = false;
+        if (owned) {
+            // Some editors end composition before onFinishInput. Select the
+            // verified owned range explicitly; never append the old selection.
+            ic.finishComposingText();
+            ic.setSelection(streamStart, streamStart + streamTypedHere.length());
+            ic.commitText(streamOriginalSelection, 1);
+            if (streamStart >= 0) ic.setSelection(streamStart, streamOriginalEnd);
+        } else {
+            ic.finishComposingText();
+        }
+        clearStreamRegion();
+    }
+
+    private void discardStreamText() {
+        streamDiscarded = true;
+        ++recordingGeneration;
+        captureFinishing = false;
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) dropTentative(ic);
+        resetStream();
+    }
+
+    /** User edits/Undo take priority. Keep their text; never reinsert a stale result. */
+    private void stopForEditorChange() {
+        if (!continuousTypingThisRecording) return;
+        if (!streamActive && !isRecording && !captureFinishing) return;
+        streamDiscarded = true;
+        ++recordingGeneration;
+        InputConnection ic = getCurrentInputConnection();
+        streamComposing = false;
+        if (ic != null) ic.finishComposingText();
+        cancelRecording();
+        resetStream();
+        captureFinishing = false;
+        pendingSwitchBack = false;
+        lastStatus = "Ready";
+        releaseAudioFocus();
+        updateRecordButtonUI(false);
+        updateUiState();
+    }
+
+    @Override
+    public void onUpdateSelection(int oldStart, int oldEnd, int newStart, int newEnd,
+            int candidatesStart, int candidatesEnd) {
+        super.onUpdateSelection(oldStart, oldEnd, newStart, newEnd,
+                candidatesStart, candidatesEnd);
+        if (!streamComposing) return;
+        if (candidatesStart == streamStart && candidatesEnd >= candidatesStart) {
+            streamCompositionSeen = true;
+            if (newStart != candidatesEnd || newEnd != candidatesEnd) stopForEditorChange();
+        } else if (streamCompositionSeen && candidatesStart < 0) {
+            stopForEditorChange();
+        }
+    }
+
+    private void clearStreamRegion() {
+        streamComposing = false;
+        streamCompositionSeen = false;
+        streamDeferred = false;
+        streamStart = streamOriginalEnd = -1;
+        streamOriginalSelection = "";
+        streamTypedHere.setLength(0);
+        streamLead = null;
+    }
+
+    private void resetStream() {
+        streamActive = false;
+        streamCommitted = "";
+        streamTentative = "";
+        clearStreamRegion();
+    }
+
     public void onAudioLevel(float level) { handleLevel(recordingGeneration, level); }
 
     private void handleLevel(long generation, float level) {

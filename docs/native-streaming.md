@@ -2,8 +2,9 @@
 
 When the selected model advertises streaming support, the IME and speech popup
 feed new 16 kHz audio to one transcribe.cpp session while capture continues.
-Stop finalizes the remaining state and inserts/delivers one result. No partial
-text is inserted into the editor or displayed in the popup in this change.
+Stop finalizes the remaining state and inserts/delivers one result. The
+default keyboard mode inserts only at the end. Optional continuous keyboard
+insertion and popup previews are documented in live-dictation-output.md.
 The bundled offline Parakeet model retains batch inference.
 
 This uses the existing transcribe-cpp 0.4.0 dependency. Nemotron Speech Streaming

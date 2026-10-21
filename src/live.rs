@@ -1,10 +1,17 @@
-//! Native incremental inference for compatible voice-input models.
+//! Live transcription of a voice-input recording with a streaming model
+//! (transcribe.cpp's streaming API, e.g. Nemotron Speech Streaming).
 //!
-//! Feed newly captured 16 kHz audio during recording, then finalize the
-//! remaining native stream state at Stop. Text is delivered once at the end;
-//! neither the IME field nor the popup displays partial text in this change.
-//! Non-streaming models retain batch inference. Failed/empty streams retry
-//! the complete buffered recording; cancellation suppresses late delivery.
+//! A worker thread follows the recording's audio buffer and feeds new samples
+//! into a stream while the user speaks, reporting the text so far through the
+//! target's `onStreamText(committed, tentative)` callback: `committed` only
+//! ever grows (later reports extend it), `tentative` is the model's current
+//! guess for what follows and may be revised. When the recording stops, only
+//! the audio still buffered in the stream needs decoding; the full text then
+//! goes out through `onTextTranscribed`, as after a batch transcription.
+//!
+//! Models without streaming support, and recordings that stop before the
+//! engine could begin a stream, are transcribed in batch as before: the
+//! worker steps aside and [`LiveStream::finish`] tells voice_session.rs so.
 
 use std::sync::{Arc, Condvar, Mutex, Weak};
 use once_cell::sync::Lazy;
@@ -224,7 +231,7 @@ impl LiveStream {
         }
         log::info!("live transcription started");
 
-        let mut partial = String::new();
+        let mut shown = Shown::default();
         let mut fed = 0usize;
         let mut failure = None;
         'feed: loop {
@@ -243,7 +250,7 @@ impl LiveStream {
                     Ok(update) => {
                         if self.cancelled() { return; }
                         if update.committed_changed || update.tentative_changed {
-                            partial = display_text(&stream.text());
+                            shown.update(&mut env, obj, &stream.text());
                         }
                     }
                     Err(e) => {
@@ -287,8 +294,10 @@ impl LiveStream {
                 fed as f64 / 16_000.0
             );
         }
-        // No partial text has been inserted. A failed or empty stream
-        // retries the full recording after capture ends.
+        // Progress callbacks are provisional in every client: the keyboard
+        // owns a replaceable composing region (or inserts only at the end),
+        // and the popup delivers only the final result. A full retry can
+        // therefore replace even a nonempty partial without duplicating it.
         let text = finalize_with_retry(text, || {
             let samples = audio.lock().unwrap().clone();
             engine::transcribe_speech(&engine, samples)
@@ -300,10 +309,10 @@ impl LiveStream {
             Ok(text) => text,
             // Preserve the recognized prefix only if BOTH streaming and
             // batch recovery failed; report the error, never silent success.
-            Err(e) if !partial.is_empty() => {
+            Err(e) if !shown.is_empty() => {
                 log::error!("{}", e);
                 notify_status(&mut env, obj, "Ready");
-                notify_text(&mut env, obj, &partial);
+                notify_text(&mut env, obj, &shown.text());
                 notify_status(&mut env, obj, &format!("Error: {}", e));
                 return;
             }
@@ -334,6 +343,66 @@ fn finalize_with_retry(
     };
     log::warn!("{}; retrying the full recording in batch", reason);
     retry().map_err(|e| format!("{}; batch retry failed: {}", reason, e))
+}
+
+/// The text last reported through `onStreamText`.
+#[derive(Default)]
+struct Shown {
+    committed: String,
+    tentative: String,
+}
+
+impl Shown {
+    fn is_empty(&self) -> bool {
+        self.committed.is_empty() && self.tentative.is_empty()
+    }
+
+    fn text(&self) -> String {
+        format!("{}{}", self.committed, self.tentative)
+    }
+
+    /// Reports `text` if it differs from what is shown. The committed part
+    /// only grows: should the model ever revise it, the revision is shown as
+    /// tentative instead, so text already typed is never contradicted.
+    fn update(&mut self, env: &mut JNIEnv, obj: &JObject, text: &transcribe_cpp::StreamText) {
+        let (committed, tentative) = trim_start(&text.committed, &text.tentative);
+        // Streams commit whole decoder chunks, which can end mid-word
+        // ("my fellow Americ" + "ans,"). The word after the last space may
+        // still grow, so it stays tentative until the stream moves past it.
+        let word_start = committed
+            .char_indices()
+            .rev()
+            .find(|(_, c)| c.is_whitespace())
+            .map_or(0, |(i, c)| i + c.len_utf8());
+        let tentative = format!("{}{}", &committed[word_start..], tentative);
+        let committed = &committed[..word_start];
+        let (committed, tentative) = if committed.starts_with(self.committed.as_str()) {
+            (committed.to_string(), tentative)
+        } else {
+            log::warn!("stream revised its committed text; showing the revision as tentative");
+            let display = format!("{}{}", committed, tentative);
+            match display.strip_prefix(self.committed.as_str()) {
+                Some(rest) => (self.committed.clone(), rest.to_string()),
+                None => (self.committed.clone(), String::new()),
+            }
+        };
+        if committed == self.committed && tentative == self.tentative {
+            return;
+        }
+        self.committed = committed;
+        self.tentative = tentative;
+        if let (Ok(c), Ok(t)) = (env.new_string(&self.committed), env.new_string(&self.tentative)) {
+            let _ = env.call_method(
+                obj,
+                "onStreamText",
+                "(Ljava/lang/String;Ljava/lang/String;)V",
+                &[(&c).into(), (&t).into()],
+            );
+            clear_exception(env);
+            let _ = env.delete_local_ref(c);
+            let _ = env.delete_local_ref(t);
+        }
+    }
 }
 
 /// Drops the whitespace the model puts before the first word, across the
