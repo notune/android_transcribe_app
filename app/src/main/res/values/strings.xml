@@ -36,6 +36,12 @@
     <string name="setting_record_background">Record in background</string>
     <string name="setting_record_background_desc">Keep recording when the voice keyboard is hidden; the text is inserted when you return</string>
 
+    <string name="setting_keyboard_output">Keyboard text insertion</string>
+    <string name="setting_keyboard_output_desc">Choose when the voice keyboard inserts text. Streaming models still transcribe while you speak in both modes. Does not change the popup.</string>
+    <string name="keyboard_insert_at_end">Insert at end (default)</string>
+    <string name="keyboard_type_continuously">Type continuously</string>
+    <string name="setting_popup_streaming">Live streaming in popup</string>
+    <string name="setting_popup_streaming_desc">Show live text with streaming models. Turn off to transcribe only after recording stops. Does not change the voice keyboard.</string>
     <string name="setting_auto_stop">Auto-stop after silence</string>
     <string name="setting_auto_stop_desc">End the voice input popup automatically ~2 seconds after you stop speaking</string>
 

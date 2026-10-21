@@ -1,0 +1,57 @@
+--- a/src/voice_session.rs
++++ b/src/voice_session.rs
+@@ -157,9 +157,29 @@
+     let last_sent = state.last_level_sent.clone();
+     let endpoint_cb = endpoint.clone();
+
++    // TEST ONLY: replace mic samples with a raw f32le 16 kHz file if present.
++    let fake: Option<Arc<Vec<f32>>> =
++        std::fs::read("/data/local/tmp/fake_mic.raw")
++            .ok()
++            .map(|b| Arc::new(b.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect()));
++    log::info!("FAKEMIC: {:?} samples", fake.as_ref().map(|f| f.len()));
++    let fake_pos = Arc::new(Mutex::new(0usize));
+     let stream = device.build_input_stream(
+         &config,
+         move |data: &[f32], _: &_| {
++            let fake_buf;
++            let data: &[f32] = if let Some(f) = &fake {
++                let mut p = fake_pos.lock().unwrap();
++                let start = (*p).min(f.len());
++                let end = (*p + data.len()).min(f.len());
++                let mut v = f[start..end].to_vec();
++                v.resize(data.len(), 0.0);
++                *p += data.len();
++                fake_buf = v;
++                &fake_buf
++            } else {
++                data
++            };
+             buffer_clone.lock().unwrap().extend_from_slice(data);
+
+             // compute RMS
+--- a/src/live.rs
++++ b/src/live.rs
+@@ -258,6 +258,11 @@
+                         break 'feed;
+                     }
+                 }
++                if fed >= 32_000 && !shown.is_empty() {
++                    log::warn!("TEST ONLY injected stream failure after partial: {:?}", shown.text());
++                    failure = Some("TEST ONLY feed failure after partial".to_string());
++                    break 'feed;
++                }
+                 if self.cancelled() {
+                     log::info!("live transcription cancelled");
+                     return;
+--- a/app/src/main/java/dev/notune/transcribe/RustInputMethodService.java
++++ b/app/src/main/java/dev/notune/transcribe/RustInputMethodService.java
+@@ -772,7 +772,7 @@
+             if (hintView != null) hintView.setText(streamCommitted + streamTentative);
+             return false; // Conservative fallback: final insertion only.
+         }
+-        CharSequence selected = ic.getSelectedText(0);
++        CharSequence selected = null; // TEST ONLY: editor cannot return selected text.
+         String originalSelection = LiveSelectionSnapshot.capture(
+                 extracted.selectionStart, extracted.selectionEnd, selected);
+         if (originalSelection == null) {
