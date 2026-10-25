@@ -162,13 +162,15 @@ val cargoNdkBuild by tasks.registering(Exec::class) {
     doLast {
         val ndkPath = environment["ANDROID_NDK_HOME"] as String
         val triples = mapOf("arm64-v8a" to "aarch64-linux-android", "x86_64" to "x86_64-linux-android")
-        val llvmStrip = file("$ndkPath/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip")
+        // macOS NDKs use darwin-x86_64 (also for Apple Silicon hosts).
+        val hostTag = if (System.getProperty("os.name").startsWith("Mac")) "darwin-x86_64" else "linux-x86_64"
+        val llvmStrip = file("$ndkPath/toolchains/llvm/prebuilt/$hostTag/bin/llvm-strip")
         if (!llvmStrip.exists()) {
             throw GradleException("llvm-strip not found in NDK at: ${llvmStrip.absolutePath}")
         }
         targetAbis.forEach { abi ->
             val triple = triples[abi] ?: throw GradleException("Unsupported ABI: $abi")
-            val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$triple/libc++_shared.so")
+            val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/$hostTag/sysroot/usr/lib/$triple/libc++_shared.so")
             if (!libcpp.exists()) {
                 throw GradleException("libc++_shared.so not found in NDK at: ${libcpp.absolutePath}")
             }
