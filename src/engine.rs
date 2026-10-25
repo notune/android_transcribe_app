@@ -9,6 +9,7 @@
 
 use once_cell::sync::Lazy;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::SystemTime;
 
@@ -70,6 +71,12 @@ pub struct Engine {
     /// Status reported once loading succeeded; carries a warning when the
     /// translate setting can't do what the user expects with this model.
     ready_status: &'static str,
+    /// The model decodes incrementally (transcribe.cpp's streaming API), so
+    /// voice input can show text while the user speaks (see live.rs).
+    supports_streaming: bool,
+    /// A stream already began with the current language hint, so beginning
+    /// another needs no check for a rejected hint (see `begin_stream`).
+    stream_language_ok: bool,
 }
 
 impl Engine {
@@ -86,10 +93,9 @@ impl Engine {
         // Translation is gated on the model's capabilities: models without it
         // (e.g. Parakeet) silently keep transcribing, so the setting can stay
         // on while switching models.
-        let supports_translate = model
-            .capabilities()
-            .map(|c| c.supports_translate)
-            .unwrap_or(false);
+        let capabilities = model.capabilities().ok();
+        let supports_translate = capabilities.as_ref().is_some_and(|c| c.supports_translate);
+        let supports_streaming = capabilities.as_ref().is_some_and(|c| c.supports_streaming);
         let task = if translate && supports_translate {
             transcribe_cpp::Task::Translate
         } else {
@@ -131,10 +137,11 @@ impl Engine {
         };
 
         log::info!(
-            "engine: {} threads, task {:?}, single-pass decode: {}",
+            "engine: {} threads, task {:?}, single-pass decode: {}, streaming: {}",
             threads,
             task,
-            run_ext.is_some()
+            run_ext.is_some(),
+            supports_streaming
         );
         let options = transcribe_cpp::SessionOptions {
             n_threads: threads,
@@ -147,7 +154,58 @@ impl Engine {
             task,
             run_ext,
             ready_status,
+            supports_streaming,
+            stream_language_ok: false,
         })
+    }
+
+    pub fn supports_streaming(&self) -> bool {
+        self.supports_streaming
+    }
+
+    /// Begins a stream with the same options as a run. A rejected language
+    /// hint is degraded as in [`Engine::run`]; the hint is checked with a
+    /// throwaway stream first, because a stream borrowed from inside the
+    /// retry loop could not be returned from it.
+    pub fn begin_stream(&mut self) -> Result<transcribe_cpp::Stream<'_>, String> {
+        let stream_options = transcribe_cpp::StreamOptions::default();
+        while !self.stream_language_ok {
+            let run_options = self.run_options();
+            match self.session.stream(&run_options, &stream_options).map(drop) {
+                Ok(()) => self.stream_language_ok = true,
+                Err(transcribe_cpp::Error::Unsupported(msg)) if self.language.is_some() => {
+                    self.degrade_language(&msg)
+                }
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+        let run_options = self.run_options();
+        self.session
+            .stream(&run_options, &stream_options)
+            .map_err(|e| e.to_string())
+    }
+
+    fn run_options(&self) -> transcribe_cpp::RunOptions {
+        transcribe_cpp::RunOptions {
+            language: self.language.clone(),
+            task: self.task,
+            family: self.run_ext.clone(),
+            ..Default::default()
+        }
+    }
+
+    /// Drops the region from a rejected language hint (`de-DE` -> `de`), or
+    /// the hint altogether if it has none.
+    fn degrade_language(&mut self, msg: &str) {
+        let lang = self.language.take().unwrap_or_default();
+        self.language = lang.split_once('-').map(|(primary, _)| primary.to_string());
+        self.stream_language_ok = false;
+        log::warn!(
+            "language hint '{}' rejected ({}); retrying with {:?}",
+            lang,
+            msg,
+            self.language
+        );
     }
 
     /// Transcribes 16 kHz mono f32 samples to text. Input longer than
@@ -181,12 +239,7 @@ impl Engine {
     /// value is kept so later runs skip the rejected attempts.
     fn run(&mut self, samples: &[f32]) -> Result<String, String> {
         loop {
-            let opts = transcribe_cpp::RunOptions {
-                language: self.language.clone(),
-                task: self.task,
-                family: self.run_ext.clone(),
-                ..Default::default()
-            };
+            let opts = self.run_options();
             match self.session.run(samples, &opts) {
                 Ok(t) => return Ok(t.text),
                 // Some model families stop a decode that hit its length
@@ -198,14 +251,7 @@ impl Engine {
                     return Ok(partial.map(|t| t.text).unwrap_or_default());
                 }
                 Err(transcribe_cpp::Error::Unsupported(msg)) if self.language.is_some() => {
-                    let lang = self.language.take().unwrap();
-                    self.language = lang.split_once('-').map(|(primary, _)| primary.to_string());
-                    log::warn!(
-                        "language hint '{}' rejected ({}); retrying with {:?}",
-                        lang,
-                        msg,
-                        self.language
-                    );
+                    self.degrade_language(&msg)
                 }
                 Err(e) => return Err(e.to_string()),
             }
@@ -306,6 +352,21 @@ pub fn get_engine() -> Option<Arc<Mutex<Engine>>> {
     GLOBAL_ENGINE.lock().unwrap().clone()
 }
 
+/// Whether the model last loaded supports streaming, readable without
+/// waiting for the engine lock (a subtitle run may hold it).
+static LOADED_STREAMING: AtomicBool = AtomicBool::new(false);
+
+/// True if the loaded engine's model supports streaming (see live.rs).
+pub fn engine_supports_streaming() -> bool {
+    is_engine_loaded() && LOADED_STREAMING.load(Ordering::SeqCst)
+}
+
+fn install_engine(engine: Engine, files_dir: PathBuf, config: EngineConfig) {
+    LOADED_STREAMING.store(engine.supports_streaming, Ordering::SeqCst);
+    *GLOBAL_ENGINE.lock().unwrap() = Some(Arc::new(Mutex::new(engine)));
+    *LOADED_CONFIG.lock().unwrap() = Some((files_dir, config));
+}
+
 /// Number of voice-input transcriptions (keyboard, popup, speech service,
 /// shared files) waiting for or using the engine. All features share one
 /// engine, which runs one transcription at a time, so live subtitles yield to
@@ -313,10 +374,10 @@ pub fn get_engine() -> Option<Arc<Mutex<Engine>>> {
 /// waits for at most the subtitle run already in flight.
 static INTERACTIVE: Lazy<(Mutex<usize>, Condvar)> = Lazy::new(|| (Mutex::new(0), Condvar::new()));
 
-struct InteractiveTurn;
+pub(crate) struct InteractiveTurn;
 
 impl InteractiveTurn {
-    fn begin() -> InteractiveTurn {
+    pub(crate) fn begin() -> InteractiveTurn {
         *INTERACTIVE.0.lock().unwrap() += 1;
         InteractiveTurn
     }
@@ -336,6 +397,7 @@ impl Drop for InteractiveTurn {
 /// Transcribes for someone waiting on the result (voice input, a shared
 /// file, the benchmark): takes precedence over live subtitles.
 pub fn transcribe_shared(engine: &Arc<Mutex<Engine>>, samples: Vec<f32>) -> Result<String, String> {
+    crate::live::finish_active();
     let _turn = InteractiveTurn::begin();
     transcribe_guarded(engine, samples)
 }
@@ -412,6 +474,12 @@ pub fn is_engine_loaded() -> bool {
 /// an in-flight load to finish first, so a reload can't race a load of the
 /// previous selection. Call from a background thread.
 pub fn reset() {
+    crate::live::finish_active();
+    // Reset runs off the UI thread. Wait for the old stream to release its
+    // compute lease before permitting a second full model allocation.
+    if let Some(engine) = get_engine() {
+        drop(engine.lock().unwrap_or_else(|p| p.into_inner()));
+    }
     let (lock, cvar) = &*LOAD_STATE;
     let mut state = lock.lock().unwrap();
     while *state == LoadState::Loading {
@@ -455,7 +523,30 @@ pub fn ensure_loaded_from_thread(
     jvm: &Arc<jni::JavaVM>,
     target_ref: &GlobalRef,
 ) -> Result<(), String> {
+    ensure_loaded_reporting(jvm, target_ref, true)
+}
+
+/// [`ensure_loaded_from_thread`] for use during a recording: waiting for
+/// another thread's load (or finding the engine already loaded) is not
+/// reported, since a "Waiting"/"Ready" status there would make the keyboard
+/// disable its stop button or reset its display. A load this thread performs
+/// still reports its progress and errors.
+pub fn ensure_loaded_quietly(
+    jvm: &Arc<jni::JavaVM>,
+    target_ref: &GlobalRef,
+) -> Result<(), String> {
+    ensure_loaded_reporting(jvm, target_ref, false)
+}
+
+fn ensure_loaded_reporting(
+    jvm: &Arc<jni::JavaVM>,
+    target_ref: &GlobalRef,
+    report_waits: bool,
+) -> Result<(), String> {
     let notify = |msg: &str| {
+        if !report_waits && !msg.starts_with("Error") {
+            return;
+        }
         if let Ok(mut env) = jvm.attach_current_thread() {
             notify_status(&mut env, target_ref.as_obj(), msg);
         }
@@ -634,8 +725,7 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
         match Engine::load(&path, language.clone(), translate, threads) {
             Ok(engine) => {
                 let status = engine.ready_status;
-                *GLOBAL_ENGINE.lock().unwrap() = Some(Arc::new(Mutex::new(engine)));
-                *LOADED_CONFIG.lock().unwrap() = Some((files_dir, config));
+                install_engine(engine, files_dir, config);
                 notify_status(env, context, status);
                 return Ok(());
             }
@@ -674,8 +764,7 @@ fn do_load(env: &mut JNIEnv, context: &JObject) -> Result<(), String> {
     match Engine::load(&path, language, translate, threads) {
         Ok(engine) => {
             let status = engine.ready_status;
-            *GLOBAL_ENGINE.lock().unwrap() = Some(Arc::new(Mutex::new(engine)));
-            *LOADED_CONFIG.lock().unwrap() = Some((files_dir, config));
+            install_engine(engine, files_dir, config);
             notify_status(env, context, status);
             Ok(())
         }

@@ -7,6 +7,7 @@
     void onAutoStop();
     void onTextTranscribed(java.lang.String);
     void onPartialText(java.lang.String);
+    void onStreamText(java.lang.String, java.lang.String);
     void onBenchmarkResult(float, float, java.lang.String);
     void onSubtitleText(java.lang.String, boolean);
     void onReadyForSpeech();

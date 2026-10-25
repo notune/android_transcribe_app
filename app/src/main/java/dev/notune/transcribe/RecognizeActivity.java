@@ -19,9 +19,14 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.content.pm.PackageManager;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 
@@ -30,6 +35,8 @@ public class RecognizeActivity extends AppCompatActivity {
     private static final String TAG = "OfflineVoiceInput";
     /** How long a keyboard gets to insert the result before it is copied. */
     private static final long CLIPBOARD_DELAY_MS = 1000;
+    /** Live text longer than this shows only its end, so the panel stays compact. */
+    private static final int LIVE_TEXT_MAX_CHARS = 160;
 
     static {
         try {
@@ -45,6 +52,8 @@ public class RecognizeActivity extends AppCompatActivity {
     private MicLevelView micLevel;
     private final AudioFocusPauser audioPauser = new AudioFocusPauser();
     private boolean pauseAudioActive = false;
+    /** A streaming model is showing its text in the panel (replacing the status). */
+    private boolean showingLiveText = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,7 +111,7 @@ public class RecognizeActivity extends AppCompatActivity {
             audioPauser.request(this);
             pauseAudioActive = true;
         }
-        startRecording(isAutoStopEnabled());
+        startRecording(isAutoStopEnabled(), !new java.io.File(getFilesDir(), "popup_batch").exists());
     }
 
     /** Stop capture and transcribe — used by both tap-to-stop and auto-stop. */
@@ -159,9 +168,36 @@ public class RecognizeActivity extends AppCompatActivity {
             // "Transcribing...") just means listening or busy for the user.
             if (s != null && s.startsWith("Error")) {
                 status.setText(ModelStore.displayStatus(this, s));
+            } else if (showingLiveText) {
+                // Keep showing the text; busy states don't need words here.
             } else {
                 status.setText(isRecording ? R.string.voice_listening : R.string.voice_processing);
             }
+        });
+    }
+
+    // Called from Rust while a streaming model transcribes (see live.rs):
+    // committed text only grows, the tentative rest may still change.
+    public void onStreamText(String committed, String tentative) {
+        runOnUiThread(() -> {
+            if (isFinishing()) return;
+            showingLiveText = true;
+            String text = committed + tentative;
+            int tentativeStart = committed.length();
+            if (text.length() > LIVE_TEXT_MAX_CHARS) {
+                int cut = text.length() - LIVE_TEXT_MAX_CHARS;
+                int space = text.indexOf(' ', cut);
+                if (space >= 0 && space < text.length() - 1) cut = space + 1;
+                text = "…" + text.substring(cut);
+                tentativeStart = Math.max(1, tentativeStart - cut + 1);
+            }
+            SpannableString shown = new SpannableString(text);
+            if (tentativeStart < text.length()) {
+                shown.setSpan(new ForegroundColorSpan(MaterialColors.getColor(status,
+                                com.google.android.material.R.attr.colorOnSurfaceVariant)),
+                        tentativeStart, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            status.setText(shown);
         });
     }
 
@@ -173,6 +209,7 @@ public class RecognizeActivity extends AppCompatActivity {
     // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             if (text == null || text.trim().isEmpty()) {
                 // Nothing was recognized (e.g. auto-stop after silence only).
                 // Say so: otherwise the panel just vanishes as if it broke.
@@ -278,7 +315,7 @@ public class RecognizeActivity extends AppCompatActivity {
     // Native methods
     private native void initNative(RecognizeActivity activity);
     private native void cleanupNative(RecognizeActivity self);
-    private native void startRecording(boolean autoStop);
+    private native void startRecording(boolean autoStop, boolean liveEnabled);
     private native void stopRecording();
     private native void cancelRecording();
 }

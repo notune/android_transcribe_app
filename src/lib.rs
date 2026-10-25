@@ -3,6 +3,7 @@ pub mod audio;
 pub mod endpoint;
 pub mod engine;
 pub mod ime;
+pub mod live;
 pub mod main_activity;
 pub mod models;
 pub mod recog_service;

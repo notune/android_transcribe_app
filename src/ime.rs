@@ -27,7 +27,7 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
     let mut guard = IME_STATE.lock().unwrap();
     if guard
         .as_ref()
-        .is_some_and(|s| env.is_same_object(&s.target_ref, &service).unwrap_or(false))
+        .is_some_and(|s| env.is_same_object(&s.owner_ref, &service).unwrap_or(false))
     {
         *guard = None;
     }
@@ -37,11 +37,13 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_startRecording(
     env: JNIEnv,
     _class: JClass,
+    callback: JObject,
 ) {
     let mut guard = IME_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
+        state.target_ref = env.new_global_ref(callback).expect("recording callback");
         // The IME keyboard is manual tap-to-stop; no silence auto-stop.
-        voice_session::start_recording(env, state, false);
+        voice_session::start_recording(env, state, false, true);
     }
 }
 
