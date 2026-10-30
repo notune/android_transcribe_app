@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Edge-anchored variant of recognize_activity.xml, used when the optional
+     "Voice panel at the side" setting is on: a narrow vertical panel that
+     covers less of the calling app than the full-width bottom one. The view
+     ids match the bottom layout so RecognizeActivity drives either without
+     extra wiring — keep the two files in sync when editing one.
+
+     The gravity is a physical edge (right here, flipped to left in Java)
+     rather than start/end on purpose: the user picks the side their hand
+     reaches, which must not follow the text direction of the locale. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:id="@+id/panel"
+        android:layout_width="88dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|center_vertical"
+        android:layout_margin="16dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:background="@drawable/bg_voice_panel"
+        android:elevation="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp">
+
+        <!-- Mic with level glow -->
+        <FrameLayout
+            android:layout_width="64dp"
+            android:layout_height="64dp">
+
+            <dev.notune.transcribe.MicLevelView
+                android:id="@+id/mic_level"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center" />
+
+            <View
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_record_circle" />
+
+            <ImageView
+                android:id="@+id/mic_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_mic"
+                android:contentDescription="@string/section_ime"
+                app:tint="?attr/colorOnPrimaryContainer" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/txt_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:gravity="center_horizontal"
+            android:text="Listening… (tap to stop)"
+            android:textColor="?attr/colorOnSurface"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <!-- Close (discard) -->
+        <ImageButton
+            android:id="@+id/btn_close"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close"
+            android:src="@drawable/ic_close"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </LinearLayout>
+
+</FrameLayout>
