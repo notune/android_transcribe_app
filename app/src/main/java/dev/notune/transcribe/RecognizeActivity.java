@@ -155,6 +155,7 @@ public class RecognizeActivity extends AppCompatActivity {
     // Called from Rust
     public void onStatusUpdate(String s) {
         runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             // Errors are shown as they are; everything else (model loading,
             // "Transcribing...") just means listening or busy for the user.
             if (s != null && s.startsWith("Error")) {
@@ -162,6 +163,22 @@ public class RecognizeActivity extends AppCompatActivity {
             } else {
                 status.setText(isRecording ? R.string.voice_listening : R.string.voice_processing);
             }
+        });
+    }
+
+    // A failed capture is not a successful partial dictation.
+    public void onCaptureFailed(String error) {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            isRecording = false;
+            cancelRecording();
+            if (pauseAudioActive) {
+                audioPauser.abandon(this);
+                pauseAudioActive = false;
+            }
+            Toast.makeText(this, getString(R.string.voice_capture_failed, error), Toast.LENGTH_LONG).show();
+            setResult(Activity.RESULT_CANCELED);
+            finish();
         });
     }
 
@@ -173,6 +190,7 @@ public class RecognizeActivity extends AppCompatActivity {
     // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             if (text == null || text.trim().isEmpty()) {
                 // Nothing was recognized (e.g. auto-stop after silence only).
                 // Say so: otherwise the panel just vanishes as if it broke.

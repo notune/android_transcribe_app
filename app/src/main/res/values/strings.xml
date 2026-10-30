@@ -158,4 +158,5 @@
     <string name="subs_grant_overlay">Please allow “Display over other apps”</string>
     <string name="subs_overlay_required">Live subtitles need the “Display over other apps” permission</string>
     <string name="subs_capture_denied">Screen capture was denied</string>
+    <string name="voice_capture_failed">Transcription failed: %1$s</string>
 </resources>

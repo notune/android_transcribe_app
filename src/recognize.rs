@@ -28,10 +28,10 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RecognizeActivity_clean
     activity: JObject,
 ) {
     let mut guard = RECOG_STATE.lock().unwrap();
-    if guard
-        .as_ref()
-        .is_some_and(|s| env.is_same_object(&s.target_ref, &activity).unwrap_or(false))
-    {
+    if guard.as_ref().is_some_and(|s| {
+        env.is_same_object(&s.owner_ref, &activity)
+            .unwrap_or(false)
+    }) {
         *guard = None;
     }
 }

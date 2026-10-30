@@ -8,6 +8,7 @@ use jni::JNIEnv;
 
 use crate::endpoint::Endpointer;
 use crate::engine;
+use crate::live::LiveStream;
 
 // --- Optional auto-stop endpointing ------------------------------------------
 /// Trailing silence after speech that triggers auto-stop.
@@ -24,37 +25,31 @@ pub struct VoiceSessionState {
     pub audio_buffer: Arc<Mutex<Vec<f32>>>,
     pub jvm: Arc<jni::JavaVM>,
     pub target_ref: GlobalRef,
+    pub owner_ref: GlobalRef,
     pub last_level_sent: Arc<Mutex<std::time::Instant>>,
     /// True while the current recording runs; flipped off on stop/cancel so
     /// the auto-stop monitor (if any) exits.
     pub session_active: Arc<AtomicBool>,
+    /// The current recording's live transcription (streaming models only;
+    /// for others it steps aside and the recording is transcribed in batch).
+    pub live: Option<Arc<LiveStream>>,
 }
 
-fn notify_status(env: &mut JNIEnv, obj: &JObject, msg: &str) {
-    if let Ok(jmsg) = env.new_string(msg) {
-        let _ = env.call_method(
-            obj,
-            "onStatusUpdate",
-            "(Ljava/lang/String;)V",
-            &[(&jmsg).into()],
-        );
+// Dropping a screen/service must also stop its background decoder. The worker
+// owns its own Arc, so dropping only this handle would not stop it.
+impl Drop for VoiceSessionState {
+    fn drop(&mut self) {
+        self.session_active.store(false, Ordering::SeqCst);
+        self.stream = None;
+        if let Some(live) = self.live.take() {
+            live.cancel();
+        }
     }
 }
 
-fn notify_level(env: &mut JNIEnv, obj: &JObject, level: f32) {
-    let _ = env.call_method(obj, "onAudioLevel", "(F)V", &[level.into()]);
-}
-
-fn notify_text(env: &mut JNIEnv, obj: &JObject, text: &str) {
-    if let Ok(jtxt) = env.new_string(text) {
-        let _ = env.call_method(
-            obj,
-            "onTextTranscribed",
-            "(Ljava/lang/String;)V",
-            &[(&jtxt).into()],
-        );
-    }
-}
+use crate::voice_callbacks::{
+    failure as notify_failure, level as notify_level, status as notify_status, text as notify_text,
+};
 
 pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
     android_logger::init_once(
@@ -70,8 +65,10 @@ pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
         audio_buffer: Arc::new(Mutex::new(Vec::new())),
         jvm: vm_arc.clone(),
         target_ref: target_ref.clone(),
+        owner_ref: target_ref.clone(),
         last_level_sent: Arc::new(Mutex::new(std::time::Instant::now())),
         session_active: Arc::new(AtomicBool::new(false)),
+        live: None,
     };
 
     // Load engine in background
@@ -94,10 +91,10 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
     let device = match host.default_input_device() {
         Some(d) => d,
         None => {
-            notify_status(
+            notify_failure(
                 &mut env,
                 state.target_ref.as_obj(),
-                "Error: no microphone available. Check permissions.",
+                "No microphone available. Check permissions.",
             );
             return;
         }
@@ -109,7 +106,12 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
         buffer_size: cpal::BufferSize::Default,
     };
 
-    state.audio_buffer.lock().unwrap().clear();
+    // A fresh buffer per recording: the previous recording's live stream may
+    // still be finalizing from its own.
+    state.audio_buffer = Arc::new(Mutex::new(Vec::new()));
+    if let Some(live) = state.live.take() {
+        live.cancel();
+    }
     let buffer_clone = state.audio_buffer.clone();
 
     // End any previous session's monitor, then arm a fresh flag.
@@ -166,15 +168,14 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
             state.stream = Some(SendStream(s));
             notify_status(&mut env, state.target_ref.as_obj(), "Listening...");
 
-            // Settings changed in the app since this process loaded the
-            // model: reload while the user speaks rather than after.
-            if engine::is_engine_loaded() && !engine::is_current() {
-                let jvm = state.jvm.clone();
-                let target_ref = state.target_ref.clone();
-                std::thread::spawn(move || {
-                    let _ = engine::ensure_loaded_from_thread(&jvm, &target_ref);
-                });
-            }
+            // Transcribes while the user speaks if the model streams; also
+            // reloads the model now, rather than after, if its settings
+            // changed in the app since this process loaded it.
+            state.live = Some(LiveStream::start(
+                state.jvm.clone(),
+                state.target_ref.clone(),
+                state.audio_buffer.clone(),
+            ));
 
             if let Some(ep) = endpoint {
                 let jvm = state.jvm.clone();
@@ -198,12 +199,8 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
                         // this monitor can't both fire.
                         if session_active.swap(false, Ordering::SeqCst) {
                             if let Ok(mut env) = jvm.attach_current_thread() {
-                                let _ = env.call_method(
-                                    target_ref.as_obj(),
-                                    "onAutoStop",
-                                    "()V",
-                                    &[],
-                                );
+                                let _ =
+                                    env.call_method(target_ref.as_obj(), "onAutoStop", "()V", &[]);
                             }
                         }
                         return;
@@ -212,10 +209,10 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
             }
         }
         Err(e) => {
-            notify_status(
+            notify_failure(
                 &mut env,
                 state.target_ref.as_obj(),
-                &format!("Error: failed to open microphone: {}", e),
+                &format!("Failed to open microphone: {}", e),
             );
         }
     }
@@ -223,17 +220,21 @@ pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop
 
 pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
     // Drop the stream to stop recording; end the auto-stop monitor if running.
+    if state.stream.take().is_none() {
+        return;
+    }
     state.session_active.store(false, Ordering::SeqCst);
-    state.stream = None;
-
-    let buffer = state.audio_buffer.lock().unwrap().clone();
+    let live = state.live.clone();
 
     // Guard against empty buffer (mic permission denied, instant stop, etc.)
-    if buffer.is_empty() {
-        notify_status(
+    if state.audio_buffer.lock().unwrap().is_empty() {
+        if let Some(live) = live {
+            live.cancel();
+        }
+        notify_failure(
             &mut env,
             state.target_ref.as_obj(),
-            "Error: no audio recorded. Check microphone permissions.",
+            "No audio recorded. Please try again.",
         );
         return;
     }
@@ -243,7 +244,14 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
 
     notify_status(&mut env, target_ref.as_obj(), "Transcribing...");
 
+    // The live stream decodes what it hasn't yet and delivers the text.
+    if live.is_some_and(|live| live.finish()) {
+        return;
+    }
+
+    let audio = state.audio_buffer.clone();
     std::thread::spawn(move || {
+        let buffer = audio.lock().unwrap().clone();
         let mut env = match jvm.attach_current_thread() {
             Ok(e) => e,
             Err(_) => return,
@@ -253,7 +261,8 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
         // Wait for the engine if it is still loading, or reload it if the
         // model settings changed since it was loaded.
         if !engine::is_current() {
-            if let Err(_) = engine::ensure_loaded(&mut env, obj) {
+            if let Err(error) = engine::ensure_loaded(&mut env, obj) {
+                notify_failure(&mut env, obj, &error);
                 return;
             }
         }
@@ -263,13 +272,13 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
 
             match res {
                 Ok(text) => {
-                    notify_status(&mut env, obj, "Ready");
                     notify_text(&mut env, obj, &text);
+                    notify_status(&mut env, obj, "Ready");
                 }
-                Err(e) => notify_status(&mut env, obj, &format!("Error: {}", e)),
+                Err(e) => notify_failure(&mut env, obj, &e),
             }
         } else {
-            notify_status(&mut env, obj, "Error: model not loaded");
+            notify_failure(&mut env, obj, "Model not loaded");
         }
     });
 }
@@ -277,6 +286,11 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
 pub fn cancel_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
     state.session_active.store(false, Ordering::SeqCst);
     state.stream = None;
-    state.audio_buffer.lock().unwrap().clear();
+    if let Some(live) = state.live.take() {
+        live.cancel();
+    }
+    // The decoder can still be reading its Arc while it observes cancellation.
+    // Detach instead of shrinking the Vec underneath its pending slice.
+    state.audio_buffer = Arc::new(Mutex::new(Vec::new()));
     notify_status(&mut env, state.target_ref.as_obj(), "Canceled");
 }

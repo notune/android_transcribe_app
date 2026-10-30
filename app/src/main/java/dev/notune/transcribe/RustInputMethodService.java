@@ -54,9 +54,7 @@ public class RustInputMethodService extends InputMethodService {
     // if the theme preference changes while this process stays alive.
     private boolean viewIsNight = false;
     private Handler mainHandler;
-    private boolean isRecording = false;
     private boolean pendingSwitchBack = false;
-    private String lastStatus = "Initializing...";
     // Key repeat settings
     private static final long REPEAT_INITIAL_DELAY = 400; // ms before repeat starts
     private static final long REPEAT_INTERVAL = 50; // ms between repeats
@@ -82,6 +80,21 @@ public class RustInputMethodService extends InputMethodService {
     // process audio. Flushed from onStartInputView once a field is focused
     // again so the text is never lost.
     private String pendingCommitText = null;
+
+    private final VoiceCaptureState capture = new VoiceCaptureState();
+
+    /** Reject callbacks from cancelled/replaced recordings on the UI thread. */
+    private final class RecordingCallbacks extends android.content.ContextWrapper {
+        private final long generation;
+        RecordingCallbacks(long generation) {
+            super(RustInputMethodService.this);
+            this.generation = generation;
+        }
+        public void onStatusUpdate(String status) { handleStatus(generation, status); }
+        public void onTextTranscribed(String text) { handleText(generation, text); }
+        public void onAudioLevel(float level) { handleLevel(generation, level); }
+        public void onCaptureFailed(String error) { handleFailure(generation, error); }
+    }
 
     @Override
     public void onCreate() {
@@ -138,7 +151,7 @@ public class RustInputMethodService extends InputMethodService {
             switchKeyboardButton = view.findViewById(R.id.ime_switch_keyboard);
 
             switchKeyboardButton.setOnClickListener(v -> {
-                if (isRecording) {
+                if (capture.isRecording()) {
                     pendingSwitchBack = true;
                     finishCapture();
                 } else {
@@ -237,20 +250,19 @@ public class RustInputMethodService extends InputMethodService {
                     return;
                 }
 
-                if (!isRecording && !ModelStore.hasAnyModel(this)) {
+                if (!capture.isRecording() && !ModelStore.hasAnyModel(this)) {
                     updateUiState();
                     return;
                 }
 
-                if (isRecording) {
+                if (capture.isRecording()) {
                     finishCapture();
                 } else {
                     if (isPauseAudioEnabled()) {
                         audioPauser.request(this);
                         pauseAudioActive = true;
                     }
-                    startRecording();
-                    updateRecordButtonUI(true);
+                    if (beginRecording()) updateRecordButtonUI(true);
                 }
             });
 
@@ -280,12 +292,20 @@ public class RustInputMethodService extends InputMethodService {
         }
     }
 
+    /** Starts a recording, with no live text from an earlier one. */
+    private boolean beginRecording() {
+        if (!capture.begin()) return false;
+        startRecording(new RecordingCallbacks(capture.generation()));
+        return true;
+    }
+
     /**
      * Stops capture and hands the audio to transcription. Audio focus is
      * released right away, so paused media can resume while the (possibly
      * long) transcription runs.
      */
     private void finishCapture() {
+        if (!capture.stop()) return;
         stopRecording();
         releaseAudioFocus();
         updateRecordButtonUI(false);
@@ -353,7 +373,7 @@ public class RustInputMethodService extends InputMethodService {
         super.onWindowShown();
         boolean wasVisible = windowVisible;
         windowVisible = true;
-        if (isRecording) {
+        if (capture.isRecording()) {
             // A background recording is still running (record-in-background
             // setting): restore the recording UI.
             updateRecordButtonUI(true);
@@ -364,15 +384,14 @@ public class RustInputMethodService extends InputMethodService {
             // text area); never auto-start a recording from here.
             return;
         }
-        if (new File(getFilesDir(), "auto_record").exists()) {
+        if (!capture.isFinishing() && new File(getFilesDir(), "auto_record").exists()) {
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
                     == PackageManager.PERMISSION_GRANTED) {
                 if (isPauseAudioEnabled()) {
                     audioPauser.request(this);
                     pauseAudioActive = true;
                 }
-                startRecording();
-                updateRecordButtonUI(true);
+                if (beginRecording()) updateRecordButtonUI(true);
             }
         }
     }
@@ -381,9 +400,10 @@ public class RustInputMethodService extends InputMethodService {
     public void onWindowHidden() {
         super.onWindowHidden();
         windowVisible = false;
-        if (isRecording) {
+        if (capture.isRecording()) {
             if (isStopOnHideEnabled()) {
                 // Opt-in behavior: discard the recording when the keyboard hides.
+                capture.cancel();
                 try {
                     cancelRecording();
                 } catch (Throwable t) {
@@ -446,7 +466,6 @@ public class RustInputMethodService extends InputMethodService {
     }
 
     private void updateRecordButtonUI(boolean recording) {
-        isRecording = recording;
         // Keep the screen awake while recording so it never sleeps mid-capture
         // and cuts the recording short. Cleared automatically once we stop.
         if (inputView != null) {
@@ -461,6 +480,8 @@ public class RustInputMethodService extends InputMethodService {
             hintView.setText(R.string.ime_tap_to_record);
             if (micLevelView != null) micLevelView.setLevel(0f);
         }
+        // Lifecycle state, not a status string, controls Record availability.
+        updateUiState();
     }
 
     /** Tints the round record button + mic: idle = primary, recording = error. */
@@ -483,6 +504,7 @@ public class RustInputMethodService extends InputMethodService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        capture.cancel();
         cleanupNative(this);
         releaseAudioFocus();
     }
@@ -490,38 +512,56 @@ public class RustInputMethodService extends InputMethodService {
     // Native methods
     private native void initNative(RustInputMethodService service);
     private native void cleanupNative(RustInputMethodService self);
-    private native void startRecording();
+    private native void startRecording(RecordingCallbacks callbacks);
     private native void stopRecording();
     private native void cancelRecording();
 
-    // Called from Rust
+    // Initial model preload has no recording generation and only reports display status.
     public void onStatusUpdate(String status) {
+        mainHandler.post(() -> applyStatus(status));
+    }
+
+    private void handleStatus(long generation, String status) {
         mainHandler.post(() -> {
-            Log.d(TAG, "Status: " + status);
-            lastStatus = status;
-            updateUiState();
-            if (pendingSwitchBack && status.startsWith("Error")) {
+            if (capture.accepts(generation)) applyStatus(status);
+        });
+    }
+
+    private void applyStatus(String status) {
+        if (status == null) return;
+        // Status text is not a terminal protocol. In particular, a custom-model
+        // load warning can be followed by a successful built-in fallback.
+        Log.d(TAG, "Status: " + status);
+        capture.status(status);
+        updateUiState();
+    }
+
+    private void handleFailure(long generation, String error) {
+        mainHandler.post(() -> {
+            if (!capture.fail(generation)) return;
+            cancelRecording();
+            capture.status("Error: " + error);
+            releaseAudioFocus();
+            updateRecordButtonUI(false);
+            if (pendingSwitchBack) {
                 pendingSwitchBack = false;
                 switchAwayFromVoiceKeyboard();
-            }
-            if (status != null && status.startsWith("Error")) {
-                releaseAudioFocus();
             }
         });
     }
 
     private void updateUiState() {
-        boolean isLoading = lastStatus.contains("Loading") || lastStatus.contains("Initializing");
-        boolean isWaiting = lastStatus.contains("Waiting");
-        boolean isTranscribing = lastStatus.contains("Transcribing") || lastStatus.contains("Processing");
-        boolean isError = lastStatus.startsWith("Error");
-        boolean isReady = lastStatus.equals("Ready");
-        boolean noModel = !isRecording && !ModelStore.hasAnyModel(this);
+        boolean isLoading = capture.status().contains("Loading") || capture.status().contains("Initializing");
+        boolean isWaiting = capture.status().contains("Waiting");
+        boolean isTranscribing = capture.status().contains("Transcribing") || capture.status().contains("Processing");
+        boolean isError = capture.status().startsWith("Error");
+        boolean isReady = capture.status().equals("Ready");
+        boolean noModel = !capture.isRecording() && !ModelStore.hasAnyModel(this);
 
         // Don't show internal loading states to the user
-        if (statusView != null && !isRecording) {
-            if (isError && !lastStatus.equals(ModelStore.NO_MODEL_STATUS)) {
-                statusView.setText(lastStatus);
+        if (statusView != null && !capture.isRecording()) {
+            if (isError && !capture.status().equals(ModelStore.NO_MODEL_STATUS)) {
+                statusView.setText(capture.status());
             } else if (isTranscribing || isWaiting) {
                 statusView.setText(R.string.voice_processing);
             } else if (noModel) {
@@ -540,19 +580,19 @@ public class RustInputMethodService extends InputMethodService {
         // most errors are transient (no audio, storage was full while
         // extracting the model, mic busy), and the next attempt retries.
         if (recordContainer != null) {
-            boolean disable = isTranscribing || isWaiting;
+            boolean disable = capture.isFinishing();
             recordContainer.setEnabled(!disable);
             recordContainer.setAlpha(disable ? 0.5f : 1.0f);
         }
 
-        if (hintView != null && !isRecording) {
+        if (hintView != null && !capture.isRecording()) {
             hintView.setText(noModel ? R.string.ime_no_model_hint : R.string.ime_tap_to_record);
         }
     }
 
-    // Called from Rust
-    public void onTextTranscribed(String text) {
+    private void handleText(long generation, String text) {
         mainHandler.post(() -> {
+            if (!capture.complete(generation)) return;
             if (text == null || text.trim().isEmpty()) {
                 // Nothing recognized — don't insert a stray space.
                 updateRecordButtonUI(false);
@@ -598,14 +638,19 @@ public class RustInputMethodService extends InputMethodService {
         ic.commitText(committed, 1);
 
         if (!pendingSwitchBack && new File(getFilesDir(), "select_transcription").exists()) {
-            android.view.inputmethod.ExtractedText et = ic.getExtractedText(
-                new android.view.inputmethod.ExtractedTextRequest(), 0);
-            if (et != null) {
-                int end = et.startOffset + et.selectionStart;
-                int start = end - committed.length();
-                if (start >= 0) {
-                    ic.setSelection(start, end);
-                }
+            selectBeforeCursor(ic, committed.length());
+        }
+    }
+
+    // Selects the `length` characters before the cursor.
+    private void selectBeforeCursor(InputConnection ic, int length) {
+        android.view.inputmethod.ExtractedText et = ic.getExtractedText(
+            new android.view.inputmethod.ExtractedTextRequest(), 0);
+        if (et != null) {
+            int end = et.startOffset + et.selectionStart;
+            int start = end - length;
+            if (start >= 0) {
+                ic.setSelection(start, end);
             }
         }
     }
@@ -621,10 +666,11 @@ public class RustInputMethodService extends InputMethodService {
             pendingCommitText = null;
         }
     }
-    public void onAudioLevel(float level) {
-        if (micLevelView != null) {
-            mainHandler.post(() -> micLevelView.setLevel(level));
-        }
+    private void handleLevel(long generation, float level) {
+        mainHandler.post(() -> {
+            if (capture.accepts(generation) && micLevelView != null)
+                micLevelView.setLevel(level);
+        });
     }
 
     private boolean isPauseAudioEnabled() {
