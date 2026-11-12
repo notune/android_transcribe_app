@@ -59,4 +59,25 @@ public final class SubtitlePrefs {
             Files.write(f.toPath(), String.valueOf(y).getBytes(StandardCharsets.UTF_8));
         } catch (IOException ignored) { }
     }
+    private static final String TRANSLATION_TARGET_FILE = "subtitle_translation_target";
+
+    /** BCP-47 target tag, or "auto" to keep the recognized source language. */
+    public static String getTranslationTarget(Context ctx) {
+        File file = new File(ctx.getFilesDir(), TRANSLATION_TARGET_FILE);
+        if (!file.exists()) return SubtitleTranslationTargets.AUTO;
+        try {
+            String value = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).trim();
+            return SubtitleTranslationTargets.isValid(value) ? value : SubtitleTranslationTargets.AUTO;
+        } catch (IOException e) {
+            return SubtitleTranslationTargets.AUTO;
+        }
+    }
+
+    public static void setTranslationTarget(Context ctx, String tag) {
+        File file = new File(ctx.getFilesDir(), TRANSLATION_TARGET_FILE);
+        String value = SubtitleTranslationTargets.isValid(tag) ? tag : SubtitleTranslationTargets.AUTO;
+        try {
+            Files.write(file.toPath(), value.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignored) { }
+    }
 }
