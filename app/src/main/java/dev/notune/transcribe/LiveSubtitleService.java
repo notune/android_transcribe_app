@@ -473,7 +473,7 @@ public class LiveSubtitleService extends Service {
                     // translated captions (or the explicit fallback on failure).
                     mLastPartial = "";
                     renderTranslatedCaption("");
-                }
+                } else {
                     updateDisplay(text);
                 }
             }
