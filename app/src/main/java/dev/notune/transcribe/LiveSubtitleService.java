@@ -28,6 +28,9 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
+
+import java.util.ArrayDeque;
 
 import androidx.annotation.RequiresApi;
 
@@ -159,6 +162,18 @@ public class LiveSubtitleService extends Service {
             mMediaProjection.stop();
             mMediaProjection = null;
         }
+        // Tear down the translator and invalidate its in-flight results so no
+        // late callback can touch the next session's overlay (P0.2-style).
+        mTranslationGeneration++;
+        mTranslationQueue.clear();
+        mCaptionSegments.clear();
+        mTranslationBusy = false;
+        mLastPartial = "";
+        mTranslationUnavailableNotified = false;
+        if (mTranslator != null) {
+            mTranslator.cancelAll();
+            mTranslator = null;
+        }
         removeOverlay();
         cleanupNative();
     }
@@ -172,6 +187,26 @@ public class LiveSubtitleService extends Service {
         mMaxLines = SubtitlePrefs.getMaxLines(this);
         mSubtitleText = mOverlayView.findViewById(R.id.subs_text);
         mSubtitleText.setText(R.string.subs_waiting);
+
+        // Translation session init: "auto" preserves the recognized language;
+        // an explicit target enables ordered on-device translation.
+        mCommittedText.setLength(0);
+        mCommittedBase = 0;
+        mWindowStartAbs = 0;
+        mDisplayedEndAbs = 0;
+        // Translation session initialization. "Auto" keeps the original
+        // language and the classic pipeline; an explicit target arms the
+        // on-device translator for this session only.
+        mTranslationTarget = SubtitlePrefs.getTranslationTarget(this);
+        mModelLanguage = readModelLanguage();
+        mTranslationMode = !SubtitleTranslationTargets.AUTO.equals(mTranslationTarget);
+        mTranslator = mTranslationMode ? new OnDeviceSubtitleTranslator() : null;
+        mTranslationGeneration++;
+        mTranslationQueue.clear();
+        mCaptionSegments.clear();
+        mTranslationBusy = false;
+        mLastPartial = "";
+        mTranslationUnavailableNotified = false;
         
         View closeBtn = mOverlayView.findViewById(R.id.btn_close_subs);
         closeBtn.setOnClickListener(v -> {
@@ -365,6 +400,52 @@ public class LiveSubtitleService extends Service {
     // Absolute offset of the end of the currently displayed transcript.
     private long mDisplayedEndAbs = 0;
 
+    // --- Live-subtitle translation -----------------------------------------
+    // When the user picks an explicit translation target, finalized segments
+    // are shown immediately in the original language and re-rendered in the
+    // target language as the ordered on-device translations arrive. All state
+    // below is touched only on the main thread (segment/job bookkeeping inside
+    // the onSubtitleText runnable, translation completions via the same
+    // handler), so no locks are needed.
+    private boolean mTranslationMode = false;
+    private String mTranslationTarget = SubtitleTranslationTargets.AUTO;
+    private String mModelLanguage = "auto";
+    private SubtitleTranslator mTranslator;
+    private final ArrayDeque<CaptionSegment> mCaptionSegments = new ArrayDeque<>();
+    private final ArrayDeque<TranslationJob> mTranslationQueue = new ArrayDeque<>();
+    private boolean mTranslationBusy = false;
+    /** Bumped on every session start/stop; late callbacks with a stale
+     *  generation are dropped (same idea as the Rust worker's generation). */
+    private int mTranslationGeneration = 0;
+    private String mLastPartial = "";
+    /** One-time user notice when the translator falls back to the original
+     *  language (no Play Services / missing pack / engine error). */
+    private boolean mTranslationUnavailableNotified = false;
+    private static final int MAX_CAPTION_SEGMENTS = 24;
+    /** Backlog guard: beyond this, new finals skip translation and stay in
+     *  the original language instead of building an unbounded queue. */
+    private static final int MAX_TRANSLATION_QUEUE = 8;
+
+    /** One caption line: finalized (translated or fallback) or still pending. */
+    private static final class CaptionSegment {
+        String shown;
+        boolean finalText;
+        CaptionSegment(String shown) {
+            this.shown = shown;
+        }
+    }
+
+    /** One queued translation request; carries the session generation. */
+    private static final class TranslationJob {
+        final String text;
+        final int generation;
+        TranslationJob(String text, int generation) {
+            this.text = text;
+            this.generation = generation;
+        }
+    }
+
+
     // Called from Rust (worker thread). isFinal=true commits the text;
     // isFinal=false is a partial hypothesis that replaces the previous one.
     public void onSubtitleText(String text, boolean isFinal) {
@@ -372,18 +453,168 @@ public class LiveSubtitleService extends Service {
             if (mSubtitleText == null) return;
             if (isFinal) {
                 if (text.isEmpty()) return; // nothing new — leave display alone
-                if (mCommittedText.length() > 0) mCommittedText.append(' ');
-                mCommittedText.append(text);
-                int excess = mCommittedText.length() - MAX_COMMITTED_CHARS;
-                if (excess > 0) {
-                    mCommittedText.delete(0, excess);
-                    mCommittedBase += excess;
+                if (mTranslationMode) {
+                    mLastPartial = "";
+                    onFinalTranslated(text);
+                } else {
+                    if (mCommittedText.length() > 0) mCommittedText.append(' ');
+                    mCommittedText.append(text);
+                    int excess = mCommittedText.length() - MAX_COMMITTED_CHARS;
+                    if (excess > 0) {
+                        mCommittedText.delete(0, excess);
+                        mCommittedBase += excess;
+                    }
+                    updateDisplay("");
                 }
-                updateDisplay("");
             } else {
-                updateDisplay(text);
+                if (mTranslationMode) {
+                    // Do not expose the recognized source-language partial while
+                    // its translation is pending. Translation mode shows only
+                    // translated captions (or the explicit fallback on failure).
+                    mLastPartial = "";
+                    renderTranslatedCaption("");
+                } else {
+                    updateDisplay(text);
+                }
             }
         });
+    }
+
+    // --- Translation-mode caption pipeline ---------------------------------
+
+    /** A finalized segment is kept hidden until its on-device translation
+     *  arrives. Punctuation and queue-overflow cases remain visible as-is. */
+    private void onFinalTranslated(String text) {
+        CaptionSegment segment = new CaptionSegment("");
+        mCaptionSegments.addLast(segment);
+        if (isPunctuationOnly(text) || mTranslationQueue.size() >= MAX_TRANSLATION_QUEUE) {
+            segment.shown = text;
+            segment.finalText = true; // gap markers / overflow: keep original
+        } else {
+            enqueueTranslation(text);
+        }
+        trimCaptionSegments();
+        renderTranslatedCaption("");
+    }
+
+    private void enqueueTranslation(String text) {
+        mTranslationQueue.addLast(new TranslationJob(text, mTranslationGeneration));
+        pumpTranslationQueue();
+    }
+
+    /** Starts the next queued translation; strictly serial (FIFO), so results
+     *  are applied in order and a slow pair never reorders the captions. */
+    private void pumpTranslationQueue() {
+        if (mTranslationBusy || mTranslationQueue.isEmpty() || mTranslator == null) return;
+        mTranslationBusy = true;
+        final TranslationJob job = mTranslationQueue.peek();
+        // A fixed model_language wins; otherwise pass null so the translator
+        // auto-detects the source (ML Kit Language ID → script heuristic →
+        // session language). Resolving here with the script heuristic alone
+        // returned null for plain Latin-script text such as English, which
+        // made every such segment silently stay untranslated.
+        final String sourceCode = SourceLanguageResolver.primaryCode(mModelLanguage);
+        final String targetCode = SubtitleTranslationTargets.mlKitCode(mTranslationTarget);
+        mTranslator.translate(job.text, sourceCode, targetCode, new SubtitleTranslator.Callback() {
+            @Override
+            public void onSuccess(String translated) {
+                mMainHandler.post(() -> applyTranslation(job, translated));
+            }
+
+            @Override
+            public void onFailure(Throwable error) {
+                // Safe fallback: the original text is always shown.
+                mMainHandler.post(() -> applyTranslation(job, job.text));
+            }
+
+            @Override
+            public void onUnavailable() {
+                // Tell the user once per session that translation fell back to
+                // the original language (no Play Services, missing pack, …).
+                mMainHandler.post(() -> {
+                    if (mTranslationUnavailableNotified) return;
+                    mTranslationUnavailableNotified = true;
+                    Toast.makeText(LiveSubtitleService.this,
+                            R.string.subs_translation_unavailable, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    /** Applies a translation (or its fallback) to the matching pending segment
+     *  and keeps the queue moving. Runs on the main thread. */
+    private void applyTranslation(TranslationJob job, String translated) {
+        // Ignore stale callbacks before touching the new session's queue state.
+        if (job.generation != mTranslationGeneration) return;
+        mTranslationBusy = false;
+        mTranslationQueue.remove(job);
+        // Strict FIFO: the first segment still pending is the one this job
+        // belongs to (punct-only finals are finalized immediately, so they
+        // never create jobs and never shift this correspondence).
+        for (CaptionSegment s : mCaptionSegments) {
+            if (!s.finalText) {
+                s.shown = translated;
+                s.finalText = true;
+                break;
+            }
+        }
+        renderTranslatedCaption("");
+        pumpTranslationQueue();
+    }
+
+    /** Renders the segment list plus the live partial through the same
+     *  last-N-lines window the classic path uses. Pending segments keep their
+     *  original text until their translation lands, so captions never pause. */
+    private void renderTranslatedCaption(String partial) {
+        if (mSubtitleText == null) return;
+        StringBuilder full = new StringBuilder();
+        for (CaptionSegment s : mCaptionSegments) {
+            full.append(s.shown);
+            full.append(' ');
+        }
+        String tail = partial.isEmpty() ? mLastPartial : partial;
+        if (!tail.isEmpty()) full.append(tail);
+        String text = full.toString();
+        if (text.isEmpty()) {
+            mSubtitleText.setText("");
+            return;
+        }
+        String visible = text;
+        if (mMaxLines > 0) {
+            int width = mSubtitleText.getWidth()
+                    - mSubtitleText.getPaddingLeft() - mSubtitleText.getPaddingRight();
+            if (width > 0) {
+                StaticLayout layout = StaticLayout.Builder
+                        .obtain(visible, 0, visible.length(), mSubtitleText.getPaint(), width)
+                        .build();
+                int lineCount = layout.getLineCount();
+                if (lineCount > mMaxLines) {
+                    int cut = layout.getLineStart(lineCount - mMaxLines);
+                    visible = visible.substring(cut);
+                }
+            }
+        }
+        mSubtitleText.setText(visible);
+    }
+
+    /** Caps the stored segment list, never dropping a pending translation. */
+    private void trimCaptionSegments() {
+        while (mCaptionSegments.size() > MAX_CAPTION_SEGMENTS) {
+            CaptionSegment first = mCaptionSegments.peekFirst();
+            if (first != null && !first.finalText) break;
+            mCaptionSegments.removeFirst();
+        }
+    }
+
+    /** True when a finalized segment carries no translatable content (gap
+     *  markers like "…" must not go through the translator). */
+    private static boolean isPunctuationOnly(String text) {
+        String t = text.trim();
+        if (t.isEmpty()) return true;
+        for (int i = 0; i < t.length(); i++) {
+            if (Character.isLetterOrDigit(t.charAt(i))) return false;
+        }
+        return true;
     }
 
     /** Renders committed text + partial through the forward-only caption window. */
@@ -426,6 +657,21 @@ public class LiveSubtitleService extends Service {
             }
         }
         mSubtitleText.setText(visible);
+    }
+
+    /** Renders committed text + partial through the forward-only caption window. */
+
+    /** Reads the optional language hint used by imported speech models. */
+    private String readModelLanguage() {
+        java.io.File file = new java.io.File(getFilesDir(), "model_language");
+        if (!file.exists()) return "auto";
+        try {
+            return new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8).trim();
+        } catch (java.io.IOException e) {
+            Log.w(TAG, "Could not read model language preference", e);
+            return "auto";
+        }
     }
 
     private void createNotificationChannel() {
