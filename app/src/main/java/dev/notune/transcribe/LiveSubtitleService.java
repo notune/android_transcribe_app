@@ -468,9 +468,12 @@ public class LiveSubtitleService extends Service {
                 }
             } else {
                 if (mTranslationMode) {
-                    mLastPartial = text;
+                    // Do not expose the recognized source-language partial while
+                    // its translation is pending. Translation mode shows only
+                    // translated captions (or the explicit fallback on failure).
+                    mLastPartial = "";
                     renderTranslatedCaption("");
-                } else {
+                }
                     updateDisplay(text);
                 }
             }
@@ -479,13 +482,13 @@ public class LiveSubtitleService extends Service {
 
     // --- Translation-mode caption pipeline ---------------------------------
 
-    /** A finalized segment arrives: show it in the original language at once
-     *  and enqueue the on-device translation (unless it is punctuation or the
-     *  queue is already saturated, in which case the original is kept). */
+    /** A finalized segment is kept hidden until its on-device translation
+     *  arrives. Punctuation and queue-overflow cases remain visible as-is. */
     private void onFinalTranslated(String text) {
-        CaptionSegment segment = new CaptionSegment(text);
+        CaptionSegment segment = new CaptionSegment("");
         mCaptionSegments.addLast(segment);
         if (isPunctuationOnly(text) || mTranslationQueue.size() >= MAX_TRANSLATION_QUEUE) {
+            segment.shown = text;
             segment.finalText = true; // gap markers / overflow: keep original
         } else {
             enqueueTranslation(text);
