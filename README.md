@@ -81,6 +81,12 @@ This relies on the undocumented `PROJECT_MEDIA` app-op; on some OEM builds it ma
 
 The built-in Parakeet model works out of the box. (The F-Droid build has no built-in model, since F-Droid builds everything from source: on first start, the app shows how to download the same model in your browser and import it. The F-Droid build is reproducible and carries the same signature as the GitHub releases, which also include it as `…_fdroid.apk`, so you can switch between the GitHub/Obtainium and F-Droid versions without reinstalling.) Under **Manage speech models** you can additionally import any [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) GGUF model: download a `.gguf` file in your browser (the in-app *Where to get models* dialog lists direct links, e.g. a tiny 135 MB English-only Parakeet, the multilingual Nemotron 3.5 streaming model with punctuation, or Whisper large-v3-turbo), then import it via the system file picker and select it. The app itself needs no internet permission — model files are simply copied into the app's private storage. An optional language hint (e.g. `en-US`, or `auto`) can be set for imported models.
 
+Large models occupy space twice during import: once in Downloads and once in the app. Keep at least the size of the model plus 64 MiB free after downloading it. Once the imported model is selected, you can remove the original from Downloads.
+
+### Transcribe a recording
+
+In your file manager, open a WAV in a language your model supports with **Offline Voice Input**. You can also share an audio file to the app. It transcribes with the selected model and shows a **Copy to clipboard** button when finished. For an English example with a larger custom model, see the [Fourier 2B import and file-transcription walkthrough](https://huggingface.co/oruk/oruk-fourier-2b/blob/main/examples/android/README.md) (2.19 GB, CC BY-NC 4.0).
+
 ## Prerequisites
 
 | Dependency | Installation |
