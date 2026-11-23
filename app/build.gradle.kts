@@ -18,8 +18,8 @@ android {
         applicationId = "dev.notune.transcribe"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.2.2"
+        versionCode = 23
+        versionName = "0.2.3"
         ndk {
             abiFilters += targetAbis
         }
@@ -52,7 +52,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 drops the unused parts of Material/AppCompat. Native code
+            // calls back into Java by name; proguard-rules.pro keeps those.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -72,6 +76,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false          // extractNativeLibs=false (16KB safe)
+            // Already stripped of debug info by cargoNdkBuild; AGP's stripping
+            // would also remove the function names native crash traces show.
             keepDebugSymbols += "**/*.so"
         }
     }
@@ -149,8 +155,18 @@ val cargoNdkBuild by tasks.registering {
     group = "build"
     dependsOn(cargoNdkBuildArmv8, cargoNdkBuildDotprod)
 
+    // Copy libc++_shared.so from NDK (needed because Rust links against it
+    // dynamically), then drop the debug info from the packaged libraries: the NDK's
+    // libc++ alone carries 7.5 MB of it. The symbol tables stay, so native crash
+    // traces keep their function names. Stripped here with the NDK's own tool,
+    // not by AGP, whose stripping quietly does nothing when it doesn't find the
+    // NDK it expects; builds must come out the same everywhere (F-Droid).
     doLast {
         val triples = mapOf("arm64-v8a" to "aarch64-linux-android", "x86_64" to "x86_64-linux-android")
+        val llvmStrip = file("$ndkDir/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip")
+        if (!llvmStrip.exists()) {
+            throw GradleException("llvm-strip not found in NDK at: ${llvmStrip.absolutePath}")
+        }
         targetAbis.forEach { abi ->
             val triple = triples[abi] ?: throw GradleException("Unsupported ABI: $abi")
             val libcpp = file("$ndkDir/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$triple/libc++_shared.so")
@@ -175,6 +191,16 @@ val cargoNdkBuild by tasks.registering {
             }
             libcpp.copyTo(File(destDir, "libc++_shared.so"), overwrite = true)
             println("Copied libc++_shared.so ($abi) from NDK")
+
+            destDir.listFiles { f -> f.name.endsWith(".so") }!!.forEach { lib ->
+                val exitCode = ProcessBuilder(llvmStrip.absolutePath, "--strip-debug", lib.absolutePath)
+                    .inheritIO()
+                    .start()
+                    .waitFor()
+                if (exitCode != 0) {
+                    throw GradleException("llvm-strip failed on ${lib.name} (exit code $exitCode)")
+                }
+            }
         }
     }
 }

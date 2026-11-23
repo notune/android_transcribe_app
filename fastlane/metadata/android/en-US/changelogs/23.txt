@@ -1,0 +1,1 @@
+Smaller app: the code is now shrunk with R8 and the native libraries no longer carry debug info, so the app takes less than half the space (9.6 instead of 20 MB).
