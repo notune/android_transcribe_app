@@ -55,12 +55,7 @@ public class ModelsActivity extends AppCompatActivity {
     private static final long FREE_SPACE_MARGIN = 64L * 1024 * 1024;
 
     static {
-        try {
-            System.loadLibrary("c++_shared");
-        } catch (UnsatisfiedLinkError e) {
-            Log.w(TAG, "Failed to load c++_shared", e);
-        }
-        System.loadLibrary("android_transcribe_app");
+        NativeLibraries.load();
     }
 
     /** One entry in the curated download list. Names are proper nouns and stay
