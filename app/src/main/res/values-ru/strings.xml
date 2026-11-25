@@ -168,6 +168,7 @@
     <string name="pp_key">Ключ API</string>
     <string name="pp_key_hint">для локального сервера можно оставить пустым</string>
     <string name="pp_key_note">Ключ шифруется хранилищем Android Keystore. Оставьте поле пустым, если сервер не требует ключ.</string>
+    <string name="pp_key_store_failed">Не удалось сохранить ключ в Android Keystore.</string>
     <string name="pp_prompt_edit">Изменить инструкцию</string>
     <string name="pp_prompt_title">Инструкция очистки</string>
     <string name="pp_prompt_note">Вместо ${output} подставляется распознанный текст. Если удалить этот заполнитель, текст будет добавлен в конец инструкции.</string>

@@ -20,6 +20,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -37,6 +38,7 @@ public class OpenAiCompatibleClientTest {
     private final AtomicReference<String> lastBody = new AtomicReference<>();
     private final AtomicReference<String> lastAuth = new AtomicReference<>();
     private final AtomicReference<String> lastPath = new AtomicReference<>();
+    private final AtomicInteger requestCount = new AtomicInteger();
     private volatile int status = 200;
     private volatile String response = "";
     private volatile long delayMs = 0;
@@ -74,6 +76,7 @@ public class OpenAiCompatibleClientTest {
         InputStream in = new BufferedInputStream(socket.getInputStream());
         String requestLine = readLine(in);
         if (requestLine == null) return;
+        requestCount.incrementAndGet();
         String[] parts = requestLine.split(" ");
         lastPath.set(parts.length > 1 ? parts[1] : "");
 
@@ -228,5 +231,26 @@ public class OpenAiCompatibleClientTest {
         OpenAiCompatibleClient.Result result = OpenAiCompatibleClient.complete(
                 baseUrl, "m", "", "текст", "${output}", 5000, cancelled);
         assertTrue(result.cancelled);
+    }
+
+    @Test
+    public void cancellationBeforeBodyIsSentDoesNotReachTheServer() throws Exception {
+        OpenAiCompatibleClient.ConnectionSink cancelled = new OpenAiCompatibleClient.ConnectionSink() {
+            @Override
+            public void onOpen(HttpURLConnection connection) {
+                connection.disconnect();
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return true;
+            }
+        };
+        OpenAiCompatibleClient.Result result = OpenAiCompatibleClient.complete(
+                baseUrl, "m", "", "секретный текст", "${output}", 5000, cancelled);
+        assertTrue(result.cancelled);
+        // Give a racing write a moment to arrive before asserting.
+        Thread.sleep(150);
+        assertEquals("cancelled request must not send the body", 0, requestCount.get());
     }
 }

@@ -1,0 +1,37 @@
+{
+  "evidence": {
+    "attempt_id": "5ec3d9adf8244752b7916f987355e7ba",
+    "command": "bash ./gradlew :app:testFdroidDebugUnitTest --tests dev.notune.transcribe.OpenAiCompatibleClientTest --rerun-tasks --console=plain",
+    "dirty": false,
+    "dirty_reason": null,
+    "env_policy": {
+      "allowed_names": [
+        "ANDROID_NDK_HOME",
+        "JAVA_HOME",
+        "PATH"
+      ],
+      "filtered_names": [
+        "GRAFANA_MCP_TOKEN_FILE",
+        "OPENCODE_PASSWORD"
+      ],
+      "mode": "filtered_inherited"
+    },
+    "exit_code": 0,
+    "finished_at": "2026-11-25T23:47:01.739900+00:00",
+    "git_commit": "f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+    "output_truncated": false,
+    "path": ".agentic-kit/evidence/OVI-001/runtime_smoke-20261125T234656715655Z.log",
+    "sha256": "e72180db495741fee4ec9d16dfd501b419b91f6d53273ebe5f627cedd8565375",
+    "source": "executed",
+    "started_at": "2026-11-25T23:46:56.715682+00:00",
+    "timed_out": false
+  },
+  "id": "5ec3d9adf8244752b7916f987355e7ba",
+  "key": "runtime_smoke",
+  "schema_version": 1,
+  "started_at": "2026-11-25T23:46:56.630928+00:00",
+  "state": "passed",
+  "task": "OVI-001",
+  "task_revision": 31,
+  "updated_at": "2026-11-25T23:47:01.740490+00:00"
+}

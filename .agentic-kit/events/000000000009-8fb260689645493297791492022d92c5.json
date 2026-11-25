@@ -1,0 +1,16 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:43:27.463536+00:00",
+  "id": "8fb260689645493297791492022d92c5",
+  "payload": {
+    "outcome": "passed",
+    "revision": 7,
+    "stage": "discovery",
+    "status": "active",
+    "step": "discovery"
+  },
+  "schema_version": 1,
+  "sequence": 9,
+  "subject": "OVI-001",
+  "type": "process.finish-step"
+}

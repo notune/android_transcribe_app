@@ -83,6 +83,7 @@ public class RustInputMethodService extends InputMethodService {
     // focused again so text is never lost and never lands in another field.
     private String pendingCommitText = null;
     private EditorTarget pendingCommitTarget = null;
+    private int pendingCommitSession = -1;
 
     // One dictation = one sequence number. Cancelling, hiding with
     // "stop on hide", or starting a new recording increments it, which makes
@@ -90,6 +91,12 @@ public class RustInputMethodService extends InputMethodService {
     private int dictationSeq = 0;
     private int pendingTranscriptSeq = -1;
     private EditorTarget targetEditor = null;
+    // Incremented on every onStartInput. When a field exposes no stable view id
+    // or field name, two different fields can carry identical EditorInfo; an
+    // unchanged session is then the only evidence that it is still the same
+    // editor. The dictation remembers the session it started in.
+    private int inputSession = 0;
+    private int targetInputSession = -1;
     // Between "stop" and the final text callback, the record button must stay
     // disabled: otherwise a new recording could start and silently discard the
     // text that is about to arrive.
@@ -413,9 +420,11 @@ public class RustInputMethodService extends InputMethodService {
     public void onWindowHidden() {
         super.onWindowHidden();
         windowVisible = false;
-        if (!isRecording && postProcessingActive && isStopOnHideEnabled()) {
+        if (!isRecording && (awaitingTranscript || postProcessingActive) && isStopOnHideEnabled()) {
             // "Stop on hide" also means: do not paste a result after the user
-            // has left the field.
+            // has left the field. This covers the gap between stopping the
+            // recording and the transcript arriving, before post-processing
+            // has started.
             invalidateDictation();
             updateUiState();
         } else if (isRecording) {
@@ -442,23 +451,36 @@ public class RustInputMethodService extends InputMethodService {
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
+        inputSession++;
         inputActive = isTextEditor(attribute);
 
         // A field change makes both an in-flight clean-up and text deferred for
         // the previous field stale. Drop them instead of pasting into whatever
         // is focused now.
         if (inputActive && postProcessingTask != null && targetEditor != null
-                && !targetEditor.matches(attribute)) {
+                && !isSameField(targetEditor, attribute, targetInputSession)) {
             cancelPostProcessing();
             showNotice(getString(R.string.pp_field_changed));
             updateUiState();
         }
         if (inputActive && pendingCommitText != null && pendingCommitTarget != null
-                && !pendingCommitTarget.matches(attribute)) {
+                && !isSameField(pendingCommitTarget, attribute, pendingCommitSession)) {
             pendingCommitText = null;
             pendingCommitTarget = null;
+            pendingCommitSession = -1;
             showNotice(getString(R.string.pp_field_changed));
         }
+    }
+
+    /**
+     * Conservative field identity. A stable view id or field name is trusted;
+     * without one, only an unchanged input session confirms that this is still
+     * the editor the dictation started in.
+     */
+    private boolean isSameField(EditorTarget target, EditorInfo info, int session) {
+        if (target == null) return session == inputSession;
+        return target.matches(info)
+                && (target.hasStrongIdentity() || session == inputSession);
     }
 
     /**
@@ -711,7 +733,7 @@ public class RustInputMethodService extends InputMethodService {
         EditorInfo info = getCurrentInputEditorInfo();
         boolean editorActive = inputActive && ic != null && isTextEditor(info);
 
-        if (editorActive && (target == null || target.matches(info))) {
+        if (editorActive && isSameField(target, info, targetInputSession)) {
             commitTranscribedText(ic, text + " ");
             finishDictationUi();
             return;
@@ -728,6 +750,7 @@ public class RustInputMethodService extends InputMethodService {
         // Hold the text for the same field instead of losing it.
         pendingCommitText = text + " ";
         pendingCommitTarget = target;
+        pendingCommitSession = targetInputSession;
         finishDictationUi();
         if (!pendingSwitchBack) {
             showNotice(getString(R.string.pp_deferred));
@@ -784,6 +807,7 @@ public class RustInputMethodService extends InputMethodService {
         noticeToken++;
         cancelPostProcessing();
         targetEditor = EditorTarget.from(getCurrentInputEditorInfo());
+        targetInputSession = inputSession;
     }
 
     /** Cancels the current dictation and every late result it could produce. */
@@ -837,15 +861,17 @@ public class RustInputMethodService extends InputMethodService {
         if (ic == null) return;
 
         EditorInfo info = getCurrentInputEditorInfo();
-        if (pendingCommitTarget != null && !pendingCommitTarget.matches(info)) {
+        if (!isSameField(pendingCommitTarget, info, pendingCommitSession)) {
             pendingCommitText = null;
             pendingCommitTarget = null;
+            pendingCommitSession = -1;
             showNotice(getString(R.string.pp_field_changed));
             return;
         }
         commitTranscribedText(ic, pendingCommitText);
         pendingCommitText = null;
         pendingCommitTarget = null;
+        pendingCommitSession = -1;
     }
 
     public void onAudioLevel(float level) {

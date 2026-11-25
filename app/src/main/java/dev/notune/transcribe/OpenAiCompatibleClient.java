@@ -91,11 +91,19 @@ final class OpenAiCompatibleClient {
             }
             if (sink != null) {
                 sink.onOpen(connection);
+                if (sink.isCancelled()) {
+                    // Cancellation may already have disconnected the socket in
+                    // onOpen; do not open the request body or send the text.
+                    return Result.cancelled();
+                }
             }
 
             byte[] payload = body.getBytes(StandardCharsets.UTF_8);
             connection.setFixedLengthStreamingMode(payload.length);
             try (OutputStream out = connection.getOutputStream()) {
+                if (sink != null && sink.isCancelled()) {
+                    return Result.cancelled();
+                }
                 out.write(payload);
             }
 

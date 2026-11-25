@@ -1,0 +1,17 @@
+{
+  "agreement": ".agentic-kit/evidence/OVI-001/user-approval.md, пункт 7: матрица ролей подтверждена пользователем 26.11.2026",
+  "policy": 2,
+  "reviewers": [
+    {
+      "id": "qa-1",
+      "role": "review",
+      "parent_session_id": "ses_df067ae30ffeRroDnRBcCC77GS",
+      "isolation": {"context": "separate", "filesystem": "shared"},
+      "route": {
+        "providerInstanceId": "codex",
+        "model": "gpt-6.1-sol",
+        "options": {"reasoningEffort": "high"}
+      }
+    }
+  ]
+}

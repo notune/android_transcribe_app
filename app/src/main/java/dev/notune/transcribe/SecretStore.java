@@ -9,7 +9,6 @@ import android.util.Log;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
-import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -30,34 +29,42 @@ final class SecretStore {
     private static final String KEY_CIPHERTEXT = "api_key_ciphertext";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int GCM_TAG_BITS = 128;
-    private static final int IV_BYTES = 12;
 
     private SecretStore() {
     }
 
-    static synchronized void put(Context context, String value) {
+    /**
+     * Stores the key and reports whether it was written. The Keystore requires
+     * the cipher to choose the GCM IV when randomized encryption is on, so the
+     * IV must be read back from the cipher instead of being supplied by us.
+     */
+    static synchronized boolean put(Context context, String value) {
         if (value == null || value.isEmpty()) {
             clear(context);
-            return;
+            return true;
         }
         try {
-            byte[] iv = new byte[IV_BYTES];
-            new SecureRandom().nextBytes(iv);
-
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(), new GCMParameterSpec(GCM_TAG_BITS, iv));
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey());
+            byte[] iv = cipher.getIV();
+            if (iv == null || iv.length == 0 || iv.length > 255) {
+                Log.e(TAG, "Keystore returned an unusable GCM IV");
+                return false;
+            }
             byte[] encrypted = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
 
-            byte[] packed = new byte[iv.length + encrypted.length];
-            System.arraycopy(iv, 0, packed, 0, iv.length);
-            System.arraycopy(encrypted, 0, packed, iv.length, encrypted.length);
+            byte[] packed = new byte[1 + iv.length + encrypted.length];
+            packed[0] = (byte) iv.length;
+            System.arraycopy(iv, 0, packed, 1, iv.length);
+            System.arraycopy(encrypted, 0, packed, 1 + iv.length, encrypted.length);
 
-            prefs(context).edit()
+            return prefs(context).edit()
                     .putString(KEY_CIPHERTEXT, Base64.encodeToString(packed, Base64.NO_WRAP))
-                    .apply();
+                    .commit();
         } catch (Exception e) {
             // Never log the value itself.
             Log.e(TAG, "Could not store the post-processing key", e);
+            return false;
         }
     }
 
@@ -67,14 +74,19 @@ final class SecretStore {
         if (packedText == null || packedText.isEmpty()) return null;
         try {
             byte[] packed = Base64.decode(packedText, Base64.NO_WRAP);
-            if (packed.length <= IV_BYTES) {
+            if (packed.length < 2) {
                 clear(context);
                 return null;
             }
-            byte[] iv = new byte[IV_BYTES];
-            System.arraycopy(packed, 0, iv, 0, IV_BYTES);
-            byte[] encrypted = new byte[packed.length - IV_BYTES];
-            System.arraycopy(packed, IV_BYTES, encrypted, 0, encrypted.length);
+            int ivLength = packed[0] & 0xff;
+            if (ivLength == 0 || packed.length <= 1 + ivLength) {
+                clear(context);
+                return null;
+            }
+            byte[] iv = new byte[ivLength];
+            System.arraycopy(packed, 1, iv, 0, ivLength);
+            byte[] encrypted = new byte[packed.length - 1 - ivLength];
+            System.arraycopy(packed, 1 + ivLength, encrypted, 0, encrypted.length);
 
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), new GCMParameterSpec(GCM_TAG_BITS, iv));

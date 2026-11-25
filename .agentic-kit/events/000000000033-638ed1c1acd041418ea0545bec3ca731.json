@@ -1,0 +1,16 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:45:32.126788+00:00",
+  "id": "638ed1c1acd041418ea0545bec3ca731",
+  "payload": {
+    "attempt_id": "9a016cae112944018bc6b80b87fcc1bc",
+    "key": "runtime_smoke",
+    "revision": 27,
+    "stage": "verification",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 33,
+  "subject": "OVI-001",
+  "type": "check.attached"
+}

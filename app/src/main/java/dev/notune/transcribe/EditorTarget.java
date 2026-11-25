@@ -40,6 +40,17 @@ final class EditorTarget {
                 hintText == null ? "" : hintText.toString());
     }
 
+    /**
+     * True when the editor exposes an identifier that is stable per field.
+     * Package and input type alone are shared by every field in an app, so two
+     * different fields can look identical when an app assigns no view id and
+     * no field name. Without such an identifier the caller must also require
+     * an unchanged input session.
+     */
+    boolean hasStrongIdentity() {
+        return fieldId != 0 || !fieldName.isEmpty();
+    }
+
     boolean matches(EditorInfo info) {
         if (info == null) return false;
         EditorTarget other = from(info);

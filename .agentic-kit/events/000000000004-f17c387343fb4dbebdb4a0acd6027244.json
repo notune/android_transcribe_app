@@ -1,0 +1,14 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:43:08.069098+00:00",
+  "id": "f17c387343fb4dbebdb4a0acd6027244",
+  "payload": {
+    "revision": 2,
+    "stage": "discovery",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 4,
+  "subject": "OVI-001",
+  "type": "execution.route_recorded"
+}

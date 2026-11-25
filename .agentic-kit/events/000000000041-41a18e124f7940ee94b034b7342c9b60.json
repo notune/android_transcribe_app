@@ -1,0 +1,14 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:46:44.867535+00:00",
+  "id": "41a18e124f7940ee94b034b7342c9b60",
+  "payload": {
+    "attempt_id": "1267baa0e1154a97accef37cb967d529",
+    "key": "tests",
+    "state": "running"
+  },
+  "schema_version": 1,
+  "sequence": 41,
+  "subject": "OVI-001",
+  "type": "check.running"
+}

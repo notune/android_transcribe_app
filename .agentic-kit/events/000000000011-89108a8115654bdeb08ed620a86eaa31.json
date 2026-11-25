@@ -1,0 +1,14 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:43:46.397606+00:00",
+  "id": "89108a8115654bdeb08ed620a86eaa31",
+  "payload": {
+    "revision": 9,
+    "stage": "design",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 11,
+  "subject": "OVI-001",
+  "type": "review.assign"
+}

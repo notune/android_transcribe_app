@@ -1,0 +1,49 @@
+
+> Task :app:cargoNdkBuild
+    Building arm64-v8a (aarch64-linux-android)
+   Compiling android_transcribe_app v0.1.0 (/Users/e.klimov/.t3/projects/offline-voice-input)
+warning: variable does not need to be mutable
+  --> src/main_activity.rs:51:5
+   |
+51 |     mut env: JNIEnv,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `android_transcribe_app` (lib) generated 1 warning (run `cargo fix --lib -p android_transcribe_app` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 0.97s
+     Copying libraries to /Users/e.klimov/.t3/projects/offline-voice-input/app/src/main/jniLibs
+Copied libc++_shared.so (arm64-v8a) from NDK
+
+> Task :app:preBuild
+> Task :app:preFdroidDebugBuild
+> Task :app:javaPreCompileFdroidDebug UP-TO-DATE
+> Task :app:checkFdroidDebugAarMetadata UP-TO-DATE
+> Task :app:processFdroidDebugNavigationResources UP-TO-DATE
+> Task :app:compileFdroidDebugNavigationResources UP-TO-DATE
+> Task :app:generateFdroidDebugResValues UP-TO-DATE
+> Task :app:mapFdroidDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateFdroidDebugResources UP-TO-DATE
+> Task :app:mergeFdroidDebugResources UP-TO-DATE
+> Task :app:packageFdroidDebugResources UP-TO-DATE
+> Task :app:parseFdroidDebugLocalResources UP-TO-DATE
+> Task :app:createFdroidDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksFdroidDebug UP-TO-DATE
+> Task :app:processFdroidDebugMainManifest UP-TO-DATE
+> Task :app:processFdroidDebugManifest UP-TO-DATE
+> Task :app:processFdroidDebugManifestForPackage UP-TO-DATE
+> Task :app:processFdroidDebugResources UP-TO-DATE
+> Task :app:compileFdroidDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleFdroidDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleFdroidDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preFdroidDebugUnitTestBuild
+> Task :app:javaPreCompileFdroidDebugUnitTest UP-TO-DATE
+> Task :app:compileFdroidDebugUnitTestJavaWithJavac UP-TO-DATE
+> Task :app:processFdroidDebugJavaRes NO-SOURCE
+> Task :app:processFdroidDebugUnitTestJavaRes NO-SOURCE
+> Task :app:testFdroidDebugUnitTest
+
+BUILD SUCCESSFUL in 2s
+23 actionable tasks: 2 executed, 21 up-to-date

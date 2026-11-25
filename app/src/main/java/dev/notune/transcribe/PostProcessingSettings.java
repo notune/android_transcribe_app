@@ -62,8 +62,8 @@ final class PostProcessingSettings {
         return SecretStore.get(context);
     }
 
-    static void setApiKey(Context context, String apiKey) {
-        SecretStore.put(context, apiKey == null ? "" : apiKey.trim());
+    static boolean setApiKey(Context context, String apiKey) {
+        return SecretStore.put(context, apiKey == null ? "" : apiKey.trim());
     }
 
     static boolean hasApiKey(Context context) {

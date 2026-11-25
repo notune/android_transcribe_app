@@ -1,0 +1,14 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:46:41.336459+00:00",
+  "id": "74ca2ff85ce74736811b67f179fddf02",
+  "payload": {
+    "attempt_id": "d2f3214e78ec4e098c41b61818786983",
+    "key": "tests",
+    "state": "failed"
+  },
+  "schema_version": 1,
+  "sequence": 40,
+  "subject": "OVI-001",
+  "type": "check.failed"
+}

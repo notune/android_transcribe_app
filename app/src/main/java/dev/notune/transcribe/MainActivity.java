@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     private TextInputEditText ppKey;
     private TextInputLayout ppEndpointLayout;
     private TextInputLayout ppModelLayout;
+    private TextInputLayout ppKeyLayout;
     private TextView ppStatus;
     private TextView ppWarning;
     private Button ppTestButton;
@@ -362,6 +363,7 @@ public class MainActivity extends AppCompatActivity {
         ppKey = findViewById(R.id.input_pp_key);
         ppEndpointLayout = findViewById(R.id.layout_pp_endpoint);
         ppModelLayout = findViewById(R.id.layout_pp_model);
+        ppKeyLayout = findViewById(R.id.layout_pp_key);
         ppStatus = findViewById(R.id.text_pp_status);
         ppWarning = findViewById(R.id.text_pp_warning);
         ppTestButton = findViewById(R.id.btn_pp_test);
@@ -401,14 +403,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Persists the fields. The API key goes to the Keystore, not to prefs. */
-    private void savePostProcessingSettings() {
-        if (ppEndpoint == null) return;
+    private boolean savePostProcessingSettings() {
+        if (ppEndpoint == null) return true;
         PostProcessingSettings.setEndpoint(this, ppEndpoint.getText() == null
                 ? "" : ppEndpoint.getText().toString());
         PostProcessingSettings.setModel(this, ppModel.getText() == null
                 ? "" : ppModel.getText().toString());
-        PostProcessingSettings.setApiKey(this, ppKey.getText() == null
+        boolean keySaved = PostProcessingSettings.setApiKey(this, ppKey.getText() == null
                 ? "" : ppKey.getText().toString());
+        if (ppKeyLayout != null) {
+            ppKeyLayout.setError(keySaved ? null : getString(R.string.pp_key_store_failed));
+        }
+        return keySaved;
     }
 
     private void updatePostProcessingUi() {
@@ -478,7 +484,9 @@ public class MainActivity extends AppCompatActivity {
      * address, key and model work without dictating into someone's field.
      */
     private void testPostProcessing() {
-        savePostProcessingSettings();
+        if (!savePostProcessingSettings()) {
+            return;
+        }
         String endpoint = PostProcessingSettings.getEndpoint(this);
         String model = PostProcessingSettings.getModel(this);
 

@@ -168,6 +168,7 @@
     <string name="pp_key">API-Schlüssel</string>
     <string name="pp_key_hint">für lokale Server optional</string>
     <string name="pp_key_note">Der Schlüssel wird mit dem Android Keystore verschlüsselt. Leer lassen, wenn dein Server keinen benötigt.</string>
+    <string name="pp_key_store_failed">Der Schlüssel konnte nicht im Android Keystore gespeichert werden.</string>
     <string name="pp_prompt_edit">Anweisung bearbeiten</string>
     <string name="pp_prompt_title">Bereinigungsanweisung</string>
     <string name="pp_prompt_note">${output} wird durch den erkannten Text ersetzt. Wenn du den Platzhalter entfernst, wird der Text am Ende angehängt.</string>
