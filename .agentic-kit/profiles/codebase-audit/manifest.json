@@ -1,0 +1,32 @@
+{
+  "id": "codebase-audit",
+  "opt_in": true,
+  "version": 1,
+  "source": {
+    "repository": "shadcn/improve",
+    "reviewed_commit": "cac56e1ebd3c279aa9153616cfeac7b174ab90f9",
+    "skill_file": "skills/improve/SKILL.md",
+    "skill_blob_sha": "df5b9001adda5ee72697ab5f7d3efe74c212e478",
+    "upstream_skill_version": "1.0.0",
+    "license": "MIT"
+  },
+  "skills": [
+    "aek-codebase-audit",
+    "aek-handoff-plan",
+    "aek-plan-reconcile"
+  ],
+  "external_install": false,
+  "automatic_execution": false,
+  "requires_user_approval_before_writing_plans": true,
+  "source_code_changes": false,
+  "uses_existing_openspec": true,
+  "uses_existing_orchestrator": true,
+  "excluded": [
+    "/improve execute",
+    "/improve --issues",
+    "automatic merge",
+    "hardcoded executor models",
+    "parallel independent planning backlog"
+  ],
+  "verification": "requires a real repository pilot"
+}

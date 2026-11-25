@@ -1,0 +1,20 @@
+{
+  "id": "security-audit",
+  "opt_in": true,
+  "skills": [
+    "aek-security-audit"
+  ],
+  "sources": [
+    {
+      "repository": "trailofbits/skills",
+      "reviewed_commit": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "paths": [
+        "plugins/static-analysis/skills/semgrep/SKILL.md",
+        "plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor/SKILL.md",
+        "plugins/sharp-edges/skills/sharp-edges/SKILL.md"
+      ]
+    }
+  ],
+  "external_install": false,
+  "requires_scan_approval": true
+}

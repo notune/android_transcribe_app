@@ -25,7 +25,7 @@ android {
         }
     }
 
-    // "standard" (GitHub releases, Google Play) ships the Parakeet model;
+    // "standard" (GitHub releases, Google Play) ships the GigaAM model;
     // "fdroid" is the same app without it: F-Droid builds everything from
     // source, so users import a model they downloaded in their browser.
     flavorDimensions += "distribution"
@@ -51,6 +51,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs next to the original app; the label and the package
+            // also make it clear which keyboard is the test build.
+            applicationIdSuffix = ".postprocess"
+            versionNameSuffix = "-postprocess"
+        }
         release {
             // R8 drops the unused parts of Material/AppCompat. Native code
             // calls back into Java by name; proguard-rules.pro keeps those.
@@ -114,6 +120,11 @@ dependencies {
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")
         implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")
     }
+
+    // JVM tests for the pure post-processing logic and HTTP client. The real
+    // org.json replaces Android's stub, which throws in local unit tests.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
 
 // ---------------------------------------------------------------------------
@@ -162,13 +173,19 @@ val cargoNdkBuild by tasks.registering(Exec::class) {
     doLast {
         val ndkPath = environment["ANDROID_NDK_HOME"] as String
         val triples = mapOf("arm64-v8a" to "aarch64-linux-android", "x86_64" to "x86_64-linux-android")
-        val llvmStrip = file("$ndkPath/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip")
+        // The NDK names its prebuilt folder after the build host. Releases are
+        // built on Linux (and F-Droid too); a macOS checkout has darwin-x86_64
+        // even on Apple Silicon. Pick whichever exists instead of hardcoding.
+        val prebuiltHost = listOf("linux-x86_64", "darwin-x86_64", "darwin-aarch64")
+            .firstOrNull { file("$ndkPath/toolchains/llvm/prebuilt/$it").isDirectory }
+            ?: throw GradleException("No NDK prebuilt toolchain under: $ndkPath/toolchains/llvm/prebuilt")
+        val llvmStrip = file("$ndkPath/toolchains/llvm/prebuilt/$prebuiltHost/bin/llvm-strip")
         if (!llvmStrip.exists()) {
             throw GradleException("llvm-strip not found in NDK at: ${llvmStrip.absolutePath}")
         }
         targetAbis.forEach { abi ->
             val triple = triples[abi] ?: throw GradleException("Unsupported ABI: $abi")
-            val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$triple/libc++_shared.so")
+            val libcpp = file("$ndkPath/toolchains/llvm/prebuilt/$prebuiltHost/sysroot/usr/lib/$triple/libc++_shared.so")
             if (!libcpp.exists()) {
                 throw GradleException("libc++_shared.so not found in NDK at: ${libcpp.absolutePath}")
             }
@@ -208,16 +225,27 @@ tasks.named("preBuild") {
 data class ModelFile(val name: String, val sha256: String)
 
 // The bundled GGUF goes into the model_assets asset pack so the base module
-// stays under the Play Store 200 MB compressed-download limit.
+// stays small. The default model is GigaAM v3 (Russian, punctuation and
+// casing). Parakeet is no longer bundled but stays downloadable for users who
+// need other languages.
 val modelPackFiles = listOf(
-    ModelFile("parakeet-tdt-0.6b-v3-Q4_K_M.gguf",
-        "b68557be1e3c40207fd7c4bd9d63f1d3316b963f15325bfb0cc16a8bb0ffd181"),
+    ModelFile("gigaam-v3-e2e-rnnt-Q6_K.gguf",
+        "1ef0f771d9ab0b0675c45ce67a3e5b79ac7497fe35ebb08a51704c4ee423edce"),
 )
 
-val huggingFaceRepo = "https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v3-gguf/resolve/main"
+val huggingFaceRepo = "https://huggingface.co/handy-computer/gigaam-v3-e2e-rnnt-gguf/resolve/main"
 
 fun downloadToDir(assetsDir: File, files: List<ModelFile>) {
     assetsDir.mkdirs()
+    // A leftover model from an earlier default would make the asset directory
+    // contain two GGUFs, which the extractor refuses to load.
+    val keep = files.map { it.name }.toSet()
+    assetsDir.listFiles { file ->
+        file.isFile && file.name.endsWith(".gguf", ignoreCase = true) && file.name !in keep
+    }?.forEach { stale ->
+        println("  - Removing previous model ${stale.name}")
+        stale.delete()
+    }
     files.forEach { model ->
         val destFile = File(assetsDir, model.name)
         if (destFile.exists() && model.sha256.isNotEmpty()) {

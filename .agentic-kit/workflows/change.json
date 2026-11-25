@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "id": "change",
+  "title": "Изменение приложения",
+  "steps": [
+    {
+      "id": "discovery",
+      "title": "Согласовать задачу и границы",
+      "stage": "discovery",
+      "depends_on": [],
+      "inputs": [],
+      "evidence": [],
+      "gate": "design",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "design",
+      "title": "Проверить применимость дизайна",
+      "stage": "design",
+      "depends_on": [
+        "discovery"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "planning",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "planning",
+      "title": "Подготовить решение и проверки",
+      "stage": "planning",
+      "depends_on": [
+        "design"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "implementation",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "implementation",
+      "title": "Выполнить согласованную работу",
+      "stage": "implementation",
+      "depends_on": [
+        "planning"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "verification",
+      "max_attempts": 3,
+      "retryable": true,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "verification",
+      "title": "Проверить результат",
+      "stage": "verification",
+      "depends_on": [
+        "implementation"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "release",
+      "max_attempts": 3,
+      "retryable": true,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "release",
+      "title": "Передать результат и условия продолжения",
+      "stage": "release",
+      "depends_on": [
+        "verification"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "done",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    }
+  ]
+}

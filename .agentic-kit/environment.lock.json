@@ -1,0 +1,612 @@
+{
+  "schema_version": 1,
+  "snapshot": {
+    "commands": {},
+    "components": {},
+    "content_sha256": "cdab429bb96d324866afa04de3e372e07c6ec2493d1ebaf373ff90c23cec97ba",
+    "files_ready": true,
+    "kit": {
+      "active_profiles": [],
+      "files": {
+        ".agentic-kit/AGENTS.md": {
+          "actual": "cf8126026f37128f733a0d549c80c2b451cba419e271792e598d00b82d4c16a2",
+          "expected": "cf8126026f37128f733a0d549c80c2b451cba419e271792e598d00b82d4c16a2"
+        },
+        ".agentic-kit/VERSION": {
+          "actual": "91930425f31d5132e78e0ad7195620e435121a2fdf87cf655f8323aa45ae0468",
+          "expected": "91930425f31d5132e78e0ad7195620e435121a2fdf87cf655f8323aa45ae0468"
+        },
+        ".agentic-kit/docs/ADOPTION.md": {
+          "actual": "acb35a3c032bd77627cae059ab997e1bd34d6503a380cd942210809d12a0b9b4",
+          "expected": "acb35a3c032bd77627cae059ab997e1bd34d6503a380cd942210809d12a0b9b4"
+        },
+        ".agentic-kit/docs/BOOTSTRAP.md": {
+          "actual": "67767a3804f0e3ef8e15382e3bc7c21ffdd9fe1c49ae8793ced10b4c2b3ab524",
+          "expected": "67767a3804f0e3ef8e15382e3bc7c21ffdd9fe1c49ae8793ced10b4c2b3ab524"
+        },
+        ".agentic-kit/docs/CLI.md": {
+          "actual": "8829a5c4d83ca8414456dca1adadb2a872bf66189773b8c98ae8208848b38474",
+          "expected": "8829a5c4d83ca8414456dca1adadb2a872bf66189773b8c98ae8208848b38474"
+        },
+        ".agentic-kit/docs/COMPONENTS.md": {
+          "actual": "193e216c7c654e5ed9425097bb2df66ce773e08d2e83dbbf014288e04ecac493",
+          "expected": "193e216c7c654e5ed9425097bb2df66ce773e08d2e83dbbf014288e04ecac493"
+        },
+        ".agentic-kit/docs/DAILY_WORKFLOW.md": {
+          "actual": "ac2be6571d451f6d2d6a4d41e5ee1642ad997f339a248e55e85ecf07f7320161",
+          "expected": "ac2be6571d451f6d2d6a4d41e5ee1642ad997f339a248e55e85ecf07f7320161"
+        },
+        ".agentic-kit/docs/DESIGN.md": {
+          "actual": "9fe08f948fd75f5a215a7b6b8fc3efd458e08b7241cc5960101589174d516204",
+          "expected": "9fe08f948fd75f5a215a7b6b8fc3efd458e08b7241cc5960101589174d516204"
+        },
+        ".agentic-kit/docs/ENVIRONMENT.md": {
+          "actual": "a94e6ad5fcfe199370e98c5c03bd017b5626c8837beb20e398968b69b4223430",
+          "expected": "a94e6ad5fcfe199370e98c5c03bd017b5626c8837beb20e398968b69b4223430"
+        },
+        ".agentic-kit/docs/HARNESS_ROUTING.md": {
+          "actual": "97bbd6355d6f4426282a33259c338ae356800b60fb5b2cb3ac399c1d730a9bff",
+          "expected": "97bbd6355d6f4426282a33259c338ae356800b60fb5b2cb3ac399c1d730a9bff"
+        },
+        ".agentic-kit/docs/INDEPENDENT_REVIEWS.md": {
+          "actual": "2a9e5003c2625e02215bb380f18d10c71a8f33b118c671afefb59c44ef485c38",
+          "expected": "2a9e5003c2625e02215bb380f18d10c71a8f33b118c671afefb59c44ef485c38"
+        },
+        ".agentic-kit/docs/KNOWLEDGE_MANAGEMENT.md": {
+          "actual": "1c5981ee4e37d9ecb7527cbdbddec9d8ae1ff3112d3a21d7df115c1bafdffa38",
+          "expected": "1c5981ee4e37d9ecb7527cbdbddec9d8ae1ff3112d3a21d7df115c1bafdffa38"
+        },
+        ".agentic-kit/docs/METHODOLOGY.md": {
+          "actual": "f73e1aa4011b75f3759c09b132243acc01a8b26e8ced2223debef06c9b023cfb",
+          "expected": "f73e1aa4011b75f3759c09b132243acc01a8b26e8ced2223debef06c9b023cfb"
+        },
+        ".agentic-kit/docs/NEW_PROJECT.md": {
+          "actual": "ef057c85b8910929a24366d54eb5f2d3a0ce7cf56b20ac8f11d22f38ed90f1ab",
+          "expected": "ef057c85b8910929a24366d54eb5f2d3a0ce7cf56b20ac8f11d22f38ed90f1ab"
+        },
+        ".agentic-kit/docs/OPTIONAL_SKILL_CATALOG.md": {
+          "actual": "80d2f72d8ecd5ca483939b1e63ca13330a7e760fe181d0d298d1682be2b4faeb",
+          "expected": "80d2f72d8ecd5ca483939b1e63ca13330a7e760fe181d0d298d1682be2b4faeb"
+        },
+        ".agentic-kit/docs/PRINCIPLES.md": {
+          "actual": "817e4716c4e3c4018887fa875e41f685bdd99da7786f291f691dd11db1868ae4",
+          "expected": "817e4716c4e3c4018887fa875e41f685bdd99da7786f291f691dd11db1868ae4"
+        },
+        ".agentic-kit/docs/PROCESSES.md": {
+          "actual": "8e96a0ff31f233639f1fee8fed83db89de32108309bfea0330838b24c3a5f449",
+          "expected": "8e96a0ff31f233639f1fee8fed83db89de32108309bfea0330838b24c3a5f449"
+        },
+        ".agentic-kit/docs/REFERENCES.md": {
+          "actual": "86851a15be02dd111fff1419dfc5ab5db3e0c93ac68e58cc1b3e47b2046689c0",
+          "expected": "86851a15be02dd111fff1419dfc5ab5db3e0c93ac68e58cc1b3e47b2046689c0"
+        },
+        ".agentic-kit/docs/ROLES.md": {
+          "actual": "e65791d93968dd4f9b746b5a5147479b1b1dbe9a08843896fb981f17688d05ec",
+          "expected": "e65791d93968dd4f9b746b5a5147479b1b1dbe9a08843896fb981f17688d05ec"
+        },
+        ".agentic-kit/docs/SECURITY.md": {
+          "actual": "0e5b46200fb8def66d66d13690103e0d8a954ddbfbc68d0dc5f60f737660d2c5",
+          "expected": "0e5b46200fb8def66d66d13690103e0d8a954ddbfbc68d0dc5f60f737660d2c5"
+        },
+        ".agentic-kit/docs/SHORTCUTS.md": {
+          "actual": "3833418b6fc849256a67c5df421dfa35f9c89f62e180d82b3a4512cc051e1629",
+          "expected": "3833418b6fc849256a67c5df421dfa35f9c89f62e180d82b3a4512cc051e1629"
+        },
+        ".agentic-kit/docs/SKILLS.md": {
+          "actual": "e0e0bf13d1c88c0550e54a86cb37904297e2bb61ad28a913959fe2e35312e1dd",
+          "expected": "e0e0bf13d1c88c0550e54a86cb37904297e2bb61ad28a913959fe2e35312e1dd"
+        },
+        ".agentic-kit/docs/SWARM.md": {
+          "actual": "5a90531a00f0a28439b6a14ecb5005670ab50b6ec4f3a46301d7b6b8d56e7cb0",
+          "expected": "5a90531a00f0a28439b6a14ecb5005670ab50b6ec4f3a46301d7b6b8d56e7cb0"
+        },
+        ".agentic-kit/docs/UPGRADE.md": {
+          "actual": "f1bdf69da6073bd75fde3ba96764dac7ed3328b36bcf2d8692479966f3c4ae31",
+          "expected": "f1bdf69da6073bd75fde3ba96764dac7ed3328b36bcf2d8692479966f3c4ae31"
+        },
+        ".agentic-kit/docs/VERSIONING.md": {
+          "actual": "d5530e7e0190197de790644a16b20f1d3145a9a40066b4f2aef9f8a20e3d6e46",
+          "expected": "d5530e7e0190197de790644a16b20f1d3145a9a40066b4f2aef9f8a20e3d6e46"
+        },
+        ".agentic-kit/docs/WORKFLOW.md": {
+          "actual": "d75675513cb5510f8d301821ebfea7ec8e7c288121080f9be1c81be4f8b5657e",
+          "expected": "d75675513cb5510f8d301821ebfea7ec8e7c288121080f9be1c81be4f8b5657e"
+        },
+        ".agentic-kit/docs/decisions/0001-defer-jev-decision-model.md": {
+          "actual": "d9631fae43e03098113b438a4e48b3d74b27ac8d7729db32c86bdb5e4c6a898e",
+          "expected": "d9631fae43e03098113b438a4e48b3d74b27ac8d7729db32c86bdb5e4c6a898e"
+        },
+        ".agentic-kit/docs/diagnostics/independent-review-evidence.json": {
+          "actual": "b0358cd607f238823a00eefc4509822a65b945c110737a1fd7d56e15da87be65",
+          "expected": "b0358cd607f238823a00eefc4509822a65b945c110737a1fd7d56e15da87be65"
+        },
+        ".agentic-kit/docs/diagnostics/independent-review-trials.md": {
+          "actual": "739ff8f1ff62d35c23a205753e04cece046e6b11190da63109365f93c5742702",
+          "expected": "739ff8f1ff62d35c23a205753e04cece046e6b11190da63109365f93c5742702"
+        },
+        ".agentic-kit/docs/diagnostics/review-delivery.md": {
+          "actual": "0a3f4d74471c93ab7ec4096d6a9ee3a6706c8fe744a63c932e6e0a0bdaff7bd2",
+          "expected": "0a3f4d74471c93ab7ec4096d6a9ee3a6706c8fe744a63c932e6e0a0bdaff7bd2"
+        },
+        ".agentic-kit/docs/diagnostics/worktree-observation.md": {
+          "actual": "4a22927092944179126231c526c4787cf6e285754d108d7dcee2a36e6a918e27",
+          "expected": "4a22927092944179126231c526c4787cf6e285754d108d7dcee2a36e6a918e27"
+        },
+        ".agentic-kit/harnesses/claude-code/README.md": {
+          "actual": "26591c7f991fe6493679a39468374210477ad82cc9b39b15b362664e9700fad0",
+          "expected": "26591c7f991fe6493679a39468374210477ad82cc9b39b15b362664e9700fad0"
+        },
+        ".agentic-kit/harnesses/codex/README.md": {
+          "actual": "382c385e1e82c825257071fab03600515129e2363a8743d5daccb86058774d2e",
+          "expected": "382c385e1e82c825257071fab03600515129e2363a8743d5daccb86058774d2e"
+        },
+        ".agentic-kit/harnesses/dsh/README.md": {
+          "actual": "69a20023cbbd8c8b03e688d6cf22d45c4cb382c71f351ec46a73d75a64350697",
+          "expected": "69a20023cbbd8c8b03e688d6cf22d45c4cb382c71f351ec46a73d75a64350697"
+        },
+        ".agentic-kit/harnesses/gemini-cli/README.md": {
+          "actual": "2f2bc921c57c9b139f4506ed260a57cfbd17b824d53a051c80fa216bd5509e63",
+          "expected": "2f2bc921c57c9b139f4506ed260a57cfbd17b824d53a051c80fa216bd5509e63"
+        },
+        ".agentic-kit/harnesses/opencode/README.md": {
+          "actual": "ae246c57aece9fe8b904c00d5be2a3823628bf0510b19381cc7a905d658c017a",
+          "expected": "ae246c57aece9fe8b904c00d5be2a3823628bf0510b19381cc7a905d658c017a"
+        },
+        ".agentic-kit/harnesses/pi/README.md": {
+          "actual": "231c13f35245695f287d589dc7dcf5f532979584433c5e7a2938125b8652ccc6",
+          "expected": "231c13f35245695f287d589dc7dcf5f532979584433c5e7a2938125b8652ccc6"
+        },
+        ".agentic-kit/harnesses/qwen-code/README.md": {
+          "actual": "b4781112ca71d3273448889b248d9f2770c7ed784de940493f1ecd0d629a2b06",
+          "expected": "b4781112ca71d3273448889b248d9f2770c7ed784de940493f1ecd0d629a2b06"
+        },
+        ".agentic-kit/profiles/ai-evaluation/README.md": {
+          "actual": "21e0b0c36ae5eb9e78aa61b85599837a6f90b234e996d94a3d8f5cbf5a7d1afc",
+          "expected": "21e0b0c36ae5eb9e78aa61b85599837a6f90b234e996d94a3d8f5cbf5a7d1afc"
+        },
+        ".agentic-kit/profiles/ai-evaluation/manifest.json": {
+          "actual": "3498b4229ba9742177482120b13260515c1440aa1084def3d4a209b9ae5e9ca2",
+          "expected": "3498b4229ba9742177482120b13260515c1440aa1084def3d4a209b9ae5e9ca2"
+        },
+        ".agentic-kit/profiles/ai-evaluation/skills/ai-evaluation/SKILL.md": {
+          "actual": "97ace11fd6dc9ff160123c795d4f1a19d48ad9cddb7a8d7baf76c39f17a9b065",
+          "expected": "97ace11fd6dc9ff160123c795d4f1a19d48ad9cddb7a8d7baf76c39f17a9b065"
+        },
+        ".agentic-kit/profiles/codebase-audit/README.md": {
+          "actual": "19ba52bcd92fa5b8e3c8db443c4aaee2b563162a33193349a44e10d5c5304fb6",
+          "expected": "19ba52bcd92fa5b8e3c8db443c4aaee2b563162a33193349a44e10d5c5304fb6"
+        },
+        ".agentic-kit/profiles/codebase-audit/manifest.json": {
+          "actual": "ca90924c38abafee6060d486d48d605711143da6f0a218329c6794a91b648e6b",
+          "expected": "ca90924c38abafee6060d486d48d605711143da6f0a218329c6794a91b648e6b"
+        },
+        ".agentic-kit/profiles/codebase-audit/skills/codebase-audit/SKILL.md": {
+          "actual": "c769dde8e561d7e95929bfc82877b9a2c158be39df140f7809dc9182edf584ad",
+          "expected": "c769dde8e561d7e95929bfc82877b9a2c158be39df140f7809dc9182edf584ad"
+        },
+        ".agentic-kit/profiles/codebase-audit/skills/handoff-plan/SKILL.md": {
+          "actual": "2b4a3d66543e3db8051ff6d77ddbf2d43edfd216ca3b4dc169fb982017546558",
+          "expected": "2b4a3d66543e3db8051ff6d77ddbf2d43edfd216ca3b4dc169fb982017546558"
+        },
+        ".agentic-kit/profiles/codebase-audit/skills/plan-reconcile/SKILL.md": {
+          "actual": "1edc369d0517005880fd07d05bfb3b66204bd19a86bba6b7070a3afe1d1648de",
+          "expected": "1edc369d0517005880fd07d05bfb3b66204bd19a86bba6b7070a3afe1d1648de"
+        },
+        ".agentic-kit/profiles/codebase-audit/templates/AUDIT_REPORT.md": {
+          "actual": "96a90745ef25100887d0a70f19fefda003d2b8d926d2d78c1af444966d6731d3",
+          "expected": "96a90745ef25100887d0a70f19fefda003d2b8d926d2d78c1af444966d6731d3"
+        },
+        ".agentic-kit/profiles/codebase-audit/templates/HANDOFF_PLAN.md": {
+          "actual": "4520be3e527a013b04208da57d48e9ce5ed7796a25c961d582958923ab3c9a36",
+          "expected": "4520be3e527a013b04208da57d48e9ce5ed7796a25c961d582958923ab3c9a36"
+        },
+        ".agentic-kit/profiles/database-postgres/README.md": {
+          "actual": "8de901578c69d445f885951e992465d3861a3c8dcc4cfc84659c482ef3596f0f",
+          "expected": "8de901578c69d445f885951e992465d3861a3c8dcc4cfc84659c482ef3596f0f"
+        },
+        ".agentic-kit/profiles/database-postgres/manifest.json": {
+          "actual": "d5b120ef7e187a8bdf41337ea05ca2dc2d9f4f28972f00cf1ff72b75ea1d398a",
+          "expected": "d5b120ef7e187a8bdf41337ea05ca2dc2d9f4f28972f00cf1ff72b75ea1d398a"
+        },
+        ".agentic-kit/profiles/database-postgres/skills/postgres-best-practices/SKILL.md": {
+          "actual": "4bb077e8febdd8c044e493ed1252b7f423e40f5a22a0873b35004520e619df80",
+          "expected": "4bb077e8febdd8c044e493ed1252b7f423e40f5a22a0873b35004520e619df80"
+        },
+        ".agentic-kit/profiles/knowledge-base/README.md": {
+          "actual": "e24b58636f32bc54a79362f6d2f23d6d91b7d73b9d9448f79acc479ad43e6f01",
+          "expected": "e24b58636f32bc54a79362f6d2f23d6d91b7d73b9d9448f79acc479ad43e6f01"
+        },
+        ".agentic-kit/profiles/knowledge-base/UPSTREAM_LICENSE.txt": {
+          "actual": "942d0b22fb84d16f756a9118578cb9545bd91e73ceb4882a09deb01f8d254d49",
+          "expected": "942d0b22fb84d16f756a9118578cb9545bd91e73ceb4882a09deb01f8d254d49"
+        },
+        ".agentic-kit/profiles/knowledge-base/manifest.json": {
+          "actual": "d36ce9e0c1af6f62b4b311b0b61c16b243e5887bde2ff2cc7506d78cacb57c2a",
+          "expected": "d36ce9e0c1af6f62b4b311b0b61c16b243e5887bde2ff2cc7506d78cacb57c2a"
+        },
+        ".agentic-kit/profiles/knowledge-base/skills/kb-audit/SKILL.md": {
+          "actual": "a69865a74af41c8f787edb2fac195be358218f021b6d4ad77bd172d5c815e344",
+          "expected": "a69865a74af41c8f787edb2fac195be358218f021b6d4ad77bd172d5c815e344"
+        },
+        ".agentic-kit/profiles/knowledge-base/skills/kb-curate/SKILL.md": {
+          "actual": "649408b744dd6b14cb86dd79b8e8730b27f8276e80def03e50a394949e7b76fb",
+          "expected": "649408b744dd6b14cb86dd79b8e8730b27f8276e80def03e50a394949e7b76fb"
+        },
+        ".agentic-kit/profiles/knowledge-base/skills/kb-search/SKILL.md": {
+          "actual": "d692a353d829f70ac905eb710f7b1640966b2c78d285ba388b34256fbe4e5421",
+          "expected": "d692a353d829f70ac905eb710f7b1640966b2c78d285ba388b34256fbe4e5421"
+        },
+        ".agentic-kit/profiles/qa-playwright/README.md": {
+          "actual": "f1edef67cdbee22911daf5e83f0b2330f2dbf4816a79be48f4c58d7cc16b651f",
+          "expected": "f1edef67cdbee22911daf5e83f0b2330f2dbf4816a79be48f4c58d7cc16b651f"
+        },
+        ".agentic-kit/profiles/qa-playwright/manifest.json": {
+          "actual": "f76a6cf7dfb47728b791214b0b3bf9b2bce3c898a6e0ff59e5425b71ab6585e8",
+          "expected": "f76a6cf7dfb47728b791214b0b3bf9b2bce3c898a6e0ff59e5425b71ab6585e8"
+        },
+        ".agentic-kit/profiles/qa-playwright/skills/playwright-test-agents/SKILL.md": {
+          "actual": "54f21c65b632a73fc3b9d0e13f2f9a0ccf8b24c2ffa82511f23d32f771075896",
+          "expected": "54f21c65b632a73fc3b9d0e13f2f9a0ccf8b24c2ffa82511f23d32f771075896"
+        },
+        ".agentic-kit/profiles/security-audit/README.md": {
+          "actual": "04cf86c6fcf6089b9219d12af48c8af17128961e5c4d2d8f0e01563163caf00b",
+          "expected": "04cf86c6fcf6089b9219d12af48c8af17128961e5c4d2d8f0e01563163caf00b"
+        },
+        ".agentic-kit/profiles/security-audit/manifest.json": {
+          "actual": "6b78890469b58f53f831cb7c0b8d6d369e83f1080bff2fef77da665f63eda448",
+          "expected": "6b78890469b58f53f831cb7c0b8d6d369e83f1080bff2fef77da665f63eda448"
+        },
+        ".agentic-kit/profiles/security-audit/skills/security-audit/SKILL.md": {
+          "actual": "260d54261aaae658cfea976035a4a2044ae66b2f9deb4423bf8cfdca6ea6e302",
+          "expected": "260d54261aaae658cfea976035a4a2044ae66b2f9deb4423bf8cfdca6ea6e302"
+        },
+        ".agentic-kit/profiles/web-development/README.md": {
+          "actual": "d918c692f652c12172faa05204bbb4d8e37ce64b50d7b36d25585f6f114307b3",
+          "expected": "d918c692f652c12172faa05204bbb4d8e37ce64b50d7b36d25585f6f114307b3"
+        },
+        ".agentic-kit/profiles/web-development/manifest.json": {
+          "actual": "9fb7db07c2b6519341e2d0a397fd519e2638ea9b33039d4286af32c9aaeff3c1",
+          "expected": "9fb7db07c2b6519341e2d0a397fd519e2638ea9b33039d4286af32c9aaeff3c1"
+        },
+        ".agentic-kit/profiles/web-development/skills/modern-web-guidance/SKILL.md": {
+          "actual": "d45758d443cb01fbceb43a48683ca74d559238cb253532a5e64e7626849415dd",
+          "expected": "d45758d443cb01fbceb43a48683ca74d559238cb253532a5e64e7626849415dd"
+        },
+        ".agentic-kit/roles/architect.md": {
+          "actual": "b8286d3c61e56da9650c5f0872d65cc31a29df64014d4d3f080a91173d80bb82",
+          "expected": "b8286d3c61e56da9650c5f0872d65cc31a29df64014d4d3f080a91173d80bb82"
+        },
+        ".agentic-kit/roles/ba.md": {
+          "actual": "e4719775efed5cb9dfaef20e56d57d3bacfd315c657e67874caa3349e1c01c8a",
+          "expected": "e4719775efed5cb9dfaef20e56d57d3bacfd315c657e67874caa3349e1c01c8a"
+        },
+        ".agentic-kit/roles/designer.md": {
+          "actual": "5f5c24b80c7957636660852a3200cc4e05a366158de3774ac49693f78f7f2250",
+          "expected": "5f5c24b80c7957636660852a3200cc4e05a366158de3774ac49693f78f7f2250"
+        },
+        ".agentic-kit/roles/engineer.md": {
+          "actual": "69d7f055ccea89107bfdc4040bcaaf5ef75aead1c952ce65f1b91e85022a464f",
+          "expected": "69d7f055ccea89107bfdc4040bcaaf5ef75aead1c952ce65f1b91e85022a464f"
+        },
+        ".agentic-kit/roles/orchestrator.md": {
+          "actual": "4f146e1640da123f93eebb6ba49b2e8b599caec2d49f29fabb30a434a03c9ddf",
+          "expected": "4f146e1640da123f93eebb6ba49b2e8b599caec2d49f29fabb30a434a03c9ddf"
+        },
+        ".agentic-kit/roles/pm.md": {
+          "actual": "693cdba75451578fd0c5d2412e1fd550d7cf97248ebf25eb13214527191c4770",
+          "expected": "693cdba75451578fd0c5d2412e1fd550d7cf97248ebf25eb13214527191c4770"
+        },
+        ".agentic-kit/roles/qa.md": {
+          "actual": "856c899aa4f437fafef1f45151ae430e901b65b30feeac2be097df2758e9aba1",
+          "expected": "856c899aa4f437fafef1f45151ae430e901b65b30feeac2be097df2758e9aba1"
+        },
+        ".agentic-kit/roles/security.md": {
+          "actual": "11e04093c0b3c99ba5e4031eaf2beb7a1cd67121a9b3105b1a71df523ef6ed20",
+          "expected": "11e04093c0b3c99ba5e4031eaf2beb7a1cd67121a9b3105b1a71df523ef6ed20"
+        },
+        ".agentic-kit/roles/sre.md": {
+          "actual": "efa849ba9ffa5bc0f5c5276a2f7014d59b81145f6e96653fdf2fbb75f9ebfbed",
+          "expected": "efa849ba9ffa5bc0f5c5276a2f7014d59b81145f6e96653fdf2fbb75f9ebfbed"
+        },
+        ".agentic-kit/shortcuts/aek-audit/SKILL.md": {
+          "actual": "13122d202b9650bc8d7551e8141851be651c56f32b49386dec3a187e44588245",
+          "expected": "13122d202b9650bc8d7551e8141851be651c56f32b49386dec3a187e44588245"
+        },
+        ".agentic-kit/shortcuts/aek-brownfield/SKILL.md": {
+          "actual": "35b088845443a71fe66ebc746f4182586d59ad6b66286ad2f16786c1533ea662",
+          "expected": "35b088845443a71fe66ebc746f4182586d59ad6b66286ad2f16786c1533ea662"
+        },
+        ".agentic-kit/shortcuts/aek-change/SKILL.md": {
+          "actual": "3e777bbe8a13fd98043774a3bce44c5d187855e1f6eb654788becf6519df8032",
+          "expected": "3e777bbe8a13fd98043774a3bce44c5d187855e1f6eb654788becf6519df8032"
+        },
+        ".agentic-kit/shortcuts/aek-doctor/SKILL.md": {
+          "actual": "6ea1d6dc1627af0862410be3b41f611efc032ba33fc12a6f4ed9d9ad301d8942",
+          "expected": "6ea1d6dc1627af0862410be3b41f611efc032ba33fc12a6f4ed9d9ad301d8942"
+        },
+        ".agentic-kit/shortcuts/aek-fix/SKILL.md": {
+          "actual": "a9eea6025f4cb98b6d25efa43f9b257a2a49ca5560e92dad1cbdaf745a5704c0",
+          "expected": "a9eea6025f4cb98b6d25efa43f9b257a2a49ca5560e92dad1cbdaf745a5704c0"
+        },
+        ".agentic-kit/shortcuts/aek-greenfield/SKILL.md": {
+          "actual": "2716f2267d7f32acf1cde998047c9293b774fe43ce71d130cfd9d7904be1843f",
+          "expected": "2716f2267d7f32acf1cde998047c9293b774fe43ce71d130cfd9d7904be1843f"
+        },
+        ".agentic-kit/shortcuts/aek-help/SKILL.md": {
+          "actual": "a74f46f280e724bd520dd8aaedb4cf646d50140b5ce75e91f68dd993e215d89b",
+          "expected": "a74f46f280e724bd520dd8aaedb4cf646d50140b5ce75e91f68dd993e215d89b"
+        },
+        ".agentic-kit/shortcuts/aek-resume/SKILL.md": {
+          "actual": "ca51d0cc94bc0612ae996a050711ecb7396cc36540c1ae53262e6b11dac70e78",
+          "expected": "ca51d0cc94bc0612ae996a050711ecb7396cc36540c1ae53262e6b11dac70e78"
+        },
+        ".agentic-kit/shortcuts/aek-rollback/SKILL.md": {
+          "actual": "8b4df973fb76fdd82fbf6f7140672d4f0ffd935c31fa73d566453509b2b95fce",
+          "expected": "8b4df973fb76fdd82fbf6f7140672d4f0ffd935c31fa73d566453509b2b95fce"
+        },
+        ".agentic-kit/shortcuts/aek-status/SKILL.md": {
+          "actual": "9ba3f7d3ed4f4d2cdb7593bc29711eb786a9ca54e7ae7a10d8f4264c10472c5c",
+          "expected": "9ba3f7d3ed4f4d2cdb7593bc29711eb786a9ca54e7ae7a10d8f4264c10472c5c"
+        },
+        ".agentic-kit/shortcuts/aek-update/SKILL.md": {
+          "actual": "896b6e745c445836b4771582174d73494ce1a0bd3ee0ad48e212db8aeb386836",
+          "expected": "896b6e745c445836b4771582174d73494ce1a0bd3ee0ad48e212db8aeb386836"
+        },
+        ".agentic-kit/shortcuts/aek-verify/SKILL.md": {
+          "actual": "afe923b2fac63fad8987a61d4e85c2c2861d815c0afeef90d163578ccb87cec8",
+          "expected": "afe923b2fac63fad8987a61d4e85c2c2861d815c0afeef90d163578ccb87cec8"
+        },
+        ".agentic-kit/skills/aek-bootstrap/SKILL.md": {
+          "actual": "47f6924188db58f26f64253b201f96bafa935a71369aa8869cb82671c6582207",
+          "expected": "47f6924188db58f26f64253b201f96bafa935a71369aa8869cb82671c6582207"
+        },
+        ".agentic-kit/skills/architecture-simplification/SKILL.md": {
+          "actual": "d8645cbc0c49b801aa74c290d106f54dd7070d1a59e47174f95a047aa10ed612",
+          "expected": "d8645cbc0c49b801aa74c290d106f54dd7070d1a59e47174f95a047aa10ed612"
+        },
+        ".agentic-kit/skills/brownfield-discovery/SKILL.md": {
+          "actual": "c635c162ad764ff5589a2c8f05586f7ffe0ded4d510ed53367208eacb3e6f13b",
+          "expected": "c635c162ad764ff5589a2c8f05586f7ffe0ded4d510ed53367208eacb3e6f13b"
+        },
+        ".agentic-kit/skills/design-quality-gate/SKILL.md": {
+          "actual": "b3fa2afd7920553143f4fa523376689bf4e210becbedd268a59351b5140441d9",
+          "expected": "b3fa2afd7920553143f4fa523376689bf4e210becbedd268a59351b5140441d9"
+        },
+        ".agentic-kit/skills/harness-discovery-assignment/SKILL.md": {
+          "actual": "2f77a3eb043b20661e6114493a06b49df260b7bebc1c6528bfd94a19a0807ab7",
+          "expected": "2f77a3eb043b20661e6114493a06b49df260b7bebc1c6528bfd94a19a0807ab7"
+        },
+        ".agentic-kit/skills/library-first-assessment/SKILL.md": {
+          "actual": "84b40853fae15b03271a9418c14d4cfa668a030e13f7a1bbb5f5f8fa8bdd5f1c",
+          "expected": "84b40853fae15b03271a9418c14d4cfa668a030e13f7a1bbb5f5f8fa8bdd5f1c"
+        },
+        ".agentic-kit/skills/product-discovery-interview/SKILL.md": {
+          "actual": "6656e528a58299f1efa69e5d6e898d2dd1a22a06b2f1350b91b815a1f76882f9",
+          "expected": "6656e528a58299f1efa69e5d6e898d2dd1a22a06b2f1350b91b815a1f76882f9"
+        },
+        ".agentic-kit/skills/release-readiness/SKILL.md": {
+          "actual": "f0b604a849881b714b424cf0d89623a12000f3337bddb96ddaf565d7e9c62fdc",
+          "expected": "f0b604a849881b714b424cf0d89623a12000f3337bddb96ddaf565d7e9c62fdc"
+        },
+        ".agentic-kit/skills/root-cause-analysis/SKILL.md": {
+          "actual": "6686713a0483c37eee5101ee016393593714c8ce857ba8169b4fb038a2f2537e",
+          "expected": "6686713a0483c37eee5101ee016393593714c8ce857ba8169b4fb038a2f2537e"
+        },
+        ".agentic-kit/skills/security-threat-model/SKILL.md": {
+          "actual": "545dc8f2a8122c35b24dd0c28bcc78002f2f25548d84cf8b7be2ef1e89877a2d",
+          "expected": "545dc8f2a8122c35b24dd0c28bcc78002f2f25548d84cf8b7be2ef1e89877a2d"
+        },
+        ".agentic-kit/skills/swarm-planning/SKILL.md": {
+          "actual": "448c9b29983f1a9bed1848da28698b228ad59feefe5bb18b9f1a287a6734c543",
+          "expected": "448c9b29983f1a9bed1848da28698b228ad59feefe5bb18b9f1a287a6734c543"
+        },
+        ".agentic-kit/skills/verification-before-completion/SKILL.md": {
+          "actual": "2ca0385aff674a4054d1404c34ca063fd7721edcd34be93c7813ada55e343224",
+          "expected": "2ca0385aff674a4054d1404c34ca063fd7721edcd34be93c7813ada55e343224"
+        },
+        ".agentic-kit/skills/workflow-compliance/SKILL.md": {
+          "actual": "0b87f2929d2bcd5624bf56f7ba6cabae14dae2fc34f597013ce62f1ba28d2ea5",
+          "expected": "0b87f2929d2bcd5624bf56f7ba6cabae14dae2fc34f597013ce62f1ba28d2ea5"
+        },
+        ".agentic-kit/templates/AEK_VERIFY_CI.yml": {
+          "actual": "5f5b0a5cda560478d469f1f00b9cdf6180cf9fef75efbdebe1d6d7f24d8a5510",
+          "expected": "5f5b0a5cda560478d469f1f00b9cdf6180cf9fef75efbdebe1d6d7f24d8a5510"
+        },
+        ".agentic-kit/templates/AGENT_HANDOFF.md": {
+          "actual": "685ec1456bc150c895d685a447a84e267401a9e82d787fe2a4fcd0f16c847edd",
+          "expected": "685ec1456bc150c895d685a447a84e267401a9e82d787fe2a4fcd0f16c847edd"
+        },
+        ".agentic-kit/templates/ARCHITECTURE_DECISION.md": {
+          "actual": "01d043332d25d855b788fc162ef36c9247386a70f9ab95ebf8964ce5243d0ec2",
+          "expected": "01d043332d25d855b788fc162ef36c9247386a70f9ab95ebf8964ce5243d0ec2"
+        },
+        ".agentic-kit/templates/BROWNFIELD_REPORT.md": {
+          "actual": "0ad49f5c072a28f03ff4fb869bfcb22f01ea600adf963e06fd6e777e68d821b7",
+          "expected": "0ad49f5c072a28f03ff4fb869bfcb22f01ea600adf963e06fd6e777e68d821b7"
+        },
+        ".agentic-kit/templates/BROWSER_CAPABILITY.md": {
+          "actual": "e51f19b37602c16b8809bbffc9c3b60a7439089d7cef3b55bfa016a78dff5bd2",
+          "expected": "e51f19b37602c16b8809bbffc9c3b60a7439089d7cef3b55bfa016a78dff5bd2"
+        },
+        ".agentic-kit/templates/DESIGN_BRIEF.md": {
+          "actual": "6554f018151d292f0e1e09554182b151c3683b1e487542de273e10dfbdbb3c66",
+          "expected": "6554f018151d292f0e1e09554182b151c3683b1e487542de273e10dfbdbb3c66"
+        },
+        ".agentic-kit/templates/HARNESS_ASSIGNMENT.md": {
+          "actual": "d822fb4d7e1e99f2de3d78b449ad36892181b4565e5d9015ad1118774a0bdebb",
+          "expected": "d822fb4d7e1e99f2de3d78b449ad36892181b4565e5d9015ad1118774a0bdebb"
+        },
+        ".agentic-kit/templates/HARNESS_DISCOVERY.md": {
+          "actual": "b0e86d65c5d3907af2946e2db91abf2c14efabd67565fb21d0093ec225c04c71",
+          "expected": "b0e86d65c5d3907af2946e2db91abf2c14efabd67565fb21d0093ec225c04c71"
+        },
+        ".agentic-kit/templates/PRODUCT_BRIEF.md": {
+          "actual": "c18581c50dc6a40ce7906de6b82be20ba1939e549bc7c8c4267bdec09c44fcf3",
+          "expected": "c18581c50dc6a40ce7906de6b82be20ba1939e549bc7c8c4267bdec09c44fcf3"
+        },
+        ".agentic-kit/templates/RELEASE_CHECKLIST.md": {
+          "actual": "e231338c5f48b3fd90e5af1a2e6bad4acb5bc726d34b1c4172902e6b94aa9126",
+          "expected": "e231338c5f48b3fd90e5af1a2e6bad4acb5bc726d34b1c4172902e6b94aa9126"
+        },
+        ".agentic-kit/templates/REVIEW.md": {
+          "actual": "509dfa8ec827a5e82522f3a31f1fdf6805e3dd5191881921fa494e047c794238",
+          "expected": "509dfa8ec827a5e82522f3a31f1fdf6805e3dd5191881921fa494e047c794238"
+        },
+        ".agentic-kit/templates/REVIEW_BRIEF.md": {
+          "actual": "e8df1c78357e96b130732ad53279b87f70b94371a5634732cc1d642e63e11794",
+          "expected": "e8df1c78357e96b130732ad53279b87f70b94371a5634732cc1d642e63e11794"
+        },
+        ".agentic-kit/templates/SECURITY_SCREEN.md": {
+          "actual": "22e5bac23a81c6d81c57d386ebfc10aaeacb7611177de3e11e0ed2384ad972af",
+          "expected": "22e5bac23a81c6d81c57d386ebfc10aaeacb7611177de3e11e0ed2384ad972af"
+        },
+        ".agentic-kit/templates/VISUAL_QA.md": {
+          "actual": "f3152e31c63935a3b06b72c9762c0e72fa2ab7dfb5ebd852bf3704b2b6143504",
+          "expected": "f3152e31c63935a3b06b72c9762c0e72fa2ab7dfb5ebd852bf3704b2b6143504"
+        },
+        ".agentic-kit/tools/aek.py": {
+          "actual": "ee82cb4d333100c52f11f0c5d27bfaedbead77a67d87b3803fd709d836281b16",
+          "expected": "ee82cb4d333100c52f11f0c5d27bfaedbead77a67d87b3803fd709d836281b16"
+        },
+        ".agentic-kit/tools/aek_activate.py": {
+          "actual": "d0977273d0852f9b7cc0b9295a3edcc03a4700521bd8ece93cee2fcb3f6ddc97",
+          "expected": "d0977273d0852f9b7cc0b9295a3edcc03a4700521bd8ece93cee2fcb3f6ddc97"
+        },
+        ".agentic-kit/tools/aek_components.py": {
+          "actual": "a1fadffa9aece85290e5490c50c2c5b1a838c71b17891fe03dbecea7fd123065",
+          "expected": "a1fadffa9aece85290e5490c50c2c5b1a838c71b17891fe03dbecea7fd123065"
+        },
+        ".agentic-kit/tools/aek_environment.py": {
+          "actual": "8e8b98d7b8a0ba3faab481bd3b748363e130cd8bc10c2a73264565e029fe21e4",
+          "expected": "8e8b98d7b8a0ba3faab481bd3b748363e130cd8bc10c2a73264565e029fe21e4"
+        },
+        ".agentic-kit/tools/aek_evidence.py": {
+          "actual": "d69656ebe2c6fd2bd124c040eabfe8537bfef305f853e9b3f4a26c90a1c0925d",
+          "expected": "d69656ebe2c6fd2bd124c040eabfe8537bfef305f853e9b3f4a26c90a1c0925d"
+        },
+        ".agentic-kit/tools/aek_execution.py": {
+          "actual": "77442a4bcfb9e40d6e75afb2cd08fbea6b66d83207f4116bc4b6647fa9b49922",
+          "expected": "77442a4bcfb9e40d6e75afb2cd08fbea6b66d83207f4116bc4b6647fa9b49922"
+        },
+        ".agentic-kit/tools/aek_gitmark.py": {
+          "actual": "b2455f2aaffffa48df6db484e1f58ad46a64536f03d2370e5709716e10f848f7",
+          "expected": "b2455f2aaffffa48df6db484e1f58ad46a64536f03d2370e5709716e10f848f7"
+        },
+        ".agentic-kit/tools/aek_http_smoke.py": {
+          "actual": "dab21c243318d3db4a724e14bee89b4f5e8890d99778699c3b819fb560803214",
+          "expected": "dab21c243318d3db4a724e14bee89b4f5e8890d99778699c3b819fb560803214"
+        },
+        ".agentic-kit/tools/aek_install.py": {
+          "actual": "318e2b4fb92045c0682ddde1c7a065bdae33eb939f5f174090c4f0c2b2d4bd08",
+          "expected": "318e2b4fb92045c0682ddde1c7a065bdae33eb939f5f174090c4f0c2b2d4bd08"
+        },
+        ".agentic-kit/tools/aek_process.py": {
+          "actual": "6a8d42d8023b46dcc8277f7c1086b17067dad484f43993448eca194ac5dbf18b",
+          "expected": "6a8d42d8023b46dcc8277f7c1086b17067dad484f43993448eca194ac5dbf18b"
+        },
+        ".agentic-kit/tools/aek_reviews.py": {
+          "actual": "6b47b560408cea5617a8946e6234da74e248d21d1911307b236317516d21b7d8",
+          "expected": "6b47b560408cea5617a8946e6234da74e248d21d1911307b236317516d21b7d8"
+        },
+        ".agentic-kit/tools/aek_shortcuts.py": {
+          "actual": "8988d537eaf410015b76fad8c50fd6986847c65e986c016f2a903369ba2cee96",
+          "expected": "8988d537eaf410015b76fad8c50fd6986847c65e986c016f2a903369ba2cee96"
+        },
+        ".agentic-kit/tools/aek_state.py": {
+          "actual": "f2c8b18889601712b6ff16d4cb09464d1a506091d92f368a02916975f36b0e66",
+          "expected": "f2c8b18889601712b6ff16d4cb09464d1a506091d92f368a02916975f36b0e66"
+        },
+        ".agentic-kit/tools/aek_upgrade.py": {
+          "actual": "8d544d1abee82deaa186d8950c202bae2063044d9bab9a43a94b81dd994fe305",
+          "expected": "8d544d1abee82deaa186d8950c202bae2063044d9bab9a43a94b81dd994fe305"
+        },
+        ".agentic-kit/tools/aek_workflow.py": {
+          "actual": "1a51056750f0920bacf4303261559d516e5be9b46efcc827271c547a5a255131",
+          "expected": "1a51056750f0920bacf4303261559d516e5be9b46efcc827271c547a5a255131"
+        },
+        ".agentic-kit/workflows/change.json": {
+          "actual": "30cf39e7d2a6ba9cdb01e29df4091e6c4081f40280706f28f0bb99b1ec2d27eb",
+          "expected": "30cf39e7d2a6ba9cdb01e29df4091e6c4081f40280706f28f0bb99b1ec2d27eb"
+        },
+        ".agentic-kit/workflows/fix.json": {
+          "actual": "8b4bda11a68c92683b41889f63169164fd6e0b8002e8fa3cd0e3c33fa2cca62d",
+          "expected": "8b4bda11a68c92683b41889f63169164fd6e0b8002e8fa3cd0e3c33fa2cca62d"
+        },
+        ".agentic-kit/workflows/update.json": {
+          "actual": "e34a0ae028459b3f5c9e98f3a319515cfb5ec187dea1d85fad7723a594a6f1fc",
+          "expected": "e34a0ae028459b3f5c9e98f3a319515cfb5ec187dea1d85fad7723a594a6f1fc"
+        },
+        ".agents/skills/aek-architecture-simplification/SKILL.md": {
+          "actual": "c2c98cf827c9f1fb06660a8392f52f62faf890d3b457bed2452a60ad99b8f854",
+          "expected": "c2c98cf827c9f1fb06660a8392f52f62faf890d3b457bed2452a60ad99b8f854"
+        },
+        ".agents/skills/aek-bootstrap/SKILL.md": {
+          "actual": "acdd46a236155186ab685227c6be889f4bc3e110d5e0521fceab167fb25dea60",
+          "expected": "acdd46a236155186ab685227c6be889f4bc3e110d5e0521fceab167fb25dea60"
+        },
+        ".agents/skills/aek-brownfield-discovery/SKILL.md": {
+          "actual": "8e4c6083e6f096bc4bc6d39d26ee1213d1e1f8d032b167b92253cd56bf7b174b",
+          "expected": "8e4c6083e6f096bc4bc6d39d26ee1213d1e1f8d032b167b92253cd56bf7b174b"
+        },
+        ".agents/skills/aek-design-quality-gate/SKILL.md": {
+          "actual": "74a836ef96b9c78969851761a170679268eb26529a748e6764a5927449efa226",
+          "expected": "74a836ef96b9c78969851761a170679268eb26529a748e6764a5927449efa226"
+        },
+        ".agents/skills/aek-harness-discovery-assignment/SKILL.md": {
+          "actual": "16f0c135ba7a2070d8e7de7900205a8aa516807b27ccadf9db296f3a343fd8d8",
+          "expected": "16f0c135ba7a2070d8e7de7900205a8aa516807b27ccadf9db296f3a343fd8d8"
+        },
+        ".agents/skills/aek-library-first-assessment/SKILL.md": {
+          "actual": "1cba435275fc6513a6529acddb56bb724502eb7ed3ad3f1ca5a2c9b9689bc45a",
+          "expected": "1cba435275fc6513a6529acddb56bb724502eb7ed3ad3f1ca5a2c9b9689bc45a"
+        },
+        ".agents/skills/aek-product-discovery-interview/SKILL.md": {
+          "actual": "ec8e5aabd7e347abb37b033497d0522553467dda80cd1f5cba7bd53596cdcd25",
+          "expected": "ec8e5aabd7e347abb37b033497d0522553467dda80cd1f5cba7bd53596cdcd25"
+        },
+        ".agents/skills/aek-release-readiness/SKILL.md": {
+          "actual": "a250369b86d0a0cdd5ed0d6d83ca75fb6db1c5d30dc421c4dbdcb0a44f3d2c2b",
+          "expected": "a250369b86d0a0cdd5ed0d6d83ca75fb6db1c5d30dc421c4dbdcb0a44f3d2c2b"
+        },
+        ".agents/skills/aek-root-cause-analysis/SKILL.md": {
+          "actual": "2b5048ebb17ddb67fcac125b837aba0b1f19b5e0052c88c48f135e78952603ab",
+          "expected": "2b5048ebb17ddb67fcac125b837aba0b1f19b5e0052c88c48f135e78952603ab"
+        },
+        ".agents/skills/aek-security-threat-model/SKILL.md": {
+          "actual": "a461b6b2e27932907e9f5b7ee6b335a1c1d036e29c7b4f92a3e005d4dda565ca",
+          "expected": "a461b6b2e27932907e9f5b7ee6b335a1c1d036e29c7b4f92a3e005d4dda565ca"
+        },
+        ".agents/skills/aek-swarm-planning/SKILL.md": {
+          "actual": "e44a5a2428254b224a458dfe253148d37d5ab765e086b9a4dcf40d64d8626a58",
+          "expected": "e44a5a2428254b224a458dfe253148d37d5ab765e086b9a4dcf40d64d8626a58"
+        },
+        ".agents/skills/aek-verification-before-completion/SKILL.md": {
+          "actual": "bd3c1d39a3c50b38bcba4e47daed00299caf154df48c319d067b64b0fe817532",
+          "expected": "bd3c1d39a3c50b38bcba4e47daed00299caf154df48c319d067b64b0fe817532"
+        },
+        ".agents/skills/aek-workflow-compliance/SKILL.md": {
+          "actual": "2e827d58f79f2b24f25a1135e780b0588875d1276adb8c12283090f9c3badf8e",
+          "expected": "2e827d58f79f2b24f25a1135e780b0588875d1276adb8c12283090f9c3badf8e"
+        }
+      },
+      "manifest_sha256": "01d17cbde7234a2363315a8d2e8b0497d025d9ad876ec46fca0f60747608d39e",
+      "provenance": "recorded",
+      "source_identity": {
+        "content_sha256": "f741bcba9b908e394658b841f84463f31d43d76b8eafa8e0d4c52a85a19ad92f",
+        "file_count": 132,
+        "git_commit": "42994614e1fb8b53754e2840f47355eaca37c37d",
+        "git_tree": "796ffb5e5127e5d0d88768cfee0a44dcbdd21d64",
+        "schema_version": 1,
+        "source_dirty": false,
+        "version": "2.2.2"
+      },
+      "version": "2.2.2"
+    },
+    "online_versions_checked": false,
+    "problems": [],
+    "profiles": {},
+    "provider_visibility": "unverified",
+    "registry_sha256": null,
+    "schema_version": 1
+  }
+}

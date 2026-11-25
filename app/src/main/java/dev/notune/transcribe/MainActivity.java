@@ -7,13 +7,20 @@ import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,6 +30,8 @@ import androidx.core.widget.ImageViewCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,6 +62,17 @@ public class MainActivity extends AppCompatActivity {
     private TextView benchResultText;
     private Button modelsButton;
     private boolean benchRunning;
+
+    private CompoundButton postProcessingSwitch;
+    private TextInputEditText ppEndpoint;
+    private TextInputEditText ppModel;
+    private TextInputEditText ppKey;
+    private TextInputLayout ppEndpointLayout;
+    private TextInputLayout ppModelLayout;
+    private TextView ppStatus;
+    private TextView ppWarning;
+    private Button ppTestButton;
+    private PostProcessor.Task ppTestTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +133,8 @@ public class MainActivity extends AppCompatActivity {
         bindMarkerSwitch(R.id.switch_record_background, "stop_on_hide", true);
         bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false);
 
+        bindPostProcessingSettings();
+
         // Live subtitle line limit: 2 (default), 4, or 0 = unlimited.
         RadioGroup subsLinesGroup = findViewById(R.id.rg_subtitle_lines);
         int subsLines = SubtitlePrefs.getMaxLines(this);
@@ -157,6 +179,23 @@ public class MainActivity extends AppCompatActivity {
 
         // Initial check
         updateVoiceInputStatus();
+    }
+
+    @Override
+    protected void onPause() {
+        // The keyboard service reads these settings from the same process'
+        // preferences, so flush edits before the user switches to a field.
+        savePostProcessingSettings();
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (ppTestTask != null) {
+            ppTestTask.cancel();
+            ppTestTask = null;
+        }
+        super.onDestroy();
     }
 
     @Override
@@ -312,6 +351,175 @@ public class MainActivity extends AppCompatActivity {
 
     private void snackbar(String message) {
         Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show();
+    }
+
+    // --- Optional text post-processing ---------------------------------------
+
+    private void bindPostProcessingSettings() {
+        postProcessingSwitch = findViewById(R.id.switch_post_processing);
+        ppEndpoint = findViewById(R.id.input_pp_endpoint);
+        ppModel = findViewById(R.id.input_pp_model);
+        ppKey = findViewById(R.id.input_pp_key);
+        ppEndpointLayout = findViewById(R.id.layout_pp_endpoint);
+        ppModelLayout = findViewById(R.id.layout_pp_model);
+        ppStatus = findViewById(R.id.text_pp_status);
+        ppWarning = findViewById(R.id.text_pp_warning);
+        ppTestButton = findViewById(R.id.btn_pp_test);
+
+        ppEndpoint.setText(PostProcessingSettings.getEndpoint(this));
+        ppModel.setText(PostProcessingSettings.getModel(this));
+        String key = PostProcessingSettings.getApiKey(this);
+        ppKey.setText(key == null ? "" : key);
+
+        postProcessingSwitch.setChecked(PostProcessingSettings.isEnabled(this));
+        postProcessingSwitch.setOnCheckedChangeListener((button, checked) -> {
+            PostProcessingSettings.setEnabled(this, checked);
+            updatePostProcessingUi();
+        });
+        TextWatcher watcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                ppEndpointLayout.setError(null);
+                ppModelLayout.setError(null);
+                updatePostProcessingUi();
+            }
+        };
+        ppEndpoint.addTextChangedListener(watcher);
+        ppModel.addTextChangedListener(watcher);
+
+        findViewById(R.id.btn_pp_prompt).setOnClickListener(v -> showPromptDialog());
+        ppTestButton.setOnClickListener(v -> testPostProcessing());
+        updatePostProcessingUi();
+    }
+
+    /** Persists the fields. The API key goes to the Keystore, not to prefs. */
+    private void savePostProcessingSettings() {
+        if (ppEndpoint == null) return;
+        PostProcessingSettings.setEndpoint(this, ppEndpoint.getText() == null
+                ? "" : ppEndpoint.getText().toString());
+        PostProcessingSettings.setModel(this, ppModel.getText() == null
+                ? "" : ppModel.getText().toString());
+        PostProcessingSettings.setApiKey(this, ppKey.getText() == null
+                ? "" : ppKey.getText().toString());
+    }
+
+    private void updatePostProcessingUi() {
+        if (ppStatus == null) return;
+        boolean enabled = postProcessingSwitch != null && postProcessingSwitch.isChecked();
+        String endpoint = ppEndpoint == null || ppEndpoint.getText() == null
+                ? "" : ppEndpoint.getText().toString().trim();
+        String model = ppModel == null || ppModel.getText() == null
+                ? "" : ppModel.getText().toString().trim();
+
+        if (!enabled) {
+            ppStatus.setText(R.string.pp_status_off);
+        } else if (endpoint.isEmpty() || model.isEmpty()) {
+            ppStatus.setText(R.string.pp_status_needs_config);
+        } else {
+            ppStatus.setText(R.string.pp_status_on);
+        }
+        ppWarning.setVisibility(enabled && PostProcessingLogic.isCleartextEndpoint(endpoint)
+                ? View.VISIBLE : View.GONE);
+    }
+
+    private void showPromptDialog() {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(getResources().getDisplayMetrics().density * 20);
+        container.setPadding(pad, Math.round(getResources().getDisplayMetrics().density * 8), pad, 0);
+
+        TextView note = new TextView(this);
+        note.setText(R.string.pp_prompt_note);
+        note.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        note.setTextColor(themeColor(com.google.android.material.R.attr.colorOnSurfaceVariant));
+        container.addView(note);
+
+        EditText edit = new EditText(this);
+        edit.setText(PostProcessingSettings.getPrompt(this));
+        edit.setGravity(Gravity.TOP | Gravity.START);
+        edit.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        edit.setMinLines(14);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(edit, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT));
+        container.addView(scroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Math.round(getResources().getDisplayMetrics().density * 360)));
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pp_prompt_title)
+                .setView(container)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    PostProcessingSettings.setPrompt(this, edit.getText().toString());
+                    snackbar(getString(R.string.pp_prompt_saved));
+                })
+                .setNeutralButton(R.string.pp_prompt_reset, (dialog, which) -> {
+                    edit.setText(PostProcessingSettings.defaultPrompt(this));
+                    PostProcessingSettings.resetPrompt(this);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /**
+     * Sends one synthetic phrase through the configured server. Proves the
+     * address, key and model work without dictating into someone's field.
+     */
+    private void testPostProcessing() {
+        savePostProcessingSettings();
+        String endpoint = PostProcessingSettings.getEndpoint(this);
+        String model = PostProcessingSettings.getModel(this);
+
+        if (endpoint.isEmpty()) {
+            ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
+            return;
+        }
+        if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
+            ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
+            return;
+        }
+        if (model.isEmpty()) {
+            ppModelLayout.setError(getString(R.string.pp_model_required));
+            return;
+        }
+
+        ppTestButton.setEnabled(false);
+        ppTestButton.setText(R.string.pp_testing);
+        final String sample = getString(R.string.pp_test_sample);
+        ppTestTask = PostProcessor.run(this, sample, (text, error) -> {
+            ppTestTask = null;
+            ppTestButton.setEnabled(true);
+            ppTestButton.setText(R.string.pp_test);
+            if (error != null) {
+                showPostProcessingDialog(getString(R.string.pp_test_failed,
+                        PostProcessingLogic.shortError(error)));
+            } else if (text == null || text.trim().isEmpty()
+                    || PostProcessingLogic.isFillerOnly(text)) {
+                showPostProcessingDialog(getString(R.string.pp_test_empty));
+            } else {
+                showPostProcessingDialog(getString(R.string.pp_test_ok, sample, text));
+            }
+        });
+    }
+
+    private void showPostProcessingDialog(String message) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pp_test_title)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     /**

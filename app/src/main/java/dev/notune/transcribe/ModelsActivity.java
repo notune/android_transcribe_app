@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Lets the user pick the speech model: the built-in Parakeet model (not in
+ * Lets the user pick the speech model: the built-in GigaAM model (not in
  * F-Droid builds), or any transcribe.cpp GGUF model imported from a locally
  * downloaded file. Import goes through the system file picker (SAF), so the
  * app itself needs no internet or storage permission — download links are

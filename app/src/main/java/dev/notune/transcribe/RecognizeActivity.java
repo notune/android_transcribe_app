@@ -45,6 +45,8 @@ public class RecognizeActivity extends AppCompatActivity {
     private MicLevelView micLevel;
     private final AudioFocusPauser audioPauser = new AudioFocusPauser();
     private boolean pauseAudioActive = false;
+    private PostProcessor.Task postProcessingTask;
+    private boolean resultDelivered = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +65,10 @@ public class RecognizeActivity extends AppCompatActivity {
             if (isRecording) {
                 isRecording = false;
                 cancelRecording();   // new native method
+            }
+            if (postProcessingTask != null) {
+                postProcessingTask.cancel();
+                postProcessingTask = null;
             }
             if (pauseAudioActive) {
                 audioPauser.abandon(this);
@@ -130,6 +136,15 @@ public class RecognizeActivity extends AppCompatActivity {
         // recording invisibly in the background and never reappear. Discard
         // and close so the next mic tap starts fresh. (Background recording
         // is a keyboard-only feature; a popup must not record unseen.)
+        if (postProcessingTask != null && !isFinishing()) {
+            // The panel went away while the clean-up request was running.
+            // Its result must not be delivered later.
+            postProcessingTask.cancel();
+            postProcessingTask = null;
+            setResult(Activity.RESULT_CANCELED);
+            finish();
+            return;
+        }
         if (isRecording && !isFinishing()) {
             isRecording = false;
             try { cancelRecording(); } catch (Throwable t) { /* ignore */ }
@@ -145,6 +160,10 @@ public class RecognizeActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (postProcessingTask != null) {
+            postProcessingTask.cancel();
+            postProcessingTask = null;
+        }
         if (pauseAudioActive) {
             audioPauser.abandon(this);
             pauseAudioActive = false;
@@ -159,6 +178,10 @@ public class RecognizeActivity extends AppCompatActivity {
             // "Transcribing...") just means listening or busy for the user.
             if (s != null && s.startsWith("Error")) {
                 status.setText(ModelStore.displayStatus(this, s));
+            } else if (postProcessingTask != null) {
+                // A late "Transcribing"/"Ready" from the engine must not hide
+                // the fact that the text is still being cleaned up.
+                status.setText(R.string.pp_processing);
             } else {
                 status.setText(isRecording ? R.string.voice_listening : R.string.voice_processing);
             }
@@ -174,20 +197,64 @@ public class RecognizeActivity extends AppCompatActivity {
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
             if (text == null || text.trim().isEmpty()) {
-                // Nothing was recognized (e.g. auto-stop after silence only).
-                // Say so: otherwise the panel just vanishes as if it broke.
-                Toast.makeText(getApplicationContext(), R.string.voice_no_speech,
-                        Toast.LENGTH_SHORT).show();
-                setResult(Activity.RESULT_CANCELED);
-                finish();
+                finishWithoutSpeech();
                 return;
             }
 
-            deliverResult(text.trim());
+            String raw = text.trim();
+            if (!PostProcessingSettings.isEnabled(this)) {
+                deliverResult(raw);
+                return;
+            }
+            if (!PostProcessingSettings.isConfigured(this)) {
+                Toast.makeText(getApplicationContext(), R.string.pp_not_configured,
+                        Toast.LENGTH_LONG).show();
+                deliverResult(raw);
+                return;
+            }
+
+            status.setText(R.string.pp_processing);
+            postProcessingTask = PostProcessor.run(this, raw, (cleaned, error) -> {
+                postProcessingTask = null;
+                if (isFinishing() || isDestroyed() || resultDelivered) return;
+
+                if (error != null) {
+                    Toast.makeText(getApplicationContext(),
+                            getString(R.string.pp_failed_fallback,
+                                    PostProcessingLogic.shortError(error)),
+                            Toast.LENGTH_LONG).show();
+                    deliverResult(raw);
+                    return;
+                }
+                boolean usable = cleaned != null && !cleaned.trim().isEmpty()
+                        && !PostProcessingLogic.isFillerOnly(cleaned);
+                if (!usable) {
+                    if (PostProcessingLogic.isFillerOnly(raw)) {
+                        finishWithoutSpeech();
+                    } else {
+                        Toast.makeText(getApplicationContext(), R.string.pp_empty_fallback,
+                                Toast.LENGTH_LONG).show();
+                        deliverResult(raw);
+                    }
+                    return;
+                }
+                deliverResult(cleaned.trim());
+            });
         });
     }
 
+    private void finishWithoutSpeech() {
+        // Nothing was recognized (e.g. auto-stop after silence only).
+        // Say so: otherwise the panel just vanishes as if it broke.
+        Toast.makeText(getApplicationContext(), R.string.voice_no_speech,
+                Toast.LENGTH_SHORT).show();
+        setResult(Activity.RESULT_CANCELED);
+        finish();
+    }
+
     private void deliverResult(String text) {
+        if (resultDelivered) return;
+        resultDelivered = true;
         Intent request = getIntent();
         // Search boxes (e.g. Chrome's omnibox) want a query, not a sentence: a
         // trailing period would turn "example.com" into a search for "example.com.".

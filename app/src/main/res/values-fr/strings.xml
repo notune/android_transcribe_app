@@ -47,7 +47,7 @@
     <string name="models_title">Modèles vocaux</string>
     <string name="models_section">Modèle vocal</string>
     <string name="models_active_section">Modèle actif</string>
-    <string name="models_builtin_sub">Inclus dans l\'application · 25 langues européennes</string>
+    <string name="models_builtin_sub">Inclus dans l\'application · russe avec ponctuation</string>
     <string name="model_desc_parakeet110m">Anglais uniquement, petit et rapide</string>
     <string name="model_desc_sensevoice">Anglais, chinois, cantonais, japonais, coréen ; rapide</string>
     <string name="model_desc_whisper_small">99 langues, compact ; traduit vers l\'anglais</string>
@@ -70,7 +70,7 @@
     <string name="models_delete">Supprimer le modèle</string>
     <string name="models_delete_confirm">Supprimer %1$s du stockage de l\'application ?</string>
     <string name="models_language_section">Langue</string>
-    <string name="models_language_desc">La langue transmise au modèle. « Automatique » laisse le modèle décider. Whisper et les autres modèles auxquels on peut indiquer la langue la respectent ; les modèles Parakeet détectent toujours la langue eux-mêmes et ignorent ce réglage. Les langues non prises en charge par le modèle actif sont ignorées.</string>
+    <string name="models_language_desc">La langue transmise au modèle. « Automatique » laisse le modèle décider. Whisper et les autres modèles auxquels on peut indiquer la langue la respectent ; les modèles Parakeet et GigaAM détectent toujours la langue eux-mêmes (GigaAM ne comprend que le russe) et ignorent ce réglage. Les langues non prises en charge par le modèle actif sont ignorées.</string>
     <string name="models_language_auto">Automatique</string>
     <string name="models_language_saved">Langue enregistrée</string>
     <string name="models_translate">Traduire en anglais</string>
@@ -82,11 +82,11 @@
     <!-- No model available (F-Droid builds start without one) -->
     <string name="no_model_title">Aucun modèle vocal installé</string>
     <string name="no_model_main">La saisie vocale, les sous-titres en direct et la transcription de fichiers nécessitent un modèle vocal. Touchez « Ajouter un modèle vocal » pour en télécharger un dans votre navigateur et l\'importer.</string>
-    <string name="no_model_steps">1. Touchez « Télécharger le modèle recommandé ». Votre navigateur télécharge Parakeet TDT 0.6B v3 (485 Mo, 25 langues européennes).\n2. Une fois le téléchargement terminé, touchez « Importer un fichier de modèle » ci-dessous et choisissez le fichier .gguf téléchargé (généralement dans Téléchargements).\n\nL\'application elle-même reste hors ligne ; seul votre navigateur télécharge le fichier. Vous pouvez le supprimer des Téléchargements après l\'import.</string>
-    <string name="btn_download_recommended">Télécharger le modèle recommandé (485 Mo)</string>
+    <string name="no_model_steps">1. Touchez « Télécharger le modèle recommandé ». Votre navigateur télécharge GigaAM v3 E2E RNNT (228 Mo, russe avec ponctuation et majuscules).\n2. Une fois le téléchargement terminé, touchez « Importer un fichier de modèle » ci-dessous et choisissez le fichier .gguf téléchargé (généralement dans Téléchargements).\n\nL\'application elle-même reste hors ligne ; seul votre navigateur télécharge le fichier. Vous pouvez le supprimer des Téléchargements après l\'import.</string>
+    <string name="btn_download_recommended">Télécharger le modèle recommandé (228 Mo)</string>
     <string name="btn_add_model">Ajouter un modèle vocal</string>
     <string name="models_desc_no_builtin">Importez n\'importe quel modèle GGUF transcribe.cpp téléchargé. L\'application reste entièrement hors ligne ; les téléchargements passent par votre navigateur.</string>
-    <string name="model_desc_recommended">Recommandé · 25 langues européennes, rapide et précis</string>
+    <string name="model_desc_recommended">Recommandé · russe avec ponctuation et majuscules</string>
     <string name="voice_status_need_model">Un modèle vocal est nécessaire pour la saisie vocale.</string>
     <string name="no_model_short">Aucun modèle vocal installé. Ouvrez Offline Voice Input pour en ajouter un.</string>
     <string name="voice_no_model">Aucun modèle vocal installé pour l\'instant. Touchez ici pour en ajouter un.</string>
@@ -152,4 +152,42 @@
     <string name="subs_grant_overlay">Veuillez autoriser « Afficher par-dessus les autres applis »</string>
     <string name="subs_overlay_required">Les sous-titres en direct nécessitent l\'autorisation « Afficher par-dessus les autres applis »</string>
     <string name="subs_capture_denied">La capture d\'écran a été refusée</string>
+
+    <!-- Nettoyage de texte facultatif (serveur compatible OpenAI) -->
+    <string name="pp_section">Nettoyage du texte (facultatif)</string>
+    <string name="pp_desc">La reconnaissance vocale continue de fonctionner sur ce téléphone et l\'audio ne le quitte jamais. Lorsque le nettoyage est activé, seul le texte reconnu est envoyé au serveur compatible OpenAI configuré ici, et le texte nettoyé est inséré dans le champ. Lorsqu\'il est désactivé, rien n\'est envoyé.</string>
+    <string name="pp_enable">Nettoyer le texte reconnu</string>
+    <string name="pp_enable_desc">Envoyer la transcription à votre propre modèle de langage avant de l\'insérer</string>
+    <string name="pp_status_off">Désactivé : la reconnaissance reste entièrement hors ligne.</string>
+    <string name="pp_status_on">Activé : seul le texte est envoyé, jamais l\'audio.</string>
+    <string name="pp_status_needs_config">Activé, mais le serveur et le modèle ne sont pas encore définis. Le texte d\'origine est inséré.</string>
+    <string name="pp_endpoint">Adresse du serveur</string>
+    <string name="pp_endpoint_hint">https://host/v1</string>
+    <string name="pp_model">Modèle</string>
+    <string name="pp_model_hint">nom du modèle</string>
+    <string name="pp_key">Clé API</string>
+    <string name="pp_key_hint">facultative pour les serveurs locaux</string>
+    <string name="pp_key_note">La clé est chiffrée avec Android Keystore. Laissez-la vide si votre serveur n\'en a pas besoin.</string>
+    <string name="pp_prompt_edit">Modifier l\'instruction</string>
+    <string name="pp_prompt_title">Instruction de nettoyage</string>
+    <string name="pp_prompt_note">${output} est remplacé par le texte reconnu. Si vous le supprimez, le texte est ajouté à la fin.</string>
+    <string name="pp_prompt_reset">Rétablir par défaut</string>
+    <string name="pp_prompt_saved">Instruction enregistrée</string>
+    <string name="pp_test">Tester la connexion</string>
+    <string name="pp_testing">Test en cours…</string>
+    <string name="pp_test_title">Test de nettoyage</string>
+    <string name="pp_test_ok">Texte brut :\n%1$s\n\nTexte nettoyé :\n%2$s</string>
+    <string name="pp_test_empty">Le serveur a renvoyé un résultat vide. Le texte d\'origine serait inséré.</string>
+    <string name="pp_test_failed">Échec du test : %1$s</string>
+    <string name="pp_cleartext_warning">Cette adresse utilise http:// : le texte circule sans chiffrement. Utilisez HTTPS ou un réseau local de confiance.</string>
+    <string name="pp_processing">Nettoyage du texte…</string>
+    <string name="pp_processing_hint">Envoi du texte reconnu à votre serveur</string>
+    <string name="pp_failed_fallback">Le nettoyage a échoué (%1$s). La transcription d\'origine a été insérée.</string>
+    <string name="pp_not_configured">Le nettoyage est activé, mais le serveur et le modèle ne sont pas définis. La transcription d\'origine a été insérée.</string>
+    <string name="pp_empty_fallback">Le modèle a renvoyé une réponse vide. La transcription d\'origine a été insérée.</string>
+    <string name="pp_field_changed">Le champ de texte a changé. La transcription n\'a pas été insérée.</string>
+    <string name="pp_deferred">Le texte sera inséré lorsque le même champ sera de nouveau actif.</string>
+    <string name="pp_invalid_address">Saisissez une adresse http:// ou https:// complète</string>
+    <string name="pp_model_required">Saisissez un nom de modèle</string>
+    <string name="pp_test_sample">euh, ceci est un test de nettoyage : il nous faut deux serveurs, non, trois serveurs, version 0.10.2.</string>
 </resources>

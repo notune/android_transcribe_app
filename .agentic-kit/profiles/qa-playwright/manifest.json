@@ -1,0 +1,37 @@
+{
+  "id": "qa-playwright",
+  "opt_in": true,
+  "skills": [
+    "aek-playwright-test-agents"
+  ],
+  "sources": [
+    {
+      "repository": "microsoft/playwright",
+      "path": "docs/src/test-agents-js.md",
+      "reviewed_commit": "bac1f9f67e9cff2a8e7ecbac25d56ec3bb1d15c6"
+    }
+  ],
+  "external_install": false,
+  "approved_before_commands": true,
+  "browser_tools": [
+    {
+      "repository": "microsoft/playwright-mcp",
+      "role": "primary-interactive",
+      "reviewed_commit": "78eca85361efb545a4c0f59b6140aef0721c5412",
+      "install": "requires approval"
+    },
+    {
+      "repository": "ChromeDevTools/chrome-devtools-mcp",
+      "role": "diagnostics",
+      "reviewed_commit": "8ba2ac945ebaf1adb92208c29f3a30e73a920956",
+      "install": "requires separate approval"
+    },
+    {
+      "repository": "microsoft/playwright-cli",
+      "role": "no-mcp-fallback",
+      "reviewed_commit": "b21724888b8100b05ef8dee3a92f2bb03bf4dcde",
+      "install": "requires approval"
+    }
+  ],
+  "ci": "Playwright Test, with a version pinned per project"
+}

@@ -47,7 +47,7 @@
     <string name="models_title">Речевые модели</string>
     <string name="models_section">Речевая модель</string>
     <string name="models_active_section">Активная модель</string>
-    <string name="models_builtin_sub">Встроена в приложение · 25 европейских языков</string>
+    <string name="models_builtin_sub">Встроена в приложение · русский язык, пунктуация и регистр</string>
     <string name="model_desc_parakeet110m">Только английский, маленькая и быстрая</string>
     <string name="model_desc_sensevoice">Английский, китайский, кантонский, японский, корейский; быстрая</string>
     <string name="model_desc_whisper_small">99 языков, компактная; переводит на английский</string>
@@ -70,7 +70,7 @@
     <string name="models_delete">Удалить модель</string>
     <string name="models_delete_confirm">Удалить %1$s из хранилища приложения?</string>
     <string name="models_language_section">Язык</string>
-    <string name="models_language_desc">Язык, передаваемый модели. «Автоматически» позволяет модели решать сама. Whisper и другие модели, которым можно задать язык, его учитывают; модели Parakeet всегда определяют язык сами и игнорируют эту настройку. Языки, не поддерживаемые активной моделью, игнорируются.</string>
+    <string name="models_language_desc">Язык, передаваемый модели. «Автоматически» позволяет модели решать сама. Whisper и другие модели, которым можно задать язык, его учитывают; модели Parakeet и GigaAM всегда определяют язык сами (GigaAM понимает только русский) и игнорируют эту настройку. Языки, не поддерживаемые активной моделью, игнорируются.</string>
     <string name="models_language_auto">Автоматически</string>
     <string name="models_language_saved">Язык сохранён</string>
     <string name="models_translate">Переводить на английский</string>
@@ -82,11 +82,11 @@
     <!-- No model available (F-Droid builds start without one) -->
     <string name="no_model_title">Речевая модель не установлена</string>
     <string name="no_model_main">Для голосового ввода, субтитров в реальном времени и расшифровки файлов нужна речевая модель. Нажмите «Добавить речевую модель», чтобы скачать её в браузере и импортировать.</string>
-    <string name="no_model_steps">1. Нажмите «Скачать рекомендуемую модель». Браузер скачает Parakeet TDT 0.6B v3 (485 МБ, 25 европейских языков).\n2. Когда загрузка завершится, нажмите «Импортировать файл модели» ниже и выберите скачанный файл .gguf (обычно в папке «Загрузки»).\n\nСамо приложение остаётся офлайн: файл скачивает только браузер. После импорта его можно удалить из загрузок.</string>
-    <string name="btn_download_recommended">Скачать рекомендуемую модель (485 МБ)</string>
+    <string name="no_model_steps">1. Нажмите «Скачать рекомендуемую модель». Браузер скачает GigaAM v3 E2E RNNT (228 МБ, русский язык с пунктуацией и регистром).\n2. Когда загрузка завершится, нажмите «Импортировать файл модели» ниже и выберите скачанный файл .gguf (обычно в папке «Загрузки»).\n\nСамо приложение остаётся офлайн: файл скачивает только браузер. После импорта его можно удалить из загрузок.</string>
+    <string name="btn_download_recommended">Скачать рекомендуемую модель (228 МБ)</string>
     <string name="btn_add_model">Добавить речевую модель</string>
     <string name="models_desc_no_builtin">Импортируйте любую скачанную модель GGUF для transcribe.cpp. Приложение остаётся полностью офлайн; загрузки выполняются в браузере.</string>
-    <string name="model_desc_recommended">Рекомендуется · 25 европейских языков, быстрая и точная</string>
+    <string name="model_desc_recommended">Рекомендуется · русский язык с пунктуацией и регистром</string>
     <string name="voice_status_need_model">Для голосового ввода нужна речевая модель.</string>
     <string name="no_model_short">Речевая модель не установлена. Откройте Offline Voice Input, чтобы добавить её.</string>
     <string name="voice_no_model">Речевая модель ещё не установлена. Нажмите здесь, чтобы добавить её.</string>
@@ -152,4 +152,42 @@
     <string name="subs_grant_overlay">Разрешите «Поверх других приложений»</string>
     <string name="subs_overlay_required">Для живых субтитров нужно разрешение «Поверх других приложений»</string>
     <string name="subs_capture_denied">Запись экрана запрещена</string>
+
+    <!-- Необязательная очистка текста (OpenAI-совместимый сервер) -->
+    <string name="pp_section">Очистка текста (необязательно)</string>
+    <string name="pp_desc">Распознавание речи по-прежнему выполняется на телефоне, аудио никуда не отправляется. Если очистка включена, на настроенный OpenAI-совместимый сервер уходит только распознанный текст, а в поле вставляется очищенный вариант. Если очистка выключена, ничего не отправляется.</string>
+    <string name="pp_enable">Очищать распознанный текст</string>
+    <string name="pp_enable_desc">Отправлять расшифровку своей языковой модели перед вставкой</string>
+    <string name="pp_status_off">Выключена: распознавание полностью локальное.</string>
+    <string name="pp_status_on">Включена: на сервер уходит только текст, аудио не отправляется.</string>
+    <string name="pp_status_needs_config">Включена, но адрес сервера и модель ещё не заданы. Вставляется исходный текст.</string>
+    <string name="pp_endpoint">Адрес сервера</string>
+    <string name="pp_endpoint_hint">https://host/v1</string>
+    <string name="pp_model">Модель</string>
+    <string name="pp_model_hint">имя модели</string>
+    <string name="pp_key">Ключ API</string>
+    <string name="pp_key_hint">для локального сервера можно оставить пустым</string>
+    <string name="pp_key_note">Ключ шифруется хранилищем Android Keystore. Оставьте поле пустым, если сервер не требует ключ.</string>
+    <string name="pp_prompt_edit">Изменить инструкцию</string>
+    <string name="pp_prompt_title">Инструкция очистки</string>
+    <string name="pp_prompt_note">Вместо ${output} подставляется распознанный текст. Если удалить этот заполнитель, текст будет добавлен в конец инструкции.</string>
+    <string name="pp_prompt_reset">Вернуть исходную</string>
+    <string name="pp_prompt_saved">Инструкция сохранена</string>
+    <string name="pp_test">Проверить связь</string>
+    <string name="pp_testing">Проверяю…</string>
+    <string name="pp_test_title">Проверка очистки</string>
+    <string name="pp_test_ok">Исходный текст:\n%1$s\n\nПосле очистки:\n%2$s</string>
+    <string name="pp_test_empty">Сервер вернул пустой результат. Была бы вставлена исходная расшифровка.</string>
+    <string name="pp_test_failed">Проверка не удалась: %1$s</string>
+    <string name="pp_cleartext_warning">Адрес использует http://: текст идёт без шифрования. Используйте HTTPS или доверенную локальную сеть.</string>
+    <string name="pp_processing">Очищаю текст…</string>
+    <string name="pp_processing_hint">Отправляю распознанный текст на ваш сервер</string>
+    <string name="pp_failed_fallback">Очистка не удалась (%1$s). Вставлена исходная расшифровка.</string>
+    <string name="pp_not_configured">Очистка включена, но адрес сервера и модель не заданы. Вставлена исходная расшифровка.</string>
+    <string name="pp_empty_fallback">Модель вернула пустой ответ. Вставлена исходная расшифровка.</string>
+    <string name="pp_field_changed">Поле ввода изменилось. Расшифровка не вставлена.</string>
+    <string name="pp_deferred">Текст будет вставлен, когда то же поле снова станет активным.</string>
+    <string name="pp_invalid_address">Укажите полный адрес http:// или https://</string>
+    <string name="pp_model_required">Укажите имя модели</string>
+    <string name="pp_test_sample">эээ, значит, проверка очистки: нужно два сервера, нет, три сервера, версия 0.10.2.</string>
 </resources>
