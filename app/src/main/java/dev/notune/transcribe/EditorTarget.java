@@ -1,6 +1,7 @@
 package dev.notune.transcribe;
 
 import android.text.TextUtils;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 
 /**
@@ -48,7 +49,16 @@ final class EditorTarget {
      * an unchanged input session.
      */
     boolean hasStrongIdentity() {
-        return fieldId != 0 || !fieldName.isEmpty();
+        return isStrongFieldId(fieldId) || !fieldName.isEmpty();
+    }
+
+    /**
+     * {@link View#NO_ID} and 0 both mean "no view id", so neither may count as
+     * a stable field identity. Kept separate and static so it is testable
+     * without an Android runtime.
+     */
+    static boolean isStrongFieldId(int fieldId) {
+        return fieldId != 0 && fieldId != View.NO_ID;
     }
 
     boolean matches(EditorInfo info) {

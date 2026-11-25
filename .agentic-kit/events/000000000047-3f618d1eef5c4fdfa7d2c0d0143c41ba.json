@@ -1,0 +1,14 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:52:49.303294+00:00",
+  "id": "3f618d1eef5c4fdfa7d2c0d0143c41ba",
+  "payload": {
+    "revision": 33,
+    "stage": "discovery",
+    "status": "rework"
+  },
+  "schema_version": 1,
+  "sequence": 47,
+  "subject": "OVI-001",
+  "type": "task.transition"
+}

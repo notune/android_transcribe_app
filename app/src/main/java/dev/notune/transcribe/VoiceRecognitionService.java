@@ -187,6 +187,15 @@ public class VoiceRecognitionService extends RecognitionService {
         }
 
         public void onResults(String text) {
+            // Native code calls this from its own thread. Do the callback check
+            // and the task publication on the main thread, where end() also
+            // runs, so a cancellation cannot slip between them and leave an
+            // uncancellable request behind.
+            mainHandler.post(() -> handleResultsOnMain(text));
+        }
+
+        /** Main thread only. */
+        private void handleResultsOnMain(String text) {
             if (callback == null) return;
             if (!PostProcessingSettings.isEnabled(VoiceRecognitionService.this)
                     || !PostProcessingSettings.isConfigured(VoiceRecognitionService.this)) {
@@ -194,6 +203,9 @@ public class VoiceRecognitionService extends RecognitionService {
                 return;
             }
 
+            if (postProcessingTask != null) {
+                postProcessingTask.cancel();
+            }
             postProcessingTask = PostProcessor.run(VoiceRecognitionService.this, text,
                     (cleaned, error) -> {
                         postProcessingTask = null;

@@ -11,11 +11,11 @@
     },
     "environment_reviewed": {
       "path": "docs/aek/environment.md",
-      "sha256": "fd5a80acbf219f5fb76c83132c822cdd706750b083e5c2e5377c83060cf91e59"
+      "sha256": "21a71ab9e68d3b92fcd0b9ef2f65d9efce8cc537edcf607ccafdc2b39d5e5c17"
     },
     "implementation_proof": {
       "path": ".agentic-kit/evidence/OVI-001/implementation-proof.md",
-      "sha256": "79aaa26ce2a14c2c7a6fe634991ef230c43e1dde70a1faa303ccf06d04a01074"
+      "sha256": "de3e0b9b75f37b3dea8b3e7b873cee04e7fc25835559453870239cbcf6e1d552"
     },
     "product_brief_approved": {
       "path": "docs/aek/product-brief.md",
@@ -26,7 +26,7 @@
       "sha256": "8b055fa56173f5880972014945ba0456aa48cd069195cc7d23aec9b1b20e6e33"
     },
     "runtime_smoke": {
-      "attempt_id": "5ec3d9adf8244752b7916f987355e7ba",
+      "attempt_id": "df906b02a4fa4c8cb669e58c5d47f9a3",
       "command": "bash ./gradlew :app:testFdroidDebugUnitTest --tests dev.notune.transcribe.OpenAiCompatibleClientTest --rerun-tasks --console=plain",
       "dirty": false,
       "dirty_reason": null,
@@ -43,29 +43,29 @@
         "mode": "filtered_inherited"
       },
       "exit_code": 0,
-      "finished_at": "2026-11-25T23:47:01.739900+00:00",
-      "git_commit": "f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+      "finished_at": "2026-11-25T23:53:40.273752+00:00",
+      "git_commit": "ee9e008f78e360e3e030bc3027ef0665edf59365",
       "output_truncated": false,
-      "path": ".agentic-kit/evidence/OVI-001/runtime_smoke-20261125T234656715655Z.log",
-      "sha256": "e72180db495741fee4ec9d16dfd501b419b91f6d53273ebe5f627cedd8565375",
+      "path": ".agentic-kit/evidence/OVI-001/runtime_smoke-20261125T235335528516Z.log",
+      "sha256": "cf5f8c948951a42ada2a2dbd027834608961c6279f0082946f963b6a7b57d888",
       "source": "executed",
-      "started_at": "2026-11-25T23:46:56.715682+00:00",
+      "started_at": "2026-11-25T23:53:35.528535+00:00",
       "timed_out": false
     },
     "security_review": {
       "path": ".agentic-kit/evidence/OVI-001/security-review.md",
-      "sha256": "f048a797c3e5e817732cc7ad786c673919c0135365967f292b1ea4e4c3f393fd"
+      "sha256": "c743c3ca99af150029b8027ddb8bf37deeb734a43e0660ba79f7c102b10ef888"
     },
     "security_screened": {
       "path": "docs/aek/security-screen.md",
-      "sha256": "aeec067d98698040e2544e95b36908f1d242ed2a047449ddf48a9cb6abac5ba0"
+      "sha256": "098125a008e451b360c859192acfabb3395328f3f0bf6b0a0c30c344665bdcc1"
     },
     "swarm_planned": {
       "path": "docs/aek/swarm-plan.md",
       "sha256": "d0292563031f119b9d9bc01b981631dd574aa8e4d98498206592776ad0ec47fb"
     },
     "tests": {
-      "attempt_id": "1267baa0e1154a97accef37cb967d529",
+      "attempt_id": "e3d4500369b64396825ee1e78c9393b1",
       "command": "bash ./gradlew :app:testFdroidDebugUnitTest --rerun-tasks --console=plain",
       "dirty": false,
       "dirty_reason": null,
@@ -82,13 +82,13 @@
         "mode": "filtered_inherited"
       },
       "exit_code": 0,
-      "finished_at": "2026-11-25T23:46:49.575312+00:00",
-      "git_commit": "f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+      "finished_at": "2026-11-25T23:53:31.683622+00:00",
+      "git_commit": "ee9e008f78e360e3e030bc3027ef0665edf59365",
       "output_truncated": false,
-      "path": ".agentic-kit/evidence/OVI-001/tests-20261125T234644950513Z.log",
-      "sha256": "c81d209c11661412005c42ce072a7750f6953bc99df9b332d0f53aa3204aa150",
+      "path": ".agentic-kit/evidence/OVI-001/tests-20261125T235325517045Z.log",
+      "sha256": "920e38b93b74dc2a3b7f4151dd97f49bdec63e407467007101718f44d18366c9",
       "source": "executed",
-      "started_at": "2026-11-25T23:46:44.950535+00:00",
+      "started_at": "2026-11-25T23:53:25.517066+00:00",
       "timed_out": false
     }
   },
@@ -164,6 +164,157 @@
     },
     {
       "at": "2026-11-25T23:45:17.856532+00:00",
+      "event": "advance",
+      "from": "implementation",
+      "to": "verification"
+    },
+    {
+      "at": "2026-11-25T23:52:49.298635+00:00",
+      "event": "transition",
+      "from": "active",
+      "invalidated_evidence": {
+        "architecture_simplified": {
+          "path": "docs/aek/architecture-decision.md",
+          "sha256": "4008169f2ed9f7a28bbc18fbf2d387c77d994b2ef521fdb229cb7b3128fea625"
+        },
+        "design_approved": {
+          "path": ".agentic-kit/evidence/OVI-001/design-approval.md",
+          "sha256": "d0e47a1c7e5292f5a8258dc5d578a21fefa227a8955ec2eb85c7256a5549ecbe"
+        },
+        "environment_reviewed": {
+          "path": "docs/aek/environment.md",
+          "sha256": "fd5a80acbf219f5fb76c83132c822cdd706750b083e5c2e5377c83060cf91e59"
+        },
+        "implementation_proof": {
+          "path": ".agentic-kit/evidence/OVI-001/implementation-proof.md",
+          "sha256": "79aaa26ce2a14c2c7a6fe634991ef230c43e1dde70a1faa303ccf06d04a01074"
+        },
+        "product_brief_approved": {
+          "path": "docs/aek/product-brief.md",
+          "sha256": "2fe989333d1a2f39f184f415076891a3e87634069d0fcbaf54f273f4990fc169"
+        },
+        "routes_confirmed": {
+          "path": "docs/aek/harness-assignment.md",
+          "sha256": "8b055fa56173f5880972014945ba0456aa48cd069195cc7d23aec9b1b20e6e33"
+        },
+        "runtime_smoke": {
+          "attempt_id": "5ec3d9adf8244752b7916f987355e7ba",
+          "command": "bash ./gradlew :app:testFdroidDebugUnitTest --tests dev.notune.transcribe.OpenAiCompatibleClientTest --rerun-tasks --console=plain",
+          "dirty": false,
+          "dirty_reason": null,
+          "env_policy": {
+            "allowed_names": [
+              "ANDROID_NDK_HOME",
+              "JAVA_HOME",
+              "PATH"
+            ],
+            "filtered_names": [
+              "GRAFANA_MCP_TOKEN_FILE",
+              "OPENCODE_PASSWORD"
+            ],
+            "mode": "filtered_inherited"
+          },
+          "exit_code": 0,
+          "finished_at": "2026-11-25T23:47:01.739900+00:00",
+          "git_commit": "f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+          "output_truncated": false,
+          "path": ".agentic-kit/evidence/OVI-001/runtime_smoke-20261125T234656715655Z.log",
+          "sha256": "e72180db495741fee4ec9d16dfd501b419b91f6d53273ebe5f627cedd8565375",
+          "source": "executed",
+          "started_at": "2026-11-25T23:46:56.715682+00:00",
+          "timed_out": false
+        },
+        "security_review": {
+          "path": ".agentic-kit/evidence/OVI-001/security-review.md",
+          "sha256": "f048a797c3e5e817732cc7ad786c673919c0135365967f292b1ea4e4c3f393fd"
+        },
+        "security_screened": {
+          "path": "docs/aek/security-screen.md",
+          "sha256": "aeec067d98698040e2544e95b36908f1d242ed2a047449ddf48a9cb6abac5ba0"
+        },
+        "swarm_planned": {
+          "path": "docs/aek/swarm-plan.md",
+          "sha256": "d0292563031f119b9d9bc01b981631dd574aa8e4d98498206592776ad0ec47fb"
+        },
+        "tests": {
+          "attempt_id": "1267baa0e1154a97accef37cb967d529",
+          "command": "bash ./gradlew :app:testFdroidDebugUnitTest --rerun-tasks --console=plain",
+          "dirty": false,
+          "dirty_reason": null,
+          "env_policy": {
+            "allowed_names": [
+              "ANDROID_NDK_HOME",
+              "JAVA_HOME",
+              "PATH"
+            ],
+            "filtered_names": [
+              "GRAFANA_MCP_TOKEN_FILE",
+              "OPENCODE_PASSWORD"
+            ],
+            "mode": "filtered_inherited"
+          },
+          "exit_code": 0,
+          "finished_at": "2026-11-25T23:46:49.575312+00:00",
+          "git_commit": "f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+          "output_truncated": false,
+          "path": ".agentic-kit/evidence/OVI-001/tests-20261125T234644950513Z.log",
+          "sha256": "c81d209c11661412005c42ce072a7750f6953bc99df9b332d0f53aa3204aa150",
+          "source": "executed",
+          "started_at": "2026-11-25T23:46:44.950535+00:00",
+          "timed_out": false
+        }
+      },
+      "invalidated_waivers": {
+        "browser_capability": {
+          "approval": {
+            "path": ".agentic-kit/evidence/OVI-001/user-approval.md",
+            "sha256": "170b8bab4ea1e1edf267904780485f54eaf9565b49752b5054a129534042f950"
+          },
+          "key": "browser_capability",
+          "reason": "В среде нет телефона, эмулятора и браузера для нативного Android. Пользователь подтвердил исключение 26.11.2026."
+        },
+        "visual_qa": {
+          "approval": {
+            "path": ".agentic-kit/evidence/OVI-001/user-approval.md",
+            "sha256": "170b8bab4ea1e1edf267904780485f54eaf9565b49752b5054a129534042f950"
+          },
+          "key": "visual_qa",
+          "reason": "Нативного интерфейса Android нет ни на телефоне, ни в эмуляторе; браузерная проверка к нативному интерфейсу неприменима. Пользователь подтвердил исключение 26.11.2026."
+        }
+      },
+      "reason": "Независимая проверка qa-1 нашла четыре важные ошибки; код и документы исправлены в ee9e008, доказательства нужно записать заново",
+      "return_to": "discovery",
+      "stage": "verification",
+      "to": "rework"
+    },
+    {
+      "at": "2026-11-25T23:53:05.294850+00:00",
+      "event": "transition",
+      "from": "rework",
+      "reason": "Исправления ee9e008 внесены, доказательства записываются заново",
+      "stage": "discovery",
+      "to": "active"
+    },
+    {
+      "at": "2026-11-25T23:53:19.481092+00:00",
+      "event": "advance",
+      "from": "discovery",
+      "to": "design"
+    },
+    {
+      "at": "2026-11-25T23:53:20.069067+00:00",
+      "event": "advance",
+      "from": "design",
+      "to": "planning"
+    },
+    {
+      "at": "2026-11-25T23:53:20.657283+00:00",
+      "event": "advance",
+      "from": "planning",
+      "to": "implementation"
+    },
+    {
+      "at": "2026-11-25T23:53:21.209883+00:00",
       "event": "advance",
       "from": "implementation",
       "to": "verification"
@@ -396,6 +547,170 @@
         "process": "change",
         "reason": null,
         "step": "implementation"
+      },
+      {
+        "at": "2026-11-25T23:52:49.300175+00:00",
+        "event": "process.rework",
+        "invalidated_evidence": {},
+        "previous_steps": {
+          "design": {
+            "attempts": 1,
+            "results": {
+              "design_approved": {
+                "path": ".agentic-kit/evidence/OVI-001/design-approval.md",
+                "sha256": "d0e47a1c7e5292f5a8258dc5d578a21fefa227a8955ec2eb85c7256a5549ecbe"
+              }
+            },
+            "state": "passed"
+          },
+          "discovery": {
+            "attempts": 1,
+            "results": {
+              "browser_capability": {
+                "source": "waiver",
+                "waiver": {
+                  "approval": {
+                    "path": ".agentic-kit/evidence/OVI-001/user-approval.md",
+                    "sha256": "170b8bab4ea1e1edf267904780485f54eaf9565b49752b5054a129534042f950"
+                  },
+                  "key": "browser_capability",
+                  "reason": "В среде нет телефона, эмулятора и браузера для нативного Android. Пользователь подтвердил исключение 26.11.2026."
+                }
+              },
+              "environment_reviewed": {
+                "path": "docs/aek/environment.md",
+                "sha256": "fd5a80acbf219f5fb76c83132c822cdd706750b083e5c2e5377c83060cf91e59"
+              },
+              "product_brief_approved": {
+                "path": "docs/aek/product-brief.md",
+                "sha256": "2fe989333d1a2f39f184f415076891a3e87634069d0fcbaf54f273f4990fc169"
+              }
+            },
+            "state": "passed"
+          },
+          "implementation": {
+            "attempts": 1,
+            "results": {
+              "implementation_proof": {
+                "path": ".agentic-kit/evidence/OVI-001/implementation-proof.md",
+                "sha256": "79aaa26ce2a14c2c7a6fe634991ef230c43e1dde70a1faa303ccf06d04a01074"
+              }
+            },
+            "state": "passed"
+          },
+          "planning": {
+            "attempts": 1,
+            "results": {
+              "architecture_simplified": {
+                "path": "docs/aek/architecture-decision.md",
+                "sha256": "4008169f2ed9f7a28bbc18fbf2d387c77d994b2ef521fdb229cb7b3128fea625"
+              },
+              "routes_confirmed": {
+                "path": "docs/aek/harness-assignment.md",
+                "sha256": "8b055fa56173f5880972014945ba0456aa48cd069195cc7d23aec9b1b20e6e33"
+              },
+              "security_screened": {
+                "path": "docs/aek/security-screen.md",
+                "sha256": "aeec067d98698040e2544e95b36908f1d242ed2a047449ddf48a9cb6abac5ba0"
+              },
+              "swarm_planned": {
+                "path": "docs/aek/swarm-plan.md",
+                "sha256": "d0292563031f119b9d9bc01b981631dd574aa8e4d98498206592776ad0ec47fb"
+              }
+            },
+            "state": "passed"
+          },
+          "release": {
+            "attempts": 0,
+            "results": {},
+            "state": "pending"
+          },
+          "verification": {
+            "attempts": 0,
+            "results": {},
+            "state": "pending"
+          }
+        },
+        "process": "change",
+        "reason": "Независимая проверка qa-1 нашла четыре важные ошибки; код и документы исправлены в ee9e008, доказательства нужно записать заново",
+        "return_to": "discovery"
+      },
+      {
+        "at": "2026-11-25T23:53:08.613807+00:00",
+        "attempt": 1,
+        "event": "process.step.started",
+        "process": "change",
+        "step": "discovery"
+      },
+      {
+        "at": "2026-11-25T23:53:08.850572+00:00",
+        "attempt": 1,
+        "event": "process.step.passed",
+        "evidence": [
+          "browser_capability",
+          "environment_reviewed",
+          "product_brief_approved"
+        ],
+        "process": "change",
+        "reason": null,
+        "step": "discovery"
+      },
+      {
+        "at": "2026-11-25T23:53:19.638326+00:00",
+        "attempt": 1,
+        "event": "process.step.started",
+        "process": "change",
+        "step": "design"
+      },
+      {
+        "at": "2026-11-25T23:53:19.856643+00:00",
+        "attempt": 1,
+        "event": "process.step.passed",
+        "evidence": [
+          "design_approved"
+        ],
+        "process": "change",
+        "reason": null,
+        "step": "design"
+      },
+      {
+        "at": "2026-11-25T23:53:20.230914+00:00",
+        "attempt": 1,
+        "event": "process.step.started",
+        "process": "change",
+        "step": "planning"
+      },
+      {
+        "at": "2026-11-25T23:53:20.449455+00:00",
+        "attempt": 1,
+        "event": "process.step.passed",
+        "evidence": [
+          "architecture_simplified",
+          "routes_confirmed",
+          "security_screened",
+          "swarm_planned"
+        ],
+        "process": "change",
+        "reason": null,
+        "step": "planning"
+      },
+      {
+        "at": "2026-11-25T23:53:20.807771+00:00",
+        "attempt": 1,
+        "event": "process.step.started",
+        "process": "change",
+        "step": "implementation"
+      },
+      {
+        "at": "2026-11-25T23:53:21.015017+00:00",
+        "attempt": 1,
+        "event": "process.step.passed",
+        "evidence": [
+          "implementation_proof"
+        ],
+        "process": "change",
+        "reason": null,
+        "step": "implementation"
       }
     ],
     "id": "change",
@@ -427,7 +742,7 @@
           },
           "environment_reviewed": {
             "path": "docs/aek/environment.md",
-            "sha256": "fd5a80acbf219f5fb76c83132c822cdd706750b083e5c2e5377c83060cf91e59"
+            "sha256": "21a71ab9e68d3b92fcd0b9ef2f65d9efce8cc537edcf607ccafdc2b39d5e5c17"
           },
           "product_brief_approved": {
             "path": "docs/aek/product-brief.md",
@@ -441,7 +756,7 @@
         "results": {
           "implementation_proof": {
             "path": ".agentic-kit/evidence/OVI-001/implementation-proof.md",
-            "sha256": "79aaa26ce2a14c2c7a6fe634991ef230c43e1dde70a1faa303ccf06d04a01074"
+            "sha256": "de3e0b9b75f37b3dea8b3e7b873cee04e7fc25835559453870239cbcf6e1d552"
           }
         },
         "state": "passed"
@@ -459,7 +774,7 @@
           },
           "security_screened": {
             "path": "docs/aek/security-screen.md",
-            "sha256": "aeec067d98698040e2544e95b36908f1d242ed2a047449ddf48a9cb6abac5ba0"
+            "sha256": "098125a008e451b360c859192acfabb3395328f3f0bf6b0a0c30c344665bdcc1"
           },
           "swarm_planned": {
             "path": "docs/aek/swarm-plan.md",
@@ -481,6 +796,7 @@
     }
   },
   "profile": "standard",
+  "reason": "Исправления ee9e008 внесены, доказательства записываются заново",
   "review_history": [
     {
       "agreement": ".agentic-kit/evidence/OVI-001/user-approval.md, пункт 7: матрица ролей подтверждена пользователем 26.11.2026",
@@ -501,6 +817,20 @@
       "reviewed_sha": null,
       "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253A4fc60b4f-a508-4edf-b756-75c9a92d53a5:ordinal:1",
       "thread_id": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3A4fc60b4f-a508-4edf-b756-75c9a92d53a5"
+    },
+    {
+      "artifact": {
+        "path": ".agentic-kit/evidence/review-observations/b2e647b42a700c4e08bb041ff548b355bd4deab5cb9a22766447c59a7d9a0598.json",
+        "provenance": "agent_imported_t3_observation",
+        "sha256": "b2e647b42a700c4e08bb041ff548b355bd4deab5cb9a22766447c59a7d9a0598"
+      },
+      "assignment_id": "qa-1",
+      "event": "observation_imported",
+      "fixture": false,
+      "kind": "launch",
+      "reviewed_sha": null,
+      "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff:ordinal:1",
+      "thread_id": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff"
     }
   ],
   "review_policy": 2,
@@ -547,9 +877,9 @@
     "observations": {
       "qa-1": {
         "launch": {
-          "path": ".agentic-kit/evidence/review-observations/2acb9f306ef10136545095f39bfd5bee50a492148c5db6bdf8fa5de9c459ea46.json",
+          "path": ".agentic-kit/evidence/review-observations/b2e647b42a700c4e08bb041ff548b355bd4deab5cb9a22766447c59a7d9a0598.json",
           "provenance": "agent_imported_t3_observation",
-          "sha256": "2acb9f306ef10136545095f39bfd5bee50a492148c5db6bdf8fa5de9c459ea46"
+          "sha256": "b2e647b42a700c4e08bb041ff548b355bd4deab5cb9a22766447c59a7d9a0598"
         }
       }
     },
@@ -564,18 +894,27 @@
           },
           "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253A4fc60b4f-a508-4edf-b756-75c9a92d53a5:ordinal:1",
           "thread_id": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3A4fc60b4f-a508-4edf-b756-75c9a92d53a5"
+        },
+        "f137d4fc4242c84ba2c2921c3e63d77f1b9076d5846ff63dfb523d1173668cc9": {
+          "launch": {
+            "path": ".agentic-kit/evidence/review-observations/b2e647b42a700c4e08bb041ff548b355bd4deab5cb9a22766447c59a7d9a0598.json",
+            "provenance": "agent_imported_t3_observation",
+            "sha256": "b2e647b42a700c4e08bb041ff548b355bd4deab5cb9a22766447c59a7d9a0598"
+          },
+          "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff:ordinal:1",
+          "thread_id": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff"
         }
       }
     }
   },
-  "revision": 32,
+  "revision": 60,
   "runtime": "http",
   "schema_version": 2,
   "stage": "verification",
   "status": "active",
   "title": "Очистка текста и GigaAM v3",
   "ui": true,
-  "updated_at": "2026-11-25T23:47:01.744816+00:00",
+  "updated_at": "2026-11-25T23:54:17.154455+00:00",
   "waivers": {
     "browser_capability": {
       "approval": {

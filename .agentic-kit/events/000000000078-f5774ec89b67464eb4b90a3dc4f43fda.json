@@ -1,0 +1,14 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:54:17.155383+00:00",
+  "id": "f5774ec89b67464eb4b90a3dc4f43fda",
+  "payload": {
+    "revision": 60,
+    "stage": "verification",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 78,
+  "subject": "OVI-001",
+  "type": "review.import-launch"
+}

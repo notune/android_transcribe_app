@@ -1,0 +1,15 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:53:02.704581+00:00",
+  "id": "21f1c9c230ab41ddacab46659eec112f",
+  "payload": {
+    "key": "security_screened",
+    "revision": 40,
+    "stage": "discovery",
+    "status": "rework"
+  },
+  "schema_version": 1,
+  "sequence": 54,
+  "subject": "OVI-001",
+  "type": "evidence.recorded"
+}

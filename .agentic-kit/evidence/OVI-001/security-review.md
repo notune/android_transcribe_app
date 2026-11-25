@@ -1,7 +1,7 @@
 # Security review OVI-001
 
 - date_utc: 2026-11-25T23:45:38Z
-- commit: `f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1`
+- commit: `ee9e008f78e360e3e030bc3027ef0665edf59365`
 
 ## Поиск секретов
 

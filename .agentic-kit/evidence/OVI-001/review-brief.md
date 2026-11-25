@@ -5,9 +5,15 @@
 - ID назначения: `qa-1`
 - Роль: `review`
 - Профиль риска: `standard`
-- Проверяемый SHA: `f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1`
+- Проверяемый SHA: `ee9e008f78e360e3e030bc3027ef0665edf59365`
 - База сравнения: `7abe07a2125733d008a21eb5a039e8204d3c6572` (v0.2.3)
 - Задача: `OVI-001`, `docs/aek/product-brief.md`
+
+## Круг 2
+
+Предыдущий круг на `f012c1a` вернул `changes_requested` с четырьмя
+важными находками. Они исправлены в `ee9e008`. Проверь исправления и не
+повторяй прежние находки, если они закрыты.
 
 ## Согласованный объём
 
@@ -88,7 +94,7 @@ lint-ошибки, макеты и визуальный дизайн.
 Верни только JSON без Markdown-обёртки, `report_schema: 2`:
 
 ```json
-{"assignment_id":"qa-1","reviewed_sha":"f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+{"assignment_id":"qa-1","reviewed_sha":"ee9e008f78e360e3e030bc3027ef0665edf59365",
  "verdict":"approved|changes_requested|blocked",
  "summary":{"findings_total":0,"by_severity":{"important":0,"nit":0,"pre-existing":0}},
  "findings":[],"commands":[]}

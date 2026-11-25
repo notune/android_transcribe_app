@@ -2,7 +2,7 @@
 
 ## Проверяемый коммит
 
-- HEAD: `f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1`
+- HEAD: `ee9e008f78e360e3e030bc3027ef0665edf59365`
 - База: `7abe07a2125733d008a21eb5a039e8204d3c6572` (v0.2.3)
 - Ветка: `feature/handy-post-processing`
 
@@ -39,14 +39,29 @@
   `docs/handy-post-processing.md`, `docs/architecture.md`,
   `docs/architecture.html`, документы `docs/aek/*`.
 
+### Исправления после проверки qa-1
+
+- `SecretStore`: IV формирует Keystore, ошибка сохранения возвращается
+  вызывающему коду.
+- `EditorTarget` и `RustInputMethodService`: при отсутствии стабильного id
+  поля требуется неизменный сеанс ввода; `View.NO_ID` не считается id.
+- `RustInputMethodService.onWindowHidden()`: `stop_on_hide` отменяет
+  диктовку и до прихода расшифровки.
+- `OpenAiCompatibleClient`: отмена до отправки тела не открывает поток;
+  добавлен тест на loopback.
+- `RecognizeActivity`: закрытие и `onStop` отменяют диктовку до сетевой
+  очистки.
+- `VoiceRecognitionService`: проверка колбэка и запуск задачи выполняются
+  в главном потоке.
+
 ## Фактические результаты на этом дереве
 
 | Проверка | Результат |
 |---|---|
 | `:app:assembleStandardDebug` | BUILD SUCCESSFUL, APK 232 950 245 байт |
-| SHA-256 APK | `eda5064c80a782ab40659d2e620c72c301e2818e67a13de621eeff073813047c` |
+| SHA-256 APK | `764f2146c3f011be855ee9a4d21d7647030076e74411d8564e9642a199fae339` |
 | Содержимое APK | `assets/builtin-model/gigaam-v3-e2e-rnnt-Q6_K.gguf`, 227 953 952 байта |
-| `:app:testFdroidDebugUnitTest` | 22 теста, 0 падений, 0 ошибок, 0 пропусков |
+| `:app:testFdroidDebugUnitTest` | 24 теста, 0 падений, 0 ошибок, 0 пропусков |
 | `:app:lintStandardDebug` | 7 ошибок, все в файлах, которые задача не меняла |
 | GigaAM на хосте | русская фраза распознана с пунктуацией, регистром и числом 16:30 |
 
