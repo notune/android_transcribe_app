@@ -275,7 +275,7 @@ public class RustInputMethodService extends InputMethodService {
                         audioPauser.request(this);
                         pauseAudioActive = true;
                     }
-                    startRecording();
+                    startRecording(dictationSeq);
                     updateRecordButtonUI(true);
                 }
             });
@@ -410,7 +410,7 @@ public class RustInputMethodService extends InputMethodService {
                     audioPauser.request(this);
                     pauseAudioActive = true;
                 }
-                startRecording();
+                startRecording(dictationSeq);
                 updateRecordButtonUI(true);
             }
         }
@@ -568,7 +568,9 @@ public class RustInputMethodService extends InputMethodService {
     // Native methods
     private native void initNative(RustInputMethodService service);
     private native void cleanupNative(RustInputMethodService self);
-    private native void startRecording();
+    // The dictation number is echoed back with the transcript so a late
+    // result from an aborted dictation can never be used for a newer one.
+    private native void startRecording(int captureId);
     private native void stopRecording();
     private native void cancelRecording();
 
@@ -577,11 +579,10 @@ public class RustInputMethodService extends InputMethodService {
         mainHandler.post(() -> {
             Log.d(TAG, "Status: " + status);
             lastStatus = status;
-            if (status != null && (status.startsWith("Error") || status.equals("Canceled"))) {
-                // No text callback will follow: unblock the record button.
-                awaitingTranscript = false;
-                pendingTranscriptSeq = -1;
-            }
+            // No pending state is cleared here: a status can arrive late from
+            // an aborted dictation. Completion of the capture that is actually
+            // awaited comes through onTextTranscribed or
+            // onTranscriptionFinished, both carrying its dictation number.
             updateUiState();
             if (pendingSwitchBack && status != null && status.startsWith("Error")) {
                 pendingSwitchBack = false;
@@ -639,20 +640,20 @@ public class RustInputMethodService extends InputMethodService {
         }
     }
 
-    // Called from Rust
-    public void onTextTranscribed(String text) {
+    // Called from Rust with the dictation number its capture was started with.
+    public void onTextTranscribed(String text, int captureId) {
         mainHandler.post(() -> {
-            int seq = pendingTranscriptSeq;
-            pendingTranscriptSeq = -1;
-            awaitingTranscript = false;
-
-            if (seq != dictationSeq) {
-                // A new recording, a cancel or "stop on hide" replaced this
-                // dictation. Its late text must never be inserted.
+            if (captureId != pendingTranscriptSeq || captureId != dictationSeq) {
+                // A new recording, a cancel or "stop on hide" replaced the
+                // capture that produced this text. Reject it before touching
+                // the state of the dictation that is current now.
                 updateRecordButtonUI(false);
                 updateUiState();
                 return;
             }
+            int seq = captureId;
+            pendingTranscriptSeq = -1;
+            awaitingTranscript = false;
 
             if (text == null || text.trim().isEmpty()) {
                 // Nothing recognized: don't insert a stray space.
@@ -670,6 +671,22 @@ public class RustInputMethodService extends InputMethodService {
                 return;
             }
             startPostProcessing(text, seq, targetEditor);
+        });
+    }
+
+    /**
+     * Called from Rust when a stopped capture produced no text (empty audio,
+     * model failure, inference error). Only the capture that is still awaited
+     * may clear the waiting state, so a late notice from an aborted dictation
+     * cannot unblock the button of a newer one.
+     */
+    public void onTranscriptionFinished(int captureId) {
+        mainHandler.post(() -> {
+            if (captureId != pendingTranscriptSeq) return;
+            pendingTranscriptSeq = -1;
+            awaitingTranscript = false;
+            updateRecordButtonUI(false);
+            updateUiState();
         });
     }
 

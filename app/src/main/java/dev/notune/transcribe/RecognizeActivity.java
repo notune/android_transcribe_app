@@ -213,6 +213,23 @@ public class RecognizeActivity extends AppCompatActivity {
         runOnUiThread(() -> micLevel.setLevel(level));
     }
 
+    /**
+     * Called from Rust with the capture number. The popup runs a single
+     * dictation per activity instance and a late callback from a previous
+     * instance is rejected there, so the number is not needed for matching.
+     */
+    public void onTextTranscribed(String text, int captureId) {
+        onTextTranscribed(text);
+    }
+
+    /**
+     * Called from Rust when a stopped capture produced no text. The panel's
+     * waiting state follows the activity lifecycle, so there is nothing to
+     * clear; the status line already reports the error.
+     */
+    public void onTranscriptionFinished(int captureId) {
+    }
+
     // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {

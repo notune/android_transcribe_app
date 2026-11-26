@@ -28,6 +28,11 @@ pub struct VoiceSessionState {
     /// True while the current recording runs; flipped off on stop/cancel so
     /// the auto-stop monitor (if any) exits.
     pub session_active: Arc<AtomicBool>,
+    /// Identifier the Java side passed to `start_recording` for the capture
+    /// that is currently running (or was last stopped). It is echoed back with
+    /// the transcript and with a no-text notification, so a late result from an
+    /// aborted dictation is never mistaken for the current one.
+    pub capture_id: i32,
 }
 
 fn notify_status(env: &mut JNIEnv, obj: &JObject, msg: &str) {
@@ -45,15 +50,26 @@ fn notify_level(env: &mut JNIEnv, obj: &JObject, level: f32) {
     let _ = env.call_method(obj, "onAudioLevel", "(F)V", &[level.into()]);
 }
 
-fn notify_text(env: &mut JNIEnv, obj: &JObject, text: &str) {
+fn notify_text(env: &mut JNIEnv, obj: &JObject, text: &str, capture_id: i32) {
     if let Ok(jtxt) = env.new_string(text) {
         let _ = env.call_method(
             obj,
             "onTextTranscribed",
-            "(Ljava/lang/String;)V",
-            &[(&jtxt).into()],
+            "(Ljava/lang/String;I)V",
+            &[(&jtxt).into(), capture_id.into()],
         );
     }
+}
+
+/// Tells Java that a capture produced no text, so the waiting state can be
+/// cleared without touching a newer dictation.
+fn notify_no_text(env: &mut JNIEnv, obj: &JObject, capture_id: i32) {
+    let _ = env.call_method(
+        obj,
+        "onTranscriptionFinished",
+        "(I)V",
+        &[capture_id.into()],
+    );
 }
 
 pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
@@ -72,6 +88,7 @@ pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
         target_ref: target_ref.clone(),
         last_level_sent: Arc::new(Mutex::new(std::time::Instant::now())),
         session_active: Arc::new(AtomicBool::new(false)),
+        capture_id: 0,
     };
 
     // Load engine in background
@@ -89,7 +106,13 @@ pub fn init_session(env: JNIEnv, target: JObject) -> VoiceSessionState {
 /// for trailing silence after speech (or a no-speech timeout) and invokes the
 /// Java-side `onAutoStop()` callback, which is expected to stop the recording
 /// the same way a manual tap would.
-pub fn start_recording(mut env: JNIEnv, state: &mut VoiceSessionState, auto_stop: bool) {
+pub fn start_recording(
+    mut env: JNIEnv,
+    state: &mut VoiceSessionState,
+    auto_stop: bool,
+    capture_id: i32,
+) {
+    state.capture_id = capture_id;
     let host = cpal::default_host();
     let device = match host.default_input_device() {
         Some(d) => d,
@@ -227,6 +250,9 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
     state.stream = None;
 
     let buffer = state.audio_buffer.lock().unwrap().clone();
+    // Fixed here, before the worker thread starts: a newer dictation may
+    // overwrite `state.capture_id` while this one is still transcribing.
+    let capture_id = state.capture_id;
 
     // Guard against empty buffer (mic permission denied, instant stop, etc.)
     if buffer.is_empty() {
@@ -235,6 +261,7 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
             state.target_ref.as_obj(),
             "Error: no audio recorded. Check microphone permissions.",
         );
+        notify_no_text(&mut env, state.target_ref.as_obj(), capture_id);
         return;
     }
 
@@ -254,6 +281,7 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
         // model settings changed since it was loaded.
         if !engine::is_current() {
             if let Err(_) = engine::ensure_loaded(&mut env, obj) {
+                notify_no_text(&mut env, obj, capture_id);
                 return;
             }
         }
@@ -264,12 +292,16 @@ pub fn stop_recording(mut env: JNIEnv, state: &mut VoiceSessionState) {
             match res {
                 Ok(text) => {
                     notify_status(&mut env, obj, "Ready");
-                    notify_text(&mut env, obj, &text);
+                    notify_text(&mut env, obj, &text, capture_id);
                 }
-                Err(e) => notify_status(&mut env, obj, &format!("Error: {}", e)),
+                Err(e) => {
+                    notify_status(&mut env, obj, &format!("Error: {}", e));
+                    notify_no_text(&mut env, obj, capture_id);
+                }
             }
         } else {
             notify_status(&mut env, obj, "Error: model not loaded");
+            notify_no_text(&mut env, obj, capture_id);
         }
     });
 }
