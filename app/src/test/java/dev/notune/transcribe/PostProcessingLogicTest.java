@@ -137,10 +137,16 @@ public class PostProcessingLogicTest {
     @Test
     public void rejectsHeaderValuesWithControlCharacters() {
         assertTrue(PostProcessingLogic.isValidHeaderValue("sk-synthetic-key-123"));
+        assertTrue(PostProcessingLogic.isValidHeaderValue("   "));
+        assertTrue(PostProcessingLogic.isValidHeaderValue(""));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\nnext"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\rnext"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\0next"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\tnext"));
+        assertFalse(PostProcessingLogic.isValidHeaderValue("key\n"));
+        assertFalse(PostProcessingLogic.isValidHeaderValue("\rkey"));
+        assertFalse(PostProcessingLogic.isValidHeaderValue("key\0"));
+        assertFalse(PostProcessingLogic.isValidHeaderValue("\0"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("ключ"));
     }
 }

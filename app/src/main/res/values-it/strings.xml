@@ -169,6 +169,7 @@
     <string name="pp_key_hint">facoltativa per i server locali</string>
     <string name="pp_key_note">La chiave è crittografata con Android Keystore. Lasciala vuota se il tuo server non ne richiede una.</string>
     <string name="pp_key_store_failed">Impossibile salvare la chiave in Android Keystore.</string>
+    <string name="pp_key_invalid">La chiave contiene caratteri non consentiti.</string>
     <string name="pp_prompt_edit">Modifica istruzione</string>
     <string name="pp_prompt_title">Istruzione di pulizia</string>
     <string name="pp_prompt_note">${output} viene sostituito con il testo riconosciuto. Se lo rimuovi, il testo viene aggiunto in fondo.</string>

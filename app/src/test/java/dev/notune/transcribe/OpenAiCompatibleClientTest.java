@@ -256,12 +256,32 @@ public class OpenAiCompatibleClientTest {
 
     @Test
     public void rejectsAKeyWithControlCharactersWithoutLeakingIt() {
-        String secret = "SYNTHETIC_SECRET_MARKER\nextra";
-        OpenAiCompatibleClient.Result result = OpenAiCompatibleClient.complete(
-                baseUrl, "m", secret, "текст", "${output}", 5000, null);
-        assertEquals("invalid API key", result.error);
-        assertFalse(result.error.contains("SYNTHETIC_SECRET_MARKER"));
-        // The value never reached the HTTP layer.
+        String[] badKeys = {
+                "SYNTHETIC_SECRET_MARKER\nextra",
+                "SYNTHETIC_SECRET_MARKER\n",
+                "\rSYNTHETIC_SECRET_MARKER",
+                "SYNTHETIC_SECRET_MARKER\u0000",
+                "\u0000",
+                "  \u0000  ",
+                "ключ",
+        };
+        for (String secret : badKeys) {
+            OpenAiCompatibleClient.Result result = OpenAiCompatibleClient.complete(
+                    baseUrl, "m", secret, "текст", "${output}", 5000, null);
+            assertEquals("invalid API key", result.error);
+            assertFalse(result.error.contains("SYNTHETIC_SECRET_MARKER"));
+        }
+        // No invalid key reached the HTTP layer.
         assertEquals(0, requestCount.get());
+    }
+
+    @Test
+    public void treatsBlankKeyAsNoAuthorizationHeader() {
+        response = "{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}";
+        OpenAiCompatibleClient.Result result = OpenAiCompatibleClient.complete(
+                baseUrl, "m", "   ", "текст", "${output}", 5000, null);
+        assertNull(result.error);
+        assertEquals("ok", result.text);
+        assertNull(lastAuth.get());
     }
 }

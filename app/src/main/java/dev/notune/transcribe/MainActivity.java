@@ -409,12 +409,18 @@ public class MainActivity extends AppCompatActivity {
                 ? "" : ppEndpoint.getText().toString());
         PostProcessingSettings.setModel(this, ppModel.getText() == null
                 ? "" : ppModel.getText().toString());
-        boolean keySaved = PostProcessingSettings.setApiKey(this, ppKey.getText() == null
+        int keyState = PostProcessingSettings.setApiKey(this, ppKey.getText() == null
                 ? "" : ppKey.getText().toString());
         if (ppKeyLayout != null) {
-            ppKeyLayout.setError(keySaved ? null : getString(R.string.pp_key_store_failed));
+            if (keyState == PostProcessingSettings.KEY_INVALID) {
+                ppKeyLayout.setError(getString(R.string.pp_key_invalid));
+            } else if (keyState == PostProcessingSettings.KEY_STORE_FAILED) {
+                ppKeyLayout.setError(getString(R.string.pp_key_store_failed));
+            } else {
+                ppKeyLayout.setError(null);
+            }
         }
-        return keySaved;
+        return keyState == PostProcessingSettings.KEY_SAVED;
     }
 
     private void updatePostProcessingUi() {

@@ -73,7 +73,7 @@
 
 ## Что уже проверялось до задачи
 
-- `:app:testFdroidDebugUnitTest`: 26 тестов, 0 падений (отчёты JUnit на диске).
+- `:app:testFdroidDebugUnitTest`: 27 тестов, 0 падений (отчёты JUnit на диске).
 - `:app:assembleStandardDebug`: собрано, APK около 232 МБ, внутри GigaAM Q6_K.
 - `:app:lintStandardDebug`: 7 ошибок, все в старых файлах.
 - Дымовой прогон на локальном `llama.cpp`: запрос и разбор ответа работают,

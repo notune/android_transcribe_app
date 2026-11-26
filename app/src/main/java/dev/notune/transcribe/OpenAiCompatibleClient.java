@@ -86,13 +86,17 @@ final class OpenAiCompatibleClient {
             connection.setInstanceFollowRedirects(false);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
-            String key = apiKey == null ? "" : apiKey.trim();
+            // Validate the raw value first: trim() would silently strip a
+            // leading or trailing control character (including NUL), and such
+            // a key would then be sent as if it were valid.
+            String rawKey = apiKey == null ? "" : apiKey;
+            if (!rawKey.isEmpty() && !PostProcessingLogic.isValidHeaderValue(rawKey)) {
+                // Reject before setRequestProperty: its exception repeats the
+                // header value, which here is the key itself.
+                return Result.error("invalid API key");
+            }
+            String key = rawKey.trim();
             if (!key.isEmpty()) {
-                if (!PostProcessingLogic.isValidHeaderValue(key)) {
-                    // Reject before setRequestProperty: its exception repeats
-                    // the header value, which here is the key itself.
-                    return Result.error("invalid API key");
-                }
                 connection.setRequestProperty("Authorization", "Bearer " + key);
             }
             if (sink != null) {

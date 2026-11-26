@@ -175,6 +175,7 @@
     <string name="pp_key_hint">optional for local servers</string>
     <string name="pp_key_note">The key is encrypted with the Android Keystore. Leave it empty if your server does not need one.</string>
     <string name="pp_key_store_failed">The key could not be saved in the Android Keystore.</string>
+    <string name="pp_key_invalid">The key contains characters that are not allowed.</string>
     <string name="pp_prompt_edit">Edit instruction</string>
     <string name="pp_prompt_title">Clean-up instruction</string>
     <string name="pp_prompt_note">${output} is replaced with the recognised text. If you remove it, the text is appended at the end.</string>

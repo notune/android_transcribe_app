@@ -62,8 +62,22 @@ final class PostProcessingSettings {
         return SecretStore.get(context);
     }
 
-    static boolean setApiKey(Context context, String apiKey) {
-        return SecretStore.put(context, apiKey == null ? "" : apiKey.trim());
+    static final int KEY_SAVED = 0;
+    static final int KEY_INVALID = 1;
+    static final int KEY_STORE_FAILED = 2;
+
+    /**
+     * Stores the key. The raw value is validated before trimming: a key with
+     * a control character anywhere (also at the edges, which {@link String#trim()}
+     * would silently remove) is rejected instead of being quietly altered.
+     * An empty or blank value clears the stored key.
+     */
+    static int setApiKey(Context context, String apiKey) {
+        String raw = apiKey == null ? "" : apiKey;
+        if (!PostProcessingLogic.isValidHeaderValue(raw)) {
+            return KEY_INVALID;
+        }
+        return SecretStore.put(context, raw.trim()) ? KEY_SAVED : KEY_STORE_FAILED;
     }
 
     static boolean hasApiKey(Context context) {
