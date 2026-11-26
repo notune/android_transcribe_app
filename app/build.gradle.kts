@@ -73,8 +73,9 @@ val isBundle = gradle.startParameter.taskNames.any {
 if (!isBundle) {
     android.sourceSets.getByName("main") {
         assets.srcDirs(
-            "src/main/assets",
-            rootProject.file("model_assets/src/main/assets")
+            "src/main/assets"
+            // Slim APK: model_assets dir NOT bundled — the model is
+            // downloaded on first run by ModelDownloader instead.
         )
     }
 }

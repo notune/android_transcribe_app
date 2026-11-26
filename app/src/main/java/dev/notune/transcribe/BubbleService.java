@@ -100,11 +100,20 @@ public class BubbleService extends AccessibilityService {
             lastSelEnd = event.getToIndex();
             return;
         }
-        if (t == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
-                && focusedEditable != null
-                && event.getSource() != null
-                && sameField(event.getSource())) {
-            userTypedSinceFocus = true; // real keystrokes on this field
+        if (t == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            // GENERIC (all apps): any text change that we either attribute to
+            // the focused field, or CANNOT attribute at all (source == null —
+            // common in Jetpack Compose / custom views), counts as user
+            // typing. Never stripping on ambiguous evidence is the safe
+            // default: worst case a placeholder survives one dictation.
+            if (event.getSource() == null || focusedEditable == null) {
+                if (!focusSnapshot.isEmpty() || event.getBeforeText() == null
+                        || event.getBeforeText().equals(focusSnapshot)) {
+                    userTypedSinceFocus = true;
+                }
+            } else if (sameField(event.getSource())) {
+                userTypedSinceFocus = true;
+            }
             return;
         }
         if (t == AccessibilityEvent.TYPE_VIEW_FOCUSED) {

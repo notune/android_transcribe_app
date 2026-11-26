@@ -56,6 +56,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Slim APK: download the model on first run (DownloadManager,
+        // resumable). The engine finds it in filesDir/models/ on next start.
+        statusText = findViewById(R.id.text_status);
+        if (!ModelDownloader.modelPresent(this)) {
+            try {
+                ModelDownloader.startDownload(this);
+                statusText.setText("Downloading speech model (~350 MB, one-time)…");
+            } catch (Throwable t) {
+            }
+        }
+
         statusText = findViewById(R.id.text_status);
         voiceStatusText = findViewById(R.id.text_voice_status);
         voiceStatusIcon = findViewById(R.id.img_voice_status);

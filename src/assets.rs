@@ -36,6 +36,18 @@ pub fn files_dir(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf>
 pub fn extract_builtin_model(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf> {
     let base_path = files_dir(env, context)?;
 
+    // NEW: if the user manually imported a model (download flow), use it.
+    // The APK no longer bundles the 485 MB GGUF; models live in
+    // filesDir/models/ (auto-downloaded by the app or sideloaded).
+    let models_dir = base_path.join("models");
+    if models_dir.is_dir() {
+        if let Ok(p) = find_gguf(&models_dir) {
+            return Ok(p);
+        }
+    }
+
+    // Then try the classic bundled-asset extraction path (older APKs /
+    // full builds that still ship the model).
     let legacy_dir = base_path.join(LEGACY_MODEL_DIR);
     if legacy_dir.exists() {
         log::info!("Removing legacy ONNX model directory");
