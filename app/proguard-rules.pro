@@ -6,6 +6,8 @@
     void onAudioLevel(float);
     void onAutoStop();
     void onTextTranscribed(java.lang.String);
+    void onTextTranscribed(java.lang.String, int);
+    void onTranscriptionFinished(int);
     void onPartialText(java.lang.String);
     void onBenchmarkResult(float, float, java.lang.String);
     void onSubtitleText(java.lang.String, boolean);

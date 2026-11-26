@@ -645,10 +645,10 @@ public class RustInputMethodService extends InputMethodService {
         mainHandler.post(() -> {
             if (captureId != pendingTranscriptSeq || captureId != dictationSeq) {
                 // A new recording, a cancel or "stop on hide" replaced the
-                // capture that produced this text. Reject it before touching
-                // the state of the dictation that is current now.
-                updateRecordButtonUI(false);
-                updateUiState();
+                // capture that produced this text. Do not touch the current
+                // state: this stale result can arrive while a newer dictation
+                // is still recording, and clearing isRecording here would
+                // leave the live microphone running behind an idle button.
                 return;
             }
             int seq = captureId;
