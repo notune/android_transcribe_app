@@ -236,6 +236,20 @@ final class PostProcessingLogic {
         }
     }
 
+    /**
+     * HTTP header values may not contain control characters or non-ASCII
+     * bytes. Such a value is rejected before it reaches the HTTP layer, whose
+     * exceptions repeat the offending value in their message.
+     */
+    static boolean isValidHeaderValue(String value) {
+        if (value == null) return false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < 0x20 || c >= 0x7f) return false;
+        }
+        return true;
+    }
+
     /** Short, user-facing reason. Never includes the transcript or key. */
     static String shortError(String error) {
         if (error == null || error.trim().isEmpty()) {

@@ -74,7 +74,9 @@ final class PostProcessor {
                 result = OpenAiCompatibleClient.complete(
                         endpoint, model, apiKey, transcript, prompt, timeoutMs, task);
             } catch (RuntimeException e) {
-                Log.w(TAG, "Post-processing failed unexpectedly", e);
+                // The exception text is not logged: it can echo a header value,
+                // and the key must never reach the journal.
+                Log.w(TAG, "Post-processing failed unexpectedly");
                 result = OpenAiCompatibleClient.Result.error("request failed");
             } finally {
                 watchdog.cancel(false);

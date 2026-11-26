@@ -86,8 +86,14 @@ final class OpenAiCompatibleClient {
             connection.setInstanceFollowRedirects(false);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
-            if (apiKey != null && !apiKey.trim().isEmpty()) {
-                connection.setRequestProperty("Authorization", "Bearer " + apiKey.trim());
+            String key = apiKey == null ? "" : apiKey.trim();
+            if (!key.isEmpty()) {
+                if (!PostProcessingLogic.isValidHeaderValue(key)) {
+                    // Reject before setRequestProperty: its exception repeats
+                    // the header value, which here is the key itself.
+                    return Result.error("invalid API key");
+                }
+                connection.setRequestProperty("Authorization", "Bearer " + key);
             }
             if (sink != null) {
                 sink.onOpen(connection);
@@ -134,6 +140,10 @@ final class OpenAiCompatibleClient {
             return Result.error("timeout");
         } catch (PostProcessingLogic.ApiException e) {
             return Result.error(PostProcessingLogic.shortError(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            // The message of such an exception can repeat a header value or a
+            // URL, so it is neither returned nor logged: fixed text only.
+            return Result.error("invalid settings");
         } catch (IOException e) {
             if (sink != null && sink.isCancelled()) {
                 return Result.cancelled();

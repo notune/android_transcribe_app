@@ -62,8 +62,10 @@ final class SecretStore {
                     .putString(KEY_CIPHERTEXT, Base64.encodeToString(packed, Base64.NO_WRAP))
                     .commit();
         } catch (Exception e) {
-            // Never log the value itself.
-            Log.e(TAG, "Could not store the post-processing key", e);
+            // Never log the value itself, and not the exception text either:
+            // it is produced while handling the value.
+            Log.e(TAG, "Could not store the post-processing key ("
+                    + e.getClass().getSimpleName() + ")");
             return false;
         }
     }

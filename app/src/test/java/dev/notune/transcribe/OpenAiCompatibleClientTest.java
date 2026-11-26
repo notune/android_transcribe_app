@@ -253,4 +253,15 @@ public class OpenAiCompatibleClientTest {
         Thread.sleep(150);
         assertEquals("cancelled request must not send the body", 0, requestCount.get());
     }
+
+    @Test
+    public void rejectsAKeyWithControlCharactersWithoutLeakingIt() {
+        String secret = "SYNTHETIC_SECRET_MARKER\nextra";
+        OpenAiCompatibleClient.Result result = OpenAiCompatibleClient.complete(
+                baseUrl, "m", secret, "текст", "${output}", 5000, null);
+        assertEquals("invalid API key", result.error);
+        assertFalse(result.error.contains("SYNTHETIC_SECRET_MARKER"));
+        // The value never reached the HTTP layer.
+        assertEquals(0, requestCount.get());
+    }
 }
