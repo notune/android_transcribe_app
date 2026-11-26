@@ -2,7 +2,9 @@
 
 ## Проверяемый коммит
 
-- HEAD: `ee9e008f78e360e3e030bc3027ef0665edf59365`
+- Коммит кода и документов: `572cd9d076964820fd593ebddd8223d36fd26ca7`
+- HEAD при проверке: этот коммит плюс коммиты, меняющие только
+  `.agentic-kit/evidence/OVI-001/`; код и документы не меняются
 - База: `7abe07a2125733d008a21eb5a039e8204d3c6572` (v0.2.3)
 - Ветка: `feature/handy-post-processing`
 
@@ -53,13 +55,17 @@
   очистки.
 - `VoiceRecognitionService`: проверка колбэка и запуск задачи выполняются
   в главном потоке.
+- `RustInputMethodService` и native `voice_session`: номер диктовки
+  возвращается с расшифровкой и с сигналом «текста не будет», поэтому
+  поздний результат отменённой записи отбрасывается до изменения состояния
+  новой.
 
 ## Фактические результаты на этом дереве
 
 | Проверка | Результат |
 |---|---|
-| `:app:assembleStandardDebug` | BUILD SUCCESSFUL, APK 232 950 245 байт |
-| SHA-256 APK | `764f2146c3f011be855ee9a4d21d7647030076e74411d8564e9642a199fae339` |
+| `:app:assembleStandardDebug` | BUILD SUCCESSFUL, APK 231 747 765 байт |
+| SHA-256 APK | `5e4b93382c02369fb296ff772b242379ef602e428a4d5acf24642563f87d8fd6` |
 | Содержимое APK | `assets/builtin-model/gigaam-v3-e2e-rnnt-Q6_K.gguf`, 227 953 952 байта |
 | `:app:testFdroidDebugUnitTest` | 24 теста, 0 падений, 0 ошибок, 0 пропусков |
 | `:app:lintStandardDebug` | 7 ошибок, все в файлах, которые задача не меняла |
