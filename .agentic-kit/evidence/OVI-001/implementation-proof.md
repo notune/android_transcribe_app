@@ -2,7 +2,7 @@
 
 ## Проверяемый коммит
 
-- Коммит кода и документов: `7bf5a24498120458e1e10ca81e579e9924370277`
+- Коммит кода и документов: `a887cb96977a0360e888db3a486d53b78e28caec`
 - HEAD при проверке: этот коммит плюс коммиты, меняющие только
   `.agentic-kit/evidence/OVI-001/`; код и документы не меняются
 - База: `7abe07a2125733d008a21eb5a039e8204d3c6572` (v0.2.3)
@@ -62,15 +62,17 @@
 - `app/proguard-rules.pro`: новые JNI-колбэки сохранены от удаления R8;
   проверено сборкой `:app:minifyFdroidReleaseWithR8` и просмотром
   `usage.txt`.
+- `OpenAiCompatibleClient`: ключ с управляющими символами отклоняется до
+  заголовка; текст исключения не попадает ни в ответ, ни в журнал.
 
 ## Фактические результаты на этом дереве
 
 | Проверка | Результат |
 |---|---|
 | `:app:assembleStandardDebug` | BUILD SUCCESSFUL, APK 231 747 765 байт |
-| SHA-256 APK | `082b23b604ea5be6c762cd46d9898599531e574df3908847ab4fa542f8caf062` |
+| SHA-256 APK | `678d62264098485b33f3268f6af567023576c58139adf447a6fbc9e83bc063b1` |
 | Содержимое APK | `assets/builtin-model/gigaam-v3-e2e-rnnt-Q6_K.gguf`, 227 953 952 байта |
-| `:app:testFdroidDebugUnitTest` | 24 теста, 0 падений, 0 ошибок, 0 пропусков |
+| `:app:testFdroidDebugUnitTest` | 26 тестов, 0 падений, 0 ошибок, 0 пропусков |
 | `:app:lintStandardDebug` | 7 ошибок, все в файлах, которые задача не меняла |
 | `:app:minifyFdroidReleaseWithR8` | BUILD SUCCESSFUL; новые JNI-колбэки есть в dex и отсутствуют в `usage.txt` |
 | GigaAM на хосте | русская фраза распознана с пунктуацией, регистром и числом 16:30 |
