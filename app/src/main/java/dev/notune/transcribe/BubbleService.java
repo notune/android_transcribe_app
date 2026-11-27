@@ -38,6 +38,7 @@ public class BubbleService extends AccessibilityService {
     private AccessibilityNodeInfo focusedEditable;
     private String fieldSnapshot = "";
     private String focusSnapshot = "";
+    private long focusAt;
     private boolean userTypedSinceFocus;
     private int lastSelStart = -1, lastSelEnd = -1;
     private final java.util.HashMap<String, String> knownContent = new java.util.HashMap<>();
@@ -48,6 +49,14 @@ public class BubbleService extends AccessibilityService {
 
     /** Stable per-field identity surviving node re-fetches: package + view id
      *  (falls back to class name when the app exposes no resource id). */
+    /** App-rendered placeholder detection (generic, all apps): the event
+     *  appeared within 500 ms of field focus — too fast for a human to type.
+     *  Apps render hints via one text event right after focus;
+     *  a real keystroke can never arrive that early. */
+    private boolean isAppRenderedEvent(AccessibilityEvent event) {
+        return (android.os.SystemClock.uptimeMillis() - focusAt < 500);
+    }
+
     private boolean sameField(AccessibilityNodeInfo other) {
         if (other == null || focusedEditable == null) return false;
         String a = focusedEditable.getPackageName() + "|"
@@ -107,12 +116,39 @@ public class BubbleService extends AccessibilityService {
             // typing. Never stripping on ambiguous evidence is the safe
             // default: worst case a placeholder survives one dictation.
             if (event.getSource() == null || focusedEditable == null) {
-                if (!focusSnapshot.isEmpty() || event.getBeforeText() == null
+                if (isAppRenderedEvent(event)) {
+                    // App re-rendered its own placeholder (Signal "Message",
+                    // Telegram, Keep) or compose re-render. NOT user typing.
+                    // Refresh the snapshot instead of blocking the strip.
+                    CharSequence bt = event.getBeforeText();
+                    CharSequence nt = event.getText() == null || event.getText().isEmpty()
+                            ? null : event.getText().get(0);
+                    String nowStr = nt != null ? nt.toString() : null;
+                    if (nowStr != null && nowStr.length() < 40 && !nowStr.contains("\n")) {
+                        focusSnapshot = nowStr;
+                    } else if (bt != null && bt.length() == 0) {
+                        focusSnapshot = "";
+                    }
+                } else if (!focusSnapshot.isEmpty() || event.getBeforeText() == null
                         || event.getBeforeText().equals(focusSnapshot)) {
                     userTypedSinceFocus = true;
                 }
             } else if (sameField(event.getSource())) {
-                userTypedSinceFocus = true;
+                if (isAppRenderedEvent(event)) {
+                    // Same logic for attributed events: short label rendered
+                    // from empty = placeholder, not the user. Snapshot it.
+                    CharSequence bt = event.getBeforeText();
+                    String nowStr = event.getText() != null && !event.getText().isEmpty()
+                            ? event.getText().get(0).toString() : null;
+                    if (bt != null && bt.length() == 0 && nowStr != null
+                            && nowStr.length() < 40 && !nowStr.contains("\n")) {
+                        focusSnapshot = nowStr;
+                    } else {
+                        userTypedSinceFocus = true;
+                    }
+                } else {
+                    userTypedSinceFocus = true;
+                }
             }
             return;
         }
@@ -122,6 +158,7 @@ public class BubbleService extends AccessibilityService {
             AccessibilityNodeInfo node = findFocusedEditable(root);
             if (node != null) {
                 focusedEditable = node;
+                focusAt = android.os.SystemClock.uptimeMillis();
                 userTypedSinceFocus = false;
                 lastSelStart = -1; lastSelEnd = -1;
                 CharSequence fs = node.getText();
@@ -142,6 +179,7 @@ public class BubbleService extends AccessibilityService {
                 if (focusedEditable == null || !sameField(node)) {
                     // Genuinely new field — snapshot it fresh.
                     focusedEditable = node;
+                    focusAt = android.os.SystemClock.uptimeMillis();
                     userTypedSinceFocus = false;
                     lastSelStart = -1; lastSelEnd = -1;
                     CharSequence fs = node.getText();
@@ -330,6 +368,7 @@ public class BubbleService extends AccessibilityService {
         AccessibilityNodeInfo node = findFocusedEditable(getRootInActiveWindow());
         if (node != null) {
             focusedEditable = node;
+            focusAt = android.os.SystemClock.uptimeMillis();
             userTypedSinceFocus = false;
             lastSelStart = -1; lastSelEnd = -1;
             CharSequence fs2 = node.getText();
