@@ -4,6 +4,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 /**
  * Pure-Java helpers for the optional OpenAI-compatible text post-processing.
  *
@@ -22,7 +28,12 @@ final class PostProcessingLogic {
     private static final String THINK_CLOSE = "\u003c/think\u003e";
 
     private static final String CHAT_COMPLETIONS = "/chat/completions";
+    private static final String MODELS = "/models";
     private static final String V1 = "/v1";
+
+    /** Bounds for a server-provided model list; the answer is untrusted. */
+    static final int MAX_MODELS = 500;
+    static final int MAX_MODEL_ID_CHARS = 200;
 
     private PostProcessingLogic() {
     }
@@ -54,6 +65,97 @@ final class PostProcessingLogic {
             return url + CHAT_COMPLETIONS;
         }
         return url + V1 + CHAT_COMPLETIONS;
+    }
+
+    /**
+     * Turns what the user typed into the model-list URL of the same server.
+     *
+     * <p>Same normalisation as {@link #buildChatCompletionsUrl}: a bare host
+     * gets {@code /v1/models}, a host with {@code /v1} keeps it, and a full
+     * {@code /chat/completions} path is shortened before {@code /models}.
+     */
+    static String buildModelsUrl(String endpoint) {
+        String url = endpoint == null ? "" : endpoint.trim();
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        if (url.isEmpty()) {
+            throw new IllegalArgumentException("empty endpoint");
+        }
+        if (url.endsWith(MODELS)) {
+            return url;
+        }
+        if (url.endsWith(CHAT_COMPLETIONS)) {
+            return url.substring(0, url.length() - CHAT_COMPLETIONS.length()) + MODELS;
+        }
+        if (url.endsWith(V1)) {
+            return url + MODELS;
+        }
+        return url + V1 + MODELS;
+    }
+
+    /**
+     * Extracts model identifiers from a server answer.
+     *
+     * <p>Accepts the common shapes: {@code data[].id}, {@code data[].name},
+     * {@code models[].name} and {@code models[].model}. Values are trimmed,
+     * stripped of control characters, de-duplicated and sorted without regard
+     * to case. The result is bounded; the answer is untrusted input.
+     */
+    static List<String> parseModelIds(String json) {
+        if (json == null || json.trim().isEmpty()) {
+            throw new IllegalArgumentException("empty response");
+        }
+        JSONObject root;
+        try {
+            root = new JSONObject(json);
+        } catch (JSONException e) {
+            throw new IllegalArgumentException("unexpected response", e);
+        }
+        JSONArray array = root.optJSONArray("data");
+        if (array == null) array = root.optJSONArray("models");
+        if (array == null) {
+            throw new IllegalArgumentException("unexpected response");
+        }
+        List<String> ids = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (int i = 0; i < array.length() && ids.size() < MAX_MODELS; i++) {
+            JSONObject item = array.optJSONObject(i);
+            if (item == null) continue;
+            String raw = firstText(item, "id", "name", "model");
+            if (raw == null) continue;
+            String id = sanitizeModelId(raw);
+            if (id.isEmpty() || !seen.add(id)) continue;
+            ids.add(id);
+        }
+        Collections.sort(ids, String.CASE_INSENSITIVE_ORDER);
+        return ids;
+    }
+
+    private static String firstText(JSONObject item, String... keys) {
+        for (String key : keys) {
+            Object value = item.opt(key);
+            if (value instanceof String && !((String) value).trim().isEmpty()) {
+                return (String) value;
+            }
+        }
+        return null;
+    }
+
+    /** Removes control characters, trims and caps one model identifier. */
+    static String sanitizeModelId(String raw) {
+        if (raw == null) return "";
+        StringBuilder builder = new StringBuilder(Math.min(raw.length(), MAX_MODEL_ID_CHARS));
+        for (int i = 0; i < raw.length() && builder.length() < MAX_MODEL_ID_CHARS; i++) {
+            char c = raw.charAt(i);
+            if (c < 0x20 || c == 0x7f || Character.getType(c) == Character.FORMAT) continue;
+            builder.append(c);
+        }
+        int length = builder.length();
+        if (length > 0 && Character.isHighSurrogate(builder.charAt(length - 1))) {
+            builder.setLength(length - 1);
+        }
+        return builder.toString().trim();
     }
 
     /** True for http:// addresses, which send the text without transport encryption. */

@@ -33,6 +33,11 @@ final class PostProcessor {
         void onResult(String text, String error);
     }
 
+    interface ModelsCallback {
+        /** {@code models} is null when {@code error} is set. Runs on the main thread. */
+        void onResult(java.util.List<String> models, String error);
+    }
+
     private static final String TAG = "OfflineVoiceInput";
 
     private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2, daemonFactory("post-processing"));
@@ -106,6 +111,71 @@ final class PostProcessor {
         MAIN.post(() -> {
             if (task.isUserCancelled()) return;
             callback.onResult(text, error);
+        });
+    }
+
+    /**
+     * Fetches the server's model list off the main thread.
+     *
+     * <p>Same cancellation and timeout contract as {@link #run}: a late answer
+     * after a timeout or a screen exit is dropped. No dictation text is sent.
+     */
+    static Task listModels(Context context, ModelsCallback callback) {
+        Context app = context.getApplicationContext();
+        Task task = new Task();
+        EXECUTOR.execute(() -> {
+            if (task.isUserCancelled()) return;
+
+            String endpoint = PostProcessingSettings.getEndpoint(app);
+            String apiKey = PostProcessingSettings.getApiKey(app);
+            int timeoutMs = PostProcessingSettings.getTimeoutMs(app);
+
+            if (endpoint.isEmpty()) {
+                deliverModels(task, callback, null, "not configured");
+                return;
+            }
+
+            ScheduledFuture<?> watchdog = WATCHDOG.schedule(() -> {
+                task.timedOut = true;
+                task.disconnect();
+                deliverModels(task, callback, null, "timeout");
+            }, timeoutMs, TimeUnit.MILLISECONDS);
+            task.watchdog = watchdog;
+
+            OpenAiCompatibleClient.Models result;
+            try {
+                result = OpenAiCompatibleClient.listModels(endpoint, apiKey, timeoutMs, task);
+            } catch (RuntimeException e) {
+                // The exception text is not logged: it can echo a header value.
+                Log.w(TAG, "Model list failed unexpectedly");
+                result = OpenAiCompatibleClient.Models.error("request failed");
+            } finally {
+                watchdog.cancel(false);
+            }
+
+            if (task.isUserCancelled()) return;
+            if (task.timedOut) {
+                deliverModels(task, callback, null, "timeout");
+                return;
+            }
+            if (result.cancelled) {
+                return;
+            }
+            if (result.error != null) {
+                deliverModels(task, callback, null, result.error);
+                return;
+            }
+            deliverModels(task, callback, result.ids, null);
+        });
+        return task;
+    }
+
+    private static void deliverModels(Task task, ModelsCallback callback,
+                                      java.util.List<String> models, String error) {
+        if (!task.delivered.compareAndSet(false, true)) return;
+        MAIN.post(() -> {
+            if (task.isUserCancelled()) return;
+            callback.onResult(models, error);
         });
     }
 

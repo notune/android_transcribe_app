@@ -8,6 +8,7 @@ import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * Minimal, dependency-light client for an OpenAI-compatible
@@ -51,6 +52,31 @@ final class OpenAiCompatibleClient {
         }
     }
 
+    /** Outcome of a model-list request. {@code ids} is null when {@code error} is set. */
+    static final class Models {
+        final List<String> ids;
+        final String error;
+        final boolean cancelled;
+
+        private Models(List<String> ids, String error, boolean cancelled) {
+            this.ids = ids;
+            this.error = error;
+            this.cancelled = cancelled;
+        }
+
+        static Models ok(List<String> ids) {
+            return new Models(ids, null, false);
+        }
+
+        static Models error(String error) {
+            return new Models(null, error, false);
+        }
+
+        static Models cancelled() {
+            return new Models(null, "cancelled", true);
+        }
+    }
+
     private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
     private static final int MAX_ERROR_CHARS = 300;
 
@@ -86,18 +112,8 @@ final class OpenAiCompatibleClient {
             connection.setInstanceFollowRedirects(false);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
-            // Validate the raw value first: trim() would silently strip a
-            // leading or trailing control character (including NUL), and such
-            // a key would then be sent as if it were valid.
-            String rawKey = apiKey == null ? "" : apiKey;
-            if (!rawKey.isEmpty() && !PostProcessingLogic.isValidHeaderValue(rawKey)) {
-                // Reject before setRequestProperty: its exception repeats the
-                // header value, which here is the key itself.
+            if (!applyAuthorization(connection, apiKey)) {
                 return Result.error("invalid API key");
-            }
-            String key = rawKey.trim();
-            if (!key.isEmpty()) {
-                connection.setRequestProperty("Authorization", "Bearer " + key);
             }
             if (sink != null) {
                 sink.onOpen(connection);
@@ -158,6 +174,97 @@ final class OpenAiCompatibleClient {
                 connection.disconnect();
             }
         }
+    }
+
+    /**
+     * Fetches the model identifiers the server reports for this key.
+     *
+     * <p>A GET with no request body. Only the key is sent; no dictation text
+     * reaches this method. Redirects stay disabled so the key cannot follow a
+     * 30x answer to another host.
+     */
+    static Models listModels(String endpoint,
+                             String apiKey,
+                             int timeoutMs,
+                             ConnectionSink sink) {
+        final String url;
+        try {
+            url = PostProcessingLogic.buildModelsUrl(endpoint);
+        } catch (RuntimeException e) {
+            return Models.error("invalid settings");
+        }
+
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(Math.max(1000, Math.min(10000, timeoutMs)));
+            connection.setReadTimeout(Math.max(1000, timeoutMs));
+            connection.setUseCaches(false);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestProperty("Accept", "application/json");
+            if (!applyAuthorization(connection, apiKey)) {
+                return Models.error("invalid API key");
+            }
+            if (sink != null) {
+                sink.onOpen(connection);
+                if (sink.isCancelled()) {
+                    return Models.cancelled();
+                }
+            }
+
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 300
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
+            String response = readLimited(stream);
+            if (response == null) {
+                return Models.error("response too large");
+            }
+            if (status < 200 || status >= 300) {
+                return Models.error(httpError(connection, status, response));
+            }
+            if (sink != null && sink.isCancelled()) {
+                return Models.cancelled();
+            }
+            try {
+                return Models.ok(PostProcessingLogic.parseModelIds(response));
+            } catch (IllegalArgumentException e) {
+                return Models.error("unexpected response");
+            }
+        } catch (SocketTimeoutException e) {
+            return Models.error("timeout");
+        } catch (IOException e) {
+            if (sink != null && sink.isCancelled()) {
+                return Models.cancelled();
+            }
+            return Models.error("network error");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Applies the bearer header. Returns false for a value that must not reach
+     * the HTTP layer, whose exception repeats the header value.
+     */
+    private static boolean applyAuthorization(HttpURLConnection connection, String apiKey) {
+        // Validate the raw value first: trim() would silently strip a leading
+        // or trailing control character (including NUL), and such a key would
+        // then be sent as if it were valid.
+        String rawKey = apiKey == null ? "" : apiKey;
+        if (!rawKey.isEmpty() && !PostProcessingLogic.isValidHeaderValue(rawKey)) {
+            // Reject before setRequestProperty: its exception repeats the
+            // header value, which here is the key itself.
+            return false;
+        }
+        String key = rawKey.trim();
+        if (!key.isEmpty()) {
+            connection.setRequestProperty("Authorization", "Bearer " + key);
+        }
+        return true;
     }
 
     private static String httpError(HttpURLConnection connection, int status, String body) {

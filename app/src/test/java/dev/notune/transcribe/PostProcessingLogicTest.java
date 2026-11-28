@@ -8,6 +8,9 @@ import static org.junit.Assert.fail;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class PostProcessingLogicTest {
 
     @Test
@@ -139,8 +142,7 @@ public class PostProcessingLogicTest {
         assertTrue(PostProcessingLogic.isValidHeaderValue("sk-synthetic-key-123"));
         assertTrue(PostProcessingLogic.isValidHeaderValue("   "));
         assertTrue(PostProcessingLogic.isValidHeaderValue(""));
-        assertFalse(PostProcessingLogic.isValidHeaderValue("key\nnext"));
-        assertFalse(PostProcessingLogic.isValidHeaderValue("key\rnext"));
+        assertFalse(PostProcessingLogic.isValidHeaderValue("key\nnext"));        assertFalse(PostProcessingLogic.isValidHeaderValue("key\rnext"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\0next"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\tnext"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\n"));
@@ -148,5 +150,89 @@ public class PostProcessingLogicTest {
         assertFalse(PostProcessingLogic.isValidHeaderValue("key\0"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("\0"));
         assertFalse(PostProcessingLogic.isValidHeaderValue("ключ"));
+    }
+
+    @Test
+    public void buildsModelsUrlFromCommonForms() {
+        assertEquals("https://api.example.com/v1/models",
+                PostProcessingLogic.buildModelsUrl("https://api.example.com"));
+        assertEquals("https://api.example.com/v1/models",
+                PostProcessingLogic.buildModelsUrl("https://api.example.com/v1"));
+        assertEquals("https://api.example.com/v1/models",
+                PostProcessingLogic.buildModelsUrl(
+                        "https://api.example.com/v1/chat/completions"));
+        assertEquals("https://gateway.example.com/custom/models",
+                PostProcessingLogic.buildModelsUrl(
+                        "https://gateway.example.com/custom/chat/completions"));
+        assertEquals("https://api.example.com/models",
+                PostProcessingLogic.buildModelsUrl("https://api.example.com/models/"));
+    }
+
+    @Test
+    public void rejectsEmptyModelsEndpoint() {
+        try {
+            PostProcessingLogic.buildModelsUrl("   ");
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+            // Fixed message, no address in it.
+        }
+    }
+
+    @Test
+    public void parsesDataIdsAndKeepsDistinctValues() {
+        List<String> ids = PostProcessingLogic.parseModelIds(
+                "{\"data\":[{\"id\":\"zeta\"},{\"id\":\"Alpha\"},"
+                        + "{\"id\":\"alpha\"},{\"id\":\"  \"}]}");
+        assertEquals(Arrays.asList("Alpha", "alpha", "zeta"), ids);
+    }
+
+    @Test
+    public void parsesModelsArrayShapes() {
+        List<String> ids = PostProcessingLogic.parseModelIds(
+                "{\"models\":[{\"name\":\"b\"},{\"model\":\"a\"},{\"id\":\"c\"}]}");
+        assertEquals(Arrays.asList("a", "b", "c"), ids);
+    }
+
+    @Test
+    public void rejectsUnknownModelShape() {
+        try {
+            PostProcessingLogic.parseModelIds("{\"object\":\"list\"}");
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+            // Fixed message, no response body in it.
+        }
+    }
+
+    @Test
+    public void rejectsBrokenModelJson() {
+        try {
+            PostProcessingLogic.parseModelIds("<html>not json</html>");
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+            // Fixed message, no response body in it.
+        }
+    }
+
+    @Test
+    public void stripsControlCharactersAndCapsIdentifiers() {
+        assertEquals("ab", PostProcessingLogic.sanitizeModelId("a\u0000b\n"));
+        assertEquals("ab", PostProcessingLogic.sanitizeModelId("a\u202eb"));
+        assertEquals("", PostProcessingLogic.sanitizeModelId("\u0000 \n"));
+        StringBuilder longId = new StringBuilder();
+        for (int i = 0; i < 300; i++) longId.append('x');
+        assertEquals(PostProcessingLogic.MAX_MODEL_ID_CHARS,
+                PostProcessingLogic.sanitizeModelId(longId.toString()).length());
+    }
+
+    @Test
+    public void capsModelListLength() {
+        StringBuilder json = new StringBuilder("{\"data\":[");
+        for (int i = 0; i < PostProcessingLogic.MAX_MODELS + 50; i++) {
+            if (i > 0) json.append(',');
+            json.append("{\"id\":\"m").append(i).append("\"}");
+        }
+        json.append("]}");
+        assertEquals(PostProcessingLogic.MAX_MODELS,
+                PostProcessingLogic.parseModelIds(json.toString()).size());
     }
 }

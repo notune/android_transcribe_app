@@ -171,6 +171,13 @@
     <string name="pp_endpoint_hint">https://host/v1</string>
     <string name="pp_model">Model</string>
     <string name="pp_model_hint">model name</string>
+    <string name="pp_models_fetch">From list</string>
+    <string name="pp_models_title">Server models</string>
+    <string name="pp_models_search">Filter models</string>
+    <string name="pp_models_loading">Fetching the model list…</string>
+    <string name="pp_models_empty">The server returned an empty model list. Enter the model name manually.</string>
+    <string name="pp_models_failed">Could not fetch models: %1$s</string>
+    <string name="pp_models_current">Current: %1$s</string>
     <string name="pp_key">API key</string>
     <string name="pp_key_hint">optional for local servers</string>
     <string name="pp_key_note">The key is encrypted with the Android Keystore. Leave it empty if your server does not need one.</string>

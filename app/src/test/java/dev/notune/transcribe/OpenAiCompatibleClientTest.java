@@ -19,6 +19,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -283,5 +284,70 @@ public class OpenAiCompatibleClientTest {
         assertNull(result.error);
         assertEquals("ok", result.text);
         assertNull(lastAuth.get());
+    }
+
+    @Test
+    public void fetchesModelListWithGetAndBearer() {
+        response = "{\"object\":\"list\",\"data\":[{\"id\":\"beta\"},{\"id\":\"alpha\"}]}";
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl, "secret-key", 5000, null);
+        assertNull(result.error);
+        assertEquals(Arrays.asList("alpha", "beta"), result.ids);
+        assertEquals("/v1/models", lastPath.get());
+        assertEquals("Bearer secret-key", lastAuth.get());
+        assertEquals("", lastBody.get());
+    }
+
+    @Test
+    public void modelListOmitsAuthorizationWithoutKey() {
+        response = "{\"data\":[{\"id\":\"m\"}]}";
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl, "", 5000, null);
+        assertNull(result.error);
+        assertNull(lastAuth.get());
+    }
+
+    @Test
+    public void modelListKeepsCustomGatewayPath() {
+        response = "{\"data\":[{\"id\":\"m\"}]}";
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl + "/custom/chat/completions", "secret-key", 5000, null);
+        assertNull(result.error);
+        assertEquals("/custom/models", lastPath.get());
+    }
+
+    @Test
+    public void reportsModelListHttpError() {
+        status = 404;
+        response = "{\"error\":{\"message\":\"not found\"}}";
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl, "secret-key", 5000, null);
+        assertNull(result.ids);
+        assertTrue(result.error.startsWith("HTTP 404"));
+    }
+
+    @Test
+    public void reportsUnparseableModelList() {
+        response = "not json";
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl, "secret-key", 5000, null);
+        assertEquals("unexpected response", result.error);
+    }
+
+    @Test
+    public void rejectsInvalidKeyBeforeModelRequest() {
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl, "bad\nkey", 5000, null);
+        assertEquals("invalid API key", result.error);
+        assertEquals(0, requestCount.get());
+    }
+
+    @Test
+    public void reportsModelListTimeout() {
+        response = "{\"data\":[{\"id\":\"m\"}]}";
+        delayMs = 2500;
+        OpenAiCompatibleClient.Models result = OpenAiCompatibleClient.listModels(
+                baseUrl, "secret-key", 1000, null);
+        assertEquals("timeout", result.error);
     }
 }

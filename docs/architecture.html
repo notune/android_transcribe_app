@@ -169,7 +169,7 @@
         <div class="box new"><div class="t">PostProcessor</div><div class="s">фон, тайм-аут 20 с, отмена, сторожевой таймер</div></div>
       </div>
       <div class="nodes three" style="margin-top:8px">
-        <div class="box new"><div class="t">OpenAiCompatibleClient</div><div class="s">POST /v1/chat/completions, ответ до 1 МБ</div></div>
+        <div class="box new"><div class="t">OpenAiCompatibleClient</div><div class="s">POST /v1/chat/completions, GET /v1/models, ответ до 1 МБ</div></div>
         <div class="box new"><div class="t">PostProcessingLogic</div><div class="s">URL, JSON, разбор ответа, междометия</div></div>
         <div class="box new"><div class="t">EditorTarget</div><div class="s">пакет, id поля, тип, имя, подсказка</div></div>
       </div>
@@ -330,6 +330,7 @@
     <div class="row small">Кит 2.2.2, профиль <code>standard</code>, задача <code>OVI-001</code>: восемь кругов независимой проверки, последний вердикт <code>approved</code> без находок.</div>
     <div class="row small">Ветка <code>feature/handy-post-processing</code>: результат OVI-001 принят на коммите <code>600a4b68</code>. Документы синхронизированы отдельной задачей <code>OVI-002</code>.</div>
     <div class="row small">Сделаны необязательная очистка текста и встроенная модель GigaAM v3 e2e RNNT Q6_K.</div>
+    <div class="row small">Задача <code>OVI-003</code>: рядом с полем модели появилась кнопка «Из списка», она запрашивает <code>GET /v1/models</code> и даёт выбрать модель с фильтром. Ручной ввод сохранён.</div>
     <div class="next">Проверка на телефоне остаётся за пользователем: устройства и эмулятора в среде нет. Публикация и выпуск не планируются.</div>
   </div>
 

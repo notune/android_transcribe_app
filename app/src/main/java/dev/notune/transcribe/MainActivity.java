@@ -17,12 +17,15 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
@@ -36,6 +39,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -73,7 +77,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView ppStatus;
     private TextView ppWarning;
     private Button ppTestButton;
+    private Button ppModelsButton;
     private PostProcessor.Task ppTestTask;
+    private PostProcessor.Task ppModelsTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,6 +201,10 @@ public class MainActivity extends AppCompatActivity {
         if (ppTestTask != null) {
             ppTestTask.cancel();
             ppTestTask = null;
+        }
+        if (ppModelsTask != null) {
+            ppModelsTask.cancel();
+            ppModelsTask = null;
         }
         super.onDestroy();
     }
@@ -399,6 +409,8 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_pp_prompt).setOnClickListener(v -> showPromptDialog());
         ppTestButton.setOnClickListener(v -> testPostProcessing());
+        ppModelsButton = findViewById(R.id.btn_pp_models);
+        ppModelsButton.setOnClickListener(v -> fetchModelList());
         updatePostProcessingUi();
     }
 
@@ -526,6 +538,130 @@ public class MainActivity extends AppCompatActivity {
                 showPostProcessingDialog(getString(R.string.pp_test_ok, sample, text));
             }
         });
+    }
+
+    /**
+     * Fetches the server's model list and lets the user pick one. The manual
+     * field stays the source of truth; the list only fills it.
+     */
+    private void fetchModelList() {
+        if (!savePostProcessingSettings()) {
+            return;
+        }
+        String endpoint = PostProcessingSettings.getEndpoint(this);
+        if (endpoint.isEmpty()
+                || (!endpoint.startsWith("http://") && !endpoint.startsWith("https://"))) {
+            ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
+            return;
+        }
+        if (ppModelsTask != null) {
+            ppModelsTask.cancel();
+            ppModelsTask = null;
+        }
+        ppModelsButton.setEnabled(false);
+        ppStatus.setText(R.string.pp_models_loading);
+        ppModelsTask = PostProcessor.listModels(this, (models, error) -> {
+            ppModelsTask = null;
+            ppModelsButton.setEnabled(true);
+            updatePostProcessingUi();
+            if (error != null) {
+                showPostProcessingDialog(getString(R.string.pp_models_failed,
+                        PostProcessingLogic.shortError(error)));
+                return;
+            }
+            if (models == null || models.isEmpty()) {
+                showPostProcessingDialog(getString(R.string.pp_models_empty));
+                return;
+            }
+            if (models.size() == 1) {
+                applyModel(models.get(0));
+                return;
+            }
+            showModelDialog(models);
+        });
+    }
+
+    private void applyModel(String model) {
+        ppModel.setText(model);
+        PostProcessingSettings.setModel(this, model);
+        ppModelLayout.setError(null);
+        updatePostProcessingUi();
+    }
+
+    private void showModelDialog(List<String> models) {
+        float density = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(density * 20);
+        container.setPadding(pad, Math.round(density * 8), pad, 0);
+
+        EditText filter = new EditText(this);
+        filter.setHint(R.string.pp_models_search);
+        filter.setSingleLine(true);
+        filter.setInputType(InputType.TYPE_CLASS_TEXT);
+        container.addView(filter);
+
+        List<ModelEntry> entries = new ArrayList<>();
+        String current = PostProcessingSettings.getModel(this);
+        if (!current.isEmpty() && !models.contains(current)) {
+            entries.add(new ModelEntry(current,
+                    getString(R.string.pp_models_current, current)));
+        }
+        for (String model : models) {
+            entries.add(new ModelEntry(model, model));
+        }
+        ArrayAdapter<ModelEntry> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1, entries);
+        ListView list = new ListView(this);
+        list.setAdapter(adapter);
+        container.addView(list, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Math.round(density * 320)));
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pp_models_title)
+                .setView(container)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+
+        filter.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                adapter.getFilter().filter(s == null ? "" : s.toString());
+            }
+        });
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            Object item = parent.getItemAtPosition(position);
+            if (item instanceof ModelEntry) {
+                applyModel(((ModelEntry) item).id);
+            }
+            dialog.dismiss();
+        });
+        dialog.show();
+    }
+
+    /** One row in the model dialog: the label may differ from the value. */
+    private static final class ModelEntry {
+        final String id;
+        private final String label;
+
+        ModelEntry(String id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     private void showPostProcessingDialog(String message) {

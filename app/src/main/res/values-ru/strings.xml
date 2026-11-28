@@ -165,6 +165,13 @@
     <string name="pp_endpoint_hint">https://host/v1</string>
     <string name="pp_model">Модель</string>
     <string name="pp_model_hint">имя модели</string>
+    <string name="pp_models_fetch">Из списка</string>
+    <string name="pp_models_title">Модели сервера</string>
+    <string name="pp_models_search">Фильтр по имени</string>
+    <string name="pp_models_loading">Запрашиваю список моделей…</string>
+    <string name="pp_models_empty">Сервер вернул пустой список моделей. Введите имя вручную.</string>
+    <string name="pp_models_failed">Не удалось получить список: %1$s</string>
+    <string name="pp_models_current">Текущая: %1$s</string>
     <string name="pp_key">Ключ API</string>
     <string name="pp_key_hint">для локального сервера можно оставить пустым</string>
     <string name="pp_key_note">Ключ шифруется хранилищем Android Keystore. Оставьте поле пустым, если сервер не требует ключ.</string>
