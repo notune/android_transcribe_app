@@ -172,6 +172,7 @@
     <string name="pp_model">Model</string>
     <string name="pp_model_hint">model name</string>
     <string name="pp_models_fetch">From list</string>
+    <string name="pp_models_cancel">Cancel</string>
     <string name="pp_models_title">Server models</string>
     <string name="pp_models_search">Filter models</string>
     <string name="pp_models_loading">Fetching the model list…</string>

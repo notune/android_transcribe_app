@@ -166,6 +166,7 @@
     <string name="pp_model">Модель</string>
     <string name="pp_model_hint">имя модели</string>
     <string name="pp_models_fetch">Из списка</string>
+    <string name="pp_models_cancel">Отмена</string>
     <string name="pp_models_title">Модели сервера</string>
     <string name="pp_models_search">Фильтр по имени</string>
     <string name="pp_models_loading">Запрашиваю список моделей…</string>

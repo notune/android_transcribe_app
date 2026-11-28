@@ -17,6 +17,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.Filter;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -197,15 +198,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStop() {
+        // The screen is no longer visible: drop any model-list request so a
+        // late answer cannot open a dialog or change the saved model.
+        cancelModelList();
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         if (ppTestTask != null) {
             ppTestTask.cancel();
             ppTestTask = null;
         }
-        if (ppModelsTask != null) {
-            ppModelsTask.cancel();
-            ppModelsTask = null;
-        }
+        cancelModelList();
         super.onDestroy();
     }
 
@@ -543,8 +549,15 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Fetches the server's model list and lets the user pick one. The manual
      * field stays the source of truth; the list only fills it.
+     *
+     * <p>The same button cancels a request in flight, so the user always has a
+     * visible way out without leaving the screen.
      */
     private void fetchModelList() {
+        if (ppModelsTask != null) {
+            cancelModelList();
+            return;
+        }
         if (!savePostProcessingSettings()) {
             return;
         }
@@ -554,15 +567,11 @@ public class MainActivity extends AppCompatActivity {
             ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
             return;
         }
-        if (ppModelsTask != null) {
-            ppModelsTask.cancel();
-            ppModelsTask = null;
-        }
-        ppModelsButton.setEnabled(false);
         ppStatus.setText(R.string.pp_models_loading);
+        ppModelsButton.setText(R.string.pp_models_cancel);
         ppModelsTask = PostProcessor.listModels(this, (models, error) -> {
             ppModelsTask = null;
-            ppModelsButton.setEnabled(true);
+            ppModelsButton.setText(R.string.pp_models_fetch);
             updatePostProcessingUi();
             if (error != null) {
                 showPostProcessingDialog(getString(R.string.pp_models_failed,
@@ -579,6 +588,22 @@ public class MainActivity extends AppCompatActivity {
             }
             showModelDialog(models);
         });
+    }
+
+    /**
+     * Cancels a model-list request and restores the button. Safe when no
+     * request is running and safe to call twice, as onStop and onDestroy may
+     * both run.
+     */
+    private void cancelModelList() {
+        if (ppModelsTask != null) {
+            ppModelsTask.cancel();
+            ppModelsTask = null;
+        }
+        if (ppModelsButton != null) {
+            ppModelsButton.setText(R.string.pp_models_fetch);
+        }
+        updatePostProcessingUi();
     }
 
     private void applyModel(String model) {
@@ -610,8 +635,47 @@ public class MainActivity extends AppCompatActivity {
         for (String model : models) {
             entries.add(new ModelEntry(model, model));
         }
-        ArrayAdapter<ModelEntry> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_1, entries);
+        final List<ModelEntry> allEntries = new ArrayList<>(entries);
+        ArrayAdapter<ModelEntry> adapter = new ArrayAdapter<ModelEntry>(this,
+                android.R.layout.simple_list_item_1, new ArrayList<>(allEntries)) {
+            private final Filter substringFilter = new Filter() {
+                @Override
+                protected FilterResults performFiltering(CharSequence constraint) {
+                    String query = constraint == null ? "" : constraint.toString();
+                    List<ModelEntry> matched = new ArrayList<>();
+                    for (ModelEntry entry : allEntries) {
+                        // The default ArrayAdapter filter matches only the start
+                        // of a word, so "alpha" would miss "vendor/alpha-chat".
+                        if (PostProcessingLogic.matchesModelQuery(entry.id, query)) {
+                            matched.add(entry);
+                        }
+                    }
+                    FilterResults results = new FilterResults();
+                    results.values = matched;
+                    results.count = matched.size();
+                    return results;
+                }
+
+                @Override
+                protected void publishResults(CharSequence constraint, FilterResults results) {
+                    setNotifyOnChange(false);
+                    clear();
+                    if (results.values instanceof List) {
+                        for (Object item : (List<?>) results.values) {
+                            if (item instanceof ModelEntry) {
+                                add((ModelEntry) item);
+                            }
+                        }
+                    }
+                    notifyDataSetChanged();
+                }
+            };
+
+            @Override
+            public Filter getFilter() {
+                return substringFilter;
+            }
+        };
         ListView list = new ListView(this);
         list.setAdapter(adapter);
         container.addView(list, new LinearLayout.LayoutParams(

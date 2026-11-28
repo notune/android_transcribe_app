@@ -194,6 +194,20 @@ public class PostProcessingLogicTest {
     }
 
     @Test
+    public void findsModelByAnySubstring() {
+        assertTrue(PostProcessingLogic.matchesModelQuery("vendor/alpha-chat", "alpha"));
+        assertTrue(PostProcessingLogic.matchesModelQuery("vendor/alpha-chat", "CHAT"));
+        assertTrue(PostProcessingLogic.matchesModelQuery("vendor/alpha-chat", "pha-ch"));
+        assertTrue(PostProcessingLogic.matchesModelQuery("vendor/alpha-chat", "/"));
+        assertTrue(PostProcessingLogic.matchesModelQuery("Модель-2", "модель"));
+        assertTrue(PostProcessingLogic.matchesModelQuery("anything", ""));
+        assertTrue(PostProcessingLogic.matchesModelQuery("anything", "   "));
+        assertTrue(PostProcessingLogic.matchesModelQuery("anything", null));
+        assertFalse(PostProcessingLogic.matchesModelQuery("vendor/alpha-chat", "beta"));
+        assertFalse(PostProcessingLogic.matchesModelQuery(null, "beta"));
+    }
+
+    @Test
     public void rejectsUnknownModelShape() {
         try {
             PostProcessingLogic.parseModelIds("{\"object\":\"list\"}");

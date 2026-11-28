@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -140,6 +141,24 @@ final class PostProcessingLogic {
             }
         }
         return null;
+    }
+
+    /**
+     * Case-insensitive substring match for the model dialog filter.
+     *
+     * <p>An empty or blank query matches every model. The match is not limited
+     * to the start of the identifier, so {@code alpha} finds
+     * {@code vendor/alpha-chat}.
+     */
+    static boolean matchesModelQuery(String modelId, String query) {
+        String needle = query == null ? "" : query.trim();
+        if (needle.isEmpty()) {
+            return true;
+        }
+        if (modelId == null) {
+            return false;
+        }
+        return modelId.toLowerCase(Locale.ROOT).contains(needle.toLowerCase(Locale.ROOT));
     }
 
     /** Removes control characters, trims and caps one model identifier. */

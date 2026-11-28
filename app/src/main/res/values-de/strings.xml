@@ -166,6 +166,7 @@
     <string name="pp_model">Modell</string>
     <string name="pp_model_hint">Modellname</string>
     <string name="pp_models_fetch">Aus Liste</string>
+    <string name="pp_models_cancel">Abbrechen</string>
     <string name="pp_models_title">Modelle des Servers</string>
     <string name="pp_models_search">Modelle filtern</string>
     <string name="pp_models_loading">Modellliste wird geladen…</string>
