@@ -18,8 +18,8 @@ android {
         applicationId = "dev.notune.transcribe"
         minSdk = 26
         targetSdk = 36
-        versionCode = 23
-        versionName = "0.2.3"
+        versionCode = 24
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += targetAbis
@@ -64,7 +64,14 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // A real release uses release.keystore. The explicit property lets a
+            // local check build a minified APK with the debug key when that file
+            // is absent; it must never be used for distribution.
+            val debugSignedRelease =
+                providers.gradleProperty("releaseWithDebugKey").orNull == "true"
+            signingConfig = signingConfigs.getByName(
+                if (debugSignedRelease) "debug" else "release"
+            )
         }
     }
 
