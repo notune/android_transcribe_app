@@ -20,6 +20,7 @@ android {
         targetSdk = 36
         versionCode = 23
         versionName = "0.2.3"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += targetAbis
         }
@@ -125,6 +126,14 @@ dependencies {
     // org.json replaces Android's stub, which throws in local unit tests.
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+
+    // On-device smoke tests. Only test code depends on these; the app APK
+    // gains nothing and the feature itself still uses HttpURLConnection and
+    // org.json without new runtime dependencies.
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test:core:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }
 
 // ---------------------------------------------------------------------------
