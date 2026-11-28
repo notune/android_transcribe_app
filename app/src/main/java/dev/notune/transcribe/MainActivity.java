@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
     private long benchPostStartedAt;
     private String benchTranscript;
     private String benchCleanedText;
+    /** Whether the fields at run start could be persisted; the key may not. */
+    private boolean benchSettingsSaved;
 
     private CompoundButton postProcessingSwitch;
     private TextInputEditText ppEndpoint;
@@ -798,6 +800,10 @@ public class MainActivity extends AppCompatActivity {
      */
     private void runBenchmark() {
         if (benchRunning) return;
+        // Judge the fields as they are right now. Endpoint, model and key are
+        // otherwise persisted only when the screen pauses, so a freshly typed
+        // address would be ignored and a cleared one would still be used.
+        benchSettingsSaved = savePostProcessingSettings();
         cancelBenchmark();
         int generation = benchGeneration;
         benchRunning = true;
@@ -846,6 +852,13 @@ public class MainActivity extends AppCompatActivity {
 
             if (!BenchmarkLogic.hasTranscript(benchTranscript)) {
                 finishBenchmark(base + "\n" + getString(R.string.bench_no_text));
+                return;
+            }
+
+            // The key field changed but could not be stored: do not send the
+            // text with the previous key still in the Keystore.
+            if (!benchSettingsSaved && PostProcessingSettings.isEnabled(this)) {
+                finishBenchmark(base + "\n" + getString(R.string.pp_key_store_failed));
                 return;
             }
 
