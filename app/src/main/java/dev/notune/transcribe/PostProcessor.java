@@ -49,60 +49,73 @@ final class PostProcessor {
     }
 
     static Task run(Context context, String transcript, Callback callback) {
-        Context app = context.getApplicationContext();
         Task task = new Task();
-        EXECUTOR.execute(() -> {
-            if (task.isUserCancelled()) return;
-
-            String endpoint = PostProcessingSettings.getEndpoint(app);
-            String model = PostProcessingSettings.getModel(app);
-            String apiKey = PostProcessingSettings.getApiKey(app);
-            String prompt = PostProcessingSettings.getPrompt(app);
-            int timeoutMs = PostProcessingSettings.getTimeoutMs(app);
-
-            if (endpoint.isEmpty() || model.isEmpty()) {
-                deliver(task, callback, null, "not configured");
-                return;
-            }
-
-            ScheduledFuture<?> watchdog = WATCHDOG.schedule(() -> {
-                task.timedOut = true;
-                task.disconnect();
-                // The blocked socket may not notice the disconnect promptly.
-                // Report the timeout here so the caller never waits forever.
-                deliver(task, callback, null, "timeout");
-            }, timeoutMs, TimeUnit.MILLISECONDS);
-            task.watchdog = watchdog;
-
-            OpenAiCompatibleClient.Result result;
-            try {
-                result = OpenAiCompatibleClient.complete(
-                        endpoint, model, apiKey, transcript, prompt, timeoutMs, task);
-            } catch (RuntimeException e) {
-                // The exception text is not logged: it can echo a header value,
-                // and the key must never reach the journal.
-                Log.w(TAG, "Post-processing failed unexpectedly");
-                result = OpenAiCompatibleClient.Result.error("request failed");
-            } finally {
-                watchdog.cancel(false);
-            }
-
-            if (task.isUserCancelled()) return;
-
-            if (task.timedOut) {
-                deliver(task, callback, null, "timeout");
-                return;
-            }
-            if (result.cancelled) {
-                return;
-            }
-            if (result.error != null) {
-                deliver(task, callback, null, result.error);
-                return;
-            }
-            deliver(task, callback, result.text, null);
-        });
+        EXECUTOR.execute(() -> execute(task, Config.freeze(context), transcript, callback));
         return task;
+    }
+
+    /**
+     * Runs with a configuration captured earlier. A caller that shows the
+     * result later uses this so a change made in the meantime cannot mix an
+     * address saved now with a key saved before.
+     */
+    static Task run(String transcript, Config config, Callback callback) {
+        Task task = new Task();
+        EXECUTOR.execute(() -> execute(task, config, transcript, callback));
+        return task;
+    }
+
+    private static void execute(Task task, Config config, String transcript,
+                                Callback callback) {
+        if (task.isUserCancelled()) return;
+
+        String endpoint = config.endpoint;
+        String model = config.model;
+        String apiKey = config.apiKey;
+        String prompt = config.prompt;
+        int timeoutMs = config.timeoutMs;
+
+        if (endpoint.isEmpty() || model.isEmpty()) {
+            deliver(task, callback, null, "not configured");
+            return;
+        }
+
+        ScheduledFuture<?> watchdog = WATCHDOG.schedule(() -> {
+            task.timedOut = true;
+            task.disconnect();
+            // The blocked socket may not notice the disconnect promptly.
+            // Report the timeout here so the caller never waits forever.
+            deliver(task, callback, null, "timeout");
+        }, timeoutMs, TimeUnit.MILLISECONDS);
+        task.watchdog = watchdog;
+
+        OpenAiCompatibleClient.Result result;
+        try {
+            result = OpenAiCompatibleClient.complete(
+                    endpoint, model, apiKey, transcript, prompt, timeoutMs, task);
+        } catch (RuntimeException e) {
+            // The exception text is not logged: it can echo a header value,
+            // and the key must never reach the journal.
+            Log.w(TAG, "Post-processing failed unexpectedly");
+            result = OpenAiCompatibleClient.Result.error("request failed");
+        } finally {
+            watchdog.cancel(false);
+        }
+
+        if (task.isUserCancelled()) return;
+
+        if (task.timedOut) {
+            deliver(task, callback, null, "timeout");
+            return;
+        }
+        if (result.cancelled) {
+            return;
+        }
+        if (result.error != null) {
+            deliver(task, callback, null, result.error);
+            return;
+        }
+        deliver(task, callback, result.text, null);
     }
 
     private static void deliver(Task task, Callback callback, String text, String error) {
@@ -185,6 +198,41 @@ final class PostProcessor {
             thread.setDaemon(true);
             return thread;
         };
+    }
+
+    /**
+     * One immutable copy of the settings a request runs with. Endpoint, model
+     * and key are otherwise read separately, so a save that fails half way
+     * could pair a new address with an old key.
+     */
+    static final class Config {
+        final boolean enabled;
+        final String endpoint;
+        final String model;
+        final String apiKey;
+        final String prompt;
+        final int timeoutMs;
+
+        private Config(boolean enabled, String endpoint, String model, String apiKey,
+                       String prompt, int timeoutMs) {
+            this.enabled = enabled;
+            this.endpoint = endpoint;
+            this.model = model;
+            this.apiKey = apiKey == null ? "" : apiKey;
+            this.prompt = prompt;
+            this.timeoutMs = timeoutMs;
+        }
+
+        static Config freeze(Context context) {
+            Context app = context.getApplicationContext();
+            return new Config(
+                    PostProcessingSettings.isEnabled(app),
+                    PostProcessingSettings.getEndpoint(app),
+                    PostProcessingSettings.getModel(app),
+                    PostProcessingSettings.getApiKey(app),
+                    PostProcessingSettings.getPrompt(app),
+                    PostProcessingSettings.getTimeoutMs(app));
+        }
     }
 
     static final class Task implements OpenAiCompatibleClient.ConnectionSink {

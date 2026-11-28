@@ -77,6 +77,8 @@ public class MainActivity extends AppCompatActivity {
     private String benchCleanedText;
     /** Whether the fields at run start could be persisted; the key may not. */
     private boolean benchSettingsSaved;
+    /** Settings frozen at run start; later edits cannot change this run. */
+    private PostProcessor.Config benchConfig;
 
     private CompoundButton postProcessingSwitch;
     private TextInputEditText ppEndpoint;
@@ -804,6 +806,7 @@ public class MainActivity extends AppCompatActivity {
         // otherwise persisted only when the screen pauses, so a freshly typed
         // address would be ignored and a cleared one would still be used.
         benchSettingsSaved = savePostProcessingSettings();
+        benchConfig = PostProcessor.Config.freeze(this);
         cancelBenchmark();
         int generation = benchGeneration;
         benchRunning = true;
@@ -857,15 +860,15 @@ public class MainActivity extends AppCompatActivity {
 
             // The key field changed but could not be stored: do not send the
             // text with the previous key still in the Keystore.
-            if (!benchSettingsSaved && PostProcessingSettings.isEnabled(this)) {
+            if (!benchSettingsSaved && benchConfig.enabled) {
                 finishBenchmark(base + "\n" + getString(R.string.pp_key_store_failed));
                 return;
             }
 
+            // The run keeps the settings it started with, even if the fields
+            // or the switch change while recognition is still running.
             int stage = BenchmarkLogic.cleaningStage(
-                    PostProcessingSettings.isEnabled(this),
-                    PostProcessingSettings.getEndpoint(this),
-                    PostProcessingSettings.getModel(this));
+                    benchConfig.enabled, benchConfig.endpoint, benchConfig.model);
             if (stage == BenchmarkLogic.CLEANING_DISABLED) {
                 finishBenchmark(base + "\n" + getString(R.string.bench_skip_disabled));
                 return;
@@ -877,7 +880,8 @@ public class MainActivity extends AppCompatActivity {
 
             benchResultText.setText(base + "\n" + getString(R.string.bench_cleaning_running));
             benchPostStartedAt = SystemClock.elapsedRealtime();
-            benchPostTask = PostProcessor.run(this, benchTranscript, (text, postError) -> {
+            benchPostTask = PostProcessor.run(benchTranscript, benchConfig,
+                    (text, postError) -> {
                 benchPostTask = null;
                 if (!benchRunning || generation != benchGeneration) return;
                 double postSecs =
