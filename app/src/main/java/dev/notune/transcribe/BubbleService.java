@@ -41,11 +41,6 @@ public class BubbleService extends AccessibilityService {
     private long focusAt;
     private boolean userTypedSinceFocus;
     private int lastSelStart = -1, lastSelEnd = -1;
-    private final java.util.HashMap<String, String> knownContent = new java.util.HashMap<>();
-    private void rememberKnown(String key, String val) {
-        if (knownContent.size() > 32) knownContent.clear(); // bounded
-        knownContent.put(key, val);
-    }
 
     /** Stable per-field identity surviving node re-fetches: package + view id
      *  (falls back to class name when the app exposes no resource id). */
@@ -489,22 +484,16 @@ public class BubbleService extends AccessibilityService {
             // the untouched content is short and hint-like (≤40 chars, ≤6 words,
             // or matching the node's exposed hint text).
             String base = now;
-            // Remember the last REAL content we saw per field. If we already
-            // recorded real user text (or our own earlier insert) for this
-            // node, the current content is genuine — append, never strip.
-            String key = focusedEditable.getPackageName() + "/"
-                    + focusedEditable.getViewIdResourceName() + "/@"
-                    + Integer.toHexString(focusedEditable.hashCode());
-            String known = knownContent.get(key);
-            // Placeholder strip ONLY when the content is byte-identical to what
-            // the field had AT FOCUS TIME (nothing typed since) — the snapshot
-            // taken at dictation start is too late: text typed before starting
-            // the recording would be captured and wrongly stripped (WhatsApp
-            // poll forms). Focus snapshot = authoritative "this was empty".
-            boolean isEmptyish = !userTypedSinceFocus
+            // Placeholder strip ONLY when nothing was typed since focus AND
+            // the content is what the field had at focus (or was empty then).
+            // NOTE: no cross-call memory here on purpose — a "known content"
+            // map poisons the strip when the same view id is re-used by
+            // another chat/screen (shared compose fields), leaving stale
+            // placeholders glued to the dictation. focusSnapshot +
+            // userTypedSinceFocus are the single source of truth.
+            boolean isEmptyish2 = !userTypedSinceFocus
                     && (now.equals(focusSnapshot) || focusSnapshot.isEmpty())
-                    && (known == null || known.isEmpty());
-            boolean isEmptyish2 = isEmptyish && !now.isEmpty();
+                    && !now.isEmpty();
             if (isEmptyish2) {
                 // Generic rule — works in ANY app, no per-app list:
                 // No text event since focus = the user never typed here, so
@@ -522,7 +511,6 @@ public class BubbleService extends AccessibilityService {
                 boolean unchangedOrEmpty = now.equals(focusSnapshot) || focusSnapshot.isEmpty();
                 if ((hintMatch || shortOneLiner) && unchangedOrEmpty) base = "";
             }
-            rememberKnown(key, base + text);
             // Insert at the cursor position when available; append otherwise.
             // Cursor info is read synchronously; if the app doesn't expose it
             // (sel == -1), fall back to the last selection-changed event seen
