@@ -1,0 +1,15 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:43:52.530893+00:00",
+  "id": "28c1646aabf5429cbf8c784edf35a190",
+  "payload": {
+    "key": "design_approved",
+    "revision": 10,
+    "stage": "design",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 12,
+  "subject": "OVI-001",
+  "type": "evidence.recorded"
+}

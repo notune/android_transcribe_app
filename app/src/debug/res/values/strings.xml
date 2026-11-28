@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Distinguishes the side-by-side test build from the original app. -->
+    <string name="app_name" translatable="false">Offline Voice Input (тест)</string>
+    <string name="recognition_service_label" translatable="false">Offline Voice Input (тест)</string>
+</resources>

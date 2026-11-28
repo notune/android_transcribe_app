@@ -1,20 +1,23 @@
 # The Rust code (src/*.rs) calls these methods back by name over JNI, which
 # R8 can't see: they must be neither removed, renamed nor changed in
 # signature. (Native methods and their classes are kept by the default rules.)
+# Match on the name only: a changed argument list must not silently drop a
+# callback the native layer still calls.
 -keepclassmembers class dev.notune.transcribe.** {
-    void onStatusUpdate(java.lang.String);
-    void onAudioLevel(float);
-    void onAutoStop();
-    void onTextTranscribed(java.lang.String);
-    void onPartialText(java.lang.String);
-    void onBenchmarkResult(float, float, java.lang.String);
-    void onSubtitleText(java.lang.String, boolean);
-    void onReadyForSpeech();
-    void onBeginningOfSpeech();
-    void onEndOfSpeech();
-    void onRmsChanged(float);
-    void onResults(java.lang.String);
-    void onError(int);
+    void onStatusUpdate(...);
+    void onAudioLevel(...);
+    void onAutoStop(...);
+    void onTextTranscribed(...);
+    void onTranscriptionFinished(...);
+    void onPartialText(...);
+    void onBenchmarkResult(...);
+    void onSubtitleText(...);
+    void onReadyForSpeech(...);
+    void onBeginningOfSpeech(...);
+    void onEndOfSpeech(...);
+    void onRmsChanged(...);
+    void onResults(...);
+    void onError(...);
 }
 
 # Shrink and optimize, but keep class and method names, so stack traces in

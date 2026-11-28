@@ -42,9 +42,18 @@ public class RecognizeActivity extends AppCompatActivity {
 
     private TextView status;
     private boolean isRecording = false;
+    // Set between stopping the capture and delivering (or dropping) the text.
+    // Leaving the panel in this window must invalidate the dictation before a
+    // late transcript can start a network request.
+    private boolean awaitingTranscript = false;
+    // False as soon as the panel is closing or the dictation is discarded.
+    // Late native callbacks check it before doing any work.
+    private boolean dictationActive = false;
     private MicLevelView micLevel;
     private final AudioFocusPauser audioPauser = new AudioFocusPauser();
     private boolean pauseAudioActive = false;
+    private PostProcessor.Task postProcessingTask;
+    private boolean resultDelivered = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,10 +68,16 @@ public class RecognizeActivity extends AppCompatActivity {
         status = findViewById(R.id.txt_status);
 
         findViewById(R.id.btn_close).setOnClickListener(v -> {
-            // discard current recording
+            // discard current recording and any late result
+            dictationActive = false;
+            awaitingTranscript = false;
             if (isRecording) {
                 isRecording = false;
                 cancelRecording();   // new native method
+            }
+            if (postProcessingTask != null) {
+                postProcessingTask.cancel();
+                postProcessingTask = null;
             }
             if (pauseAudioActive) {
                 audioPauser.abandon(this);
@@ -97,6 +112,7 @@ public class RecognizeActivity extends AppCompatActivity {
 
         initNative(this);
         isRecording = true;
+        dictationActive = true;
         status.setText(R.string.voice_listening);
         if (isPauseAudioEnabled()) {
             audioPauser.request(this);
@@ -109,6 +125,7 @@ public class RecognizeActivity extends AppCompatActivity {
     private void finishRecording() {
         if (!isRecording) return;
         isRecording = false;
+        awaitingTranscript = true;
         status.setText(R.string.voice_processing);
         stopRecording();
         if (pauseAudioActive) {
@@ -130,21 +147,43 @@ public class RecognizeActivity extends AppCompatActivity {
         // recording invisibly in the background and never reappear. Discard
         // and close so the next mic tap starts fresh. (Background recording
         // is a keyboard-only feature; a popup must not record unseen.)
-        if (isRecording && !isFinishing()) {
-            isRecording = false;
-            try { cancelRecording(); } catch (Throwable t) { /* ignore */ }
-            if (pauseAudioActive) {
-                audioPauser.abandon(this);
-                pauseAudioActive = false;
+        //
+        // This also covers the gap between stopping the capture and the
+        // transcript arriving: without invalidating the dictation here, a late
+        // native callback could still start a network request after the panel
+        // is gone.
+        if (!isFinishing()) {
+            boolean busy = isRecording || awaitingTranscript || postProcessingTask != null;
+            if (busy) {
+                dictationActive = false;
+                awaitingTranscript = false;
+                if (isRecording) {
+                    isRecording = false;
+                    try { cancelRecording(); } catch (Throwable t) { /* ignore */ }
+                }
+                if (postProcessingTask != null) {
+                    postProcessingTask.cancel();
+                    postProcessingTask = null;
+                }
+                if (pauseAudioActive) {
+                    audioPauser.abandon(this);
+                    pauseAudioActive = false;
+                }
+                setResult(Activity.RESULT_CANCELED);
+                finish();
             }
-            setResult(Activity.RESULT_CANCELED);
-            finish();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        dictationActive = false;
+        awaitingTranscript = false;
+        if (postProcessingTask != null) {
+            postProcessingTask.cancel();
+            postProcessingTask = null;
+        }
         if (pauseAudioActive) {
             audioPauser.abandon(this);
             pauseAudioActive = false;
@@ -159,6 +198,10 @@ public class RecognizeActivity extends AppCompatActivity {
             // "Transcribing...") just means listening or busy for the user.
             if (s != null && s.startsWith("Error")) {
                 status.setText(ModelStore.displayStatus(this, s));
+            } else if (postProcessingTask != null) {
+                // A late "Transcribing"/"Ready" from the engine must not hide
+                // the fact that the text is still being cleaned up.
+                status.setText(R.string.pp_processing);
             } else {
                 status.setText(isRecording ? R.string.voice_listening : R.string.voice_processing);
             }
@@ -170,24 +213,94 @@ public class RecognizeActivity extends AppCompatActivity {
         runOnUiThread(() -> micLevel.setLevel(level));
     }
 
+    /**
+     * Called from Rust with the capture number. The popup runs a single
+     * dictation per activity instance and a late callback from a previous
+     * instance is rejected there, so the number is not needed for matching.
+     */
+    public void onTextTranscribed(String text, int captureId) {
+        onTextTranscribed(text);
+    }
+
+    /**
+     * Called from Rust when a stopped capture produced no text. The panel's
+     * waiting state follows the activity lifecycle, so there is nothing to
+     * clear; the status line already reports the error.
+     */
+    public void onTranscriptionFinished(int captureId) {
+    }
+
     // Called from Rust – keep same method name as IME for code reuse
     public void onTextTranscribed(String text) {
         runOnUiThread(() -> {
+            if (!dictationActive || isFinishing() || isDestroyed()) {
+                // The panel was closed or left while the engine was still
+                // transcribing; the result belongs to a discarded dictation.
+                return;
+            }
             if (text == null || text.trim().isEmpty()) {
-                // Nothing was recognized (e.g. auto-stop after silence only).
-                // Say so: otherwise the panel just vanishes as if it broke.
-                Toast.makeText(getApplicationContext(), R.string.voice_no_speech,
-                        Toast.LENGTH_SHORT).show();
-                setResult(Activity.RESULT_CANCELED);
-                finish();
+                finishWithoutSpeech();
                 return;
             }
 
-            deliverResult(text.trim());
+            String raw = text.trim();
+            if (!PostProcessingSettings.isEnabled(this)) {
+                deliverResult(raw);
+                return;
+            }
+            if (!PostProcessingSettings.isConfigured(this)) {
+                Toast.makeText(getApplicationContext(), R.string.pp_not_configured,
+                        Toast.LENGTH_LONG).show();
+                deliverResult(raw);
+                return;
+            }
+
+            status.setText(R.string.pp_processing);
+            postProcessingTask = PostProcessor.run(this, raw, (cleaned, error) -> {
+                postProcessingTask = null;
+                if (!dictationActive || isFinishing() || isDestroyed() || resultDelivered) return;
+
+                if (error != null) {
+                    Toast.makeText(getApplicationContext(),
+                            getString(R.string.pp_failed_fallback,
+                                    PostProcessingLogic.shortError(error)),
+                            Toast.LENGTH_LONG).show();
+                    deliverResult(raw);
+                    return;
+                }
+                boolean usable = cleaned != null && !cleaned.trim().isEmpty()
+                        && !PostProcessingLogic.isFillerOnly(cleaned);
+                if (!usable) {
+                    if (PostProcessingLogic.isFillerOnly(raw)) {
+                        finishWithoutSpeech();
+                    } else {
+                        Toast.makeText(getApplicationContext(), R.string.pp_empty_fallback,
+                                Toast.LENGTH_LONG).show();
+                        deliverResult(raw);
+                    }
+                    return;
+                }
+                deliverResult(cleaned.trim());
+            });
         });
     }
 
+    private void finishWithoutSpeech() {
+        // Nothing was recognized (e.g. auto-stop after silence only).
+        // Say so: otherwise the panel just vanishes as if it broke.
+        dictationActive = false;
+        awaitingTranscript = false;
+        Toast.makeText(getApplicationContext(), R.string.voice_no_speech,
+                Toast.LENGTH_SHORT).show();
+        setResult(Activity.RESULT_CANCELED);
+        finish();
+    }
+
     private void deliverResult(String text) {
+        if (resultDelivered) return;
+        resultDelivered = true;
+        dictationActive = false;
+        awaitingTranscript = false;
         Intent request = getIntent();
         // Search boxes (e.g. Chrome's omnibox) want a query, not a sentence: a
         // trailing period would turn "example.com" into a search for "example.com.".

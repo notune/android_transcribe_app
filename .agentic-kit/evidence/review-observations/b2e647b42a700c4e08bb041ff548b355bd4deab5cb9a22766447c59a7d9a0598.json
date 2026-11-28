@@ -1,0 +1,29 @@
+{
+  "childNodeId": "node:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff",
+  "childRunId": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff:ordinal:1",
+  "childThreadId": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff",
+  "executedModel": null,
+  "hasPendingChildRuns": false,
+  "hasPendingQuestion": false,
+  "latestTerminalResultContextTransferId": null,
+  "latestTerminalRunId": null,
+  "latestTerminalStatus": null,
+  "latestTerminalSummary": null,
+  "link": "[OVI-001 review round 2 qa-1](t3-thread://v2/fb58430f-20d6-4530-98d7-7ba564f4a87e/thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff)",
+  "model": "gpt-6.1-sol",
+  "next": "Completion wakes this thread. Do not wait on it or poll it. Continue other work, and end your turn when none is left.",
+  "options": [
+    {
+      "id": "reasoningEffort",
+      "value": "high"
+    }
+  ],
+  "pendingApproval": null,
+  "providerInstanceId": "codex",
+  "resultContextTransferId": null,
+  "status": "starting",
+  "summary": null,
+  "taskId": "node:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff",
+  "waitTimedOut": false,
+  "workState": "working"
+}

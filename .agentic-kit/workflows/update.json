@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "id": "update",
+  "title": "Обновление окружения",
+  "steps": [
+    {
+      "id": "discovery",
+      "title": "Согласовать задачу и границы",
+      "stage": "discovery",
+      "depends_on": [],
+      "inputs": [],
+      "evidence": [
+        "environment_inventory"
+      ],
+      "gate": "design",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "design",
+      "title": "Проверить применимость дизайна",
+      "stage": "design",
+      "depends_on": [
+        "discovery"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "planning",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "planning",
+      "title": "Проверить план обновления, конфликты и восстановление",
+      "stage": "planning",
+      "depends_on": [
+        "design"
+      ],
+      "inputs": [],
+      "evidence": [
+        "update_plan",
+        "recovery_plan"
+      ],
+      "gate": "implementation",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "implementation",
+      "title": "Применить точный согласованный план",
+      "stage": "implementation",
+      "depends_on": [
+        "planning"
+      ],
+      "inputs": [
+        "update_plan",
+        "recovery_plan"
+      ],
+      "evidence": [
+        "update_result"
+      ],
+      "gate": "verification",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте",
+        "Не повторять применение обновления без нового плана и проверки журнала"
+      ]
+    },
+    {
+      "id": "verification",
+      "title": "Проверить результат",
+      "stage": "verification",
+      "depends_on": [
+        "implementation"
+      ],
+      "inputs": [
+        "update_result"
+      ],
+      "evidence": [
+        "environment_check"
+      ],
+      "gate": "release",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    },
+    {
+      "id": "release",
+      "title": "Передать результат и условия продолжения",
+      "stage": "release",
+      "depends_on": [
+        "verification"
+      ],
+      "inputs": [],
+      "evidence": [],
+      "gate": "done",
+      "max_attempts": 1,
+      "retryable": false,
+      "stop_conditions": [
+        "Остановиться при изменении согласованного объёма или полномочий",
+        "Зафиксировать блокировку при недоступной проверке или конфликте"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:44:43.077338+00:00",
+  "id": "eb7eba4e03fb4181bb2b47c4439bb5f3",
+  "payload": {
+    "key": "architecture_simplified",
+    "revision": 15,
+    "stage": "planning",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 17,
+  "subject": "OVI-001",
+  "type": "evidence.recorded"
+}

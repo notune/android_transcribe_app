@@ -1,0 +1,37 @@
+{
+  "evidence": {
+    "attempt_id": "cc895b4fba8f4cdbb7f44d582bb0bacb",
+    "command": "bash ./gradlew :app:testFdroidDebugUnitTest --console=plain",
+    "dirty": false,
+    "dirty_reason": null,
+    "env_policy": {
+      "allowed_names": [
+        "ANDROID_NDK_HOME",
+        "JAVA_HOME",
+        "PATH"
+      ],
+      "filtered_names": [
+        "GRAFANA_MCP_TOKEN_FILE",
+        "OPENCODE_PASSWORD"
+      ],
+      "mode": "filtered_inherited"
+    },
+    "exit_code": 0,
+    "finished_at": "2026-11-25T23:45:25.168764+00:00",
+    "git_commit": "f012c1ad2e228f9ddfa7ec17879c7bbbddac32b1",
+    "output_truncated": false,
+    "path": ".agentic-kit/evidence/OVI-001/tests-20261125T234522170773Z.log",
+    "sha256": "18c1d5eee2c73245c845ab51443ead951499ceb027cfdc6786a861eaf74d54c1",
+    "source": "executed",
+    "started_at": "2026-11-25T23:45:22.170794+00:00",
+    "timed_out": false
+  },
+  "id": "cc895b4fba8f4cdbb7f44d582bb0bacb",
+  "key": "tests",
+  "schema_version": 1,
+  "started_at": "2026-11-25T23:45:22.105639+00:00",
+  "state": "passed",
+  "task": "OVI-001",
+  "task_revision": 25,
+  "updated_at": "2026-11-25T23:45:25.169611+00:00"
+}

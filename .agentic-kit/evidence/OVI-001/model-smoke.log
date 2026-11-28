@@ -1,0 +1,20 @@
+# GigaAM smoke test
+date_utc: 2026-11-25T23:32:32Z
+host: macOS 27.0.1 arm64
+model: gigaam-v3-e2e-rnnt-Q6_K.gguf
+model_sha256: 1ef0f771d9ab0b0675c45ce67a3e5b79ac7497fe35ebb08a51704c4ee423edce
+audio: /tmp/ru-smoke.wav (16 kHz mono PCM16, 8.02 s, macOS say voice Milena)
+engine: transcribe-cpp 0.4.0 example transcribe-file, release build, Metal backend
+
+$ cargo run --release --example transcribe-file -- <model> /tmp/ru-smoke.wav
+
+    Finished `release` profile [optimized] target(s) in 0.08s
+     Running `target/release/examples/transcribe-file /Users/e.klimov/.t3/projects/offline-voice-input/model_assets/src/main/assets/builtin-model/gigaam-v3-e2e-rnnt-Q6_K.gguf /tmp/ru-smoke.wav`
+transcribe-cpp 0.4.0 (unknown)
+gigaam: using metal backend: MTL0
+model: gigaam on MTL0 | max_ts=Token
+
+language: (n/a) | timestamps: Token | encode 67 ms
+
+Привет. Это проверка распознавания русской речи. Запишите встречу на четверг в 16:30 и не забудьте про отчёт.
+

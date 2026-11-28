@@ -1,0 +1,29 @@
+{
+ "taskId": "node:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff",
+ "childThreadId": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff",
+ "link": "[OVI-001 review round 2 qa-1](t3-thread://v2/fb58430f-20d6-4530-98d7-7ba564f4a87e/thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff)",
+ "childRunId": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff:ordinal:1",
+ "childNodeId": "node:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3Abced7ed4-0c17-44e5-8e7e-a187bc37c6ff",
+ "status": "starting",
+ "workState": "working",
+ "hasPendingChildRuns": false,
+ "latestTerminalRunId": null,
+ "latestTerminalStatus": null,
+ "latestTerminalSummary": null,
+ "latestTerminalResultContextTransferId": null,
+ "providerInstanceId": "codex",
+ "model": "gpt-6.1-sol",
+ "executedModel": null,
+ "options": [
+  {
+   "id": "reasoningEffort",
+   "value": "high"
+  }
+ ],
+ "summary": null,
+ "resultContextTransferId": null,
+ "hasPendingQuestion": false,
+ "pendingApproval": null,
+ "waitTimedOut": false,
+ "next": "Completion wakes this thread. Do not wait on it or poll it. Continue other work, and end your turn when none is left."
+}

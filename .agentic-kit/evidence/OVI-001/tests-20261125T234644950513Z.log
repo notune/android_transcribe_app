@@ -1,0 +1,55 @@
+
+> Task :app:cargoNdkBuild
+    Building arm64-v8a (aarch64-linux-android)
+   Compiling android_transcribe_app v0.1.0 (/Users/e.klimov/.t3/projects/offline-voice-input)
+warning: variable does not need to be mutable
+  --> src/main_activity.rs:51:5
+   |
+51 |     mut env: JNIEnv,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `android_transcribe_app` (lib) generated 1 warning (run `cargo fix --lib -p android_transcribe_app` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 0.94s
+     Copying libraries to /Users/e.klimov/.t3/projects/offline-voice-input/app/src/main/jniLibs
+Copied libc++_shared.so (arm64-v8a) from NDK
+
+> Task :app:preBuild
+> Task :app:preFdroidDebugBuild
+> Task :app:javaPreCompileFdroidDebug
+> Task :app:processFdroidDebugNavigationResources
+> Task :app:checkFdroidDebugAarMetadata
+> Task :app:generateFdroidDebugResValues
+> Task :app:compileFdroidDebugNavigationResources
+> Task :app:mapFdroidDebugSourceSetPaths
+> Task :app:generateFdroidDebugResources
+> Task :app:packageFdroidDebugResources
+> Task :app:createFdroidDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksFdroidDebug
+> Task :app:parseFdroidDebugLocalResources
+> Task :app:processFdroidDebugMainManifest
+> Task :app:processFdroidDebugManifest
+> Task :app:preFdroidDebugUnitTestBuild
+> Task :app:processFdroidDebugJavaRes NO-SOURCE
+> Task :app:javaPreCompileFdroidDebugUnitTest
+> Task :app:processFdroidDebugUnitTestJavaRes NO-SOURCE
+> Task :app:processFdroidDebugManifestForPackage
+> Task :app:mergeFdroidDebugResources
+> Task :app:processFdroidDebugResources
+
+> Task :app:compileFdroidDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:bundleFdroidDebugClassesToRuntimeJar
+> Task :app:bundleFdroidDebugClassesToCompileJar
+> Task :app:compileFdroidDebugUnitTestJavaWithJavac
+> Task :app:testFdroidDebugUnitTest
+
+[Incubating] Problems report is available at: file:///Users/e.klimov/.t3/projects/offline-voice-input/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 4s
+23 actionable tasks: 23 executed

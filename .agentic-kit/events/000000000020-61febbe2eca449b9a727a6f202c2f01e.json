@@ -1,0 +1,15 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:44:43.449362+00:00",
+  "id": "61febbe2eca449b9a727a6f202c2f01e",
+  "payload": {
+    "key": "swarm_planned",
+    "revision": 18,
+    "stage": "planning",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 20,
+  "subject": "OVI-001",
+  "type": "evidence.recorded"
+}

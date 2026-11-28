@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Offline Voice Input</string>
+    <string name="app_name" translatable="false">Offline Voice Input</string>
     <string name="welcome_title">Voice Input &amp; Subtitles</string>
     <string name="welcome_subtitle">Fully offline, private, and fast.</string>
     
@@ -45,15 +45,15 @@
     <string name="subtitle_lines_4">4 lines</string>
     <string name="subtitle_lines_all">All</string>
 
-    <string name="recognition_service_label">Offline Voice Input</string>
+    <string name="recognition_service_label" translatable="false">Offline Voice Input</string>
 
     <!-- Speech model management (transcribe.cpp GGUF backend) -->
     <string name="models_title">Speech models</string>
     <string name="models_section">Speech model</string>
     <string name="models_active_section">Active model</string>
     <string name="models_desc">The built-in model works out of the box. You can also import any transcribe.cpp GGUF model you\'ve downloaded. The app stays fully offline; downloads happen in your browser.</string>
-    <string name="models_builtin">Parakeet TDT 0.6B v3</string>
-    <string name="models_builtin_sub">Included in the app · 25 European languages</string>
+    <string name="models_builtin" translatable="false">GigaAM v3 E2E RNNT</string>
+    <string name="models_builtin_sub">Included in the app · Russian with punctuation</string>
     <string name="models_loading">Loading model…</string>
     <string name="models_import">Import model file (.gguf)</string>
     <string name="models_importing">Importing %1$s…</string>
@@ -75,7 +75,7 @@
     <string name="models_delete">Delete model</string>
     <string name="models_delete_confirm">Delete %1$s from the app\'s storage?</string>
     <string name="models_language_section">Language</string>
-    <string name="models_language_desc">The language passed to the model. “Automatic” lets the model decide. Whisper and other models that can be told the language follow it; Parakeet models always detect the language themselves and ignore this setting. Languages the active model doesn\'t support are ignored.</string>
+    <string name="models_language_desc">The language passed to the model. “Automatic” lets the model decide. Whisper and other models that can be told the language follow it; Parakeet and GigaAM models always detect the language themselves (GigaAM understands Russian only) and ignore this setting. Languages the active model doesn\'t support are ignored.</string>
     <string name="models_language_auto">Automatic</string>
     <string name="models_language_saved">Language saved</string>
     <string name="models_translate">Translate to English</string>
@@ -87,22 +87,36 @@
     <!-- No model available (F-Droid builds start without one) -->
     <string name="no_model_title">No speech model installed</string>
     <string name="no_model_main">Voice input, live subtitles and file transcription need a speech model. Tap “Add a speech model” to download one in your browser and import it.</string>
-    <string name="no_model_steps">1. Tap “Download recommended model”. Your browser downloads Parakeet TDT 0.6B v3 (485 MB, 25 European languages).\n2. When the download has finished, tap “Import model file” below and pick the downloaded .gguf file (usually in Downloads).\n\nThe app itself stays offline; only your browser downloads the file. You can delete it from Downloads after importing.</string>
-    <string name="btn_download_recommended">Download recommended model (485 MB)</string>
+    <string name="no_model_steps">1. Tap “Download recommended model”. Your browser downloads GigaAM v3 E2E RNNT (228 MB, Russian with punctuation and casing).\n2. When the download has finished, tap “Import model file” below and pick the downloaded .gguf file (usually in Downloads).\n\nThe app itself stays offline; only your browser downloads the file. You can delete it from Downloads after importing.</string>
+    <string name="btn_download_recommended">Download recommended model (228 MB)</string>
     <string name="btn_add_model">Add a speech model</string>
     <string name="models_desc_no_builtin">Import any transcribe.cpp GGUF model you\'ve downloaded. The app stays fully offline; downloads happen in your browser.</string>
-    <string name="model_desc_recommended">Recommended · 25 European languages, fast and accurate</string>
+    <string name="model_desc_recommended">Recommended · Russian with punctuation and casing</string>
     <string name="voice_status_need_model">A speech model is needed before voice input can work.</string>
     <string name="no_model_short">No speech model installed. Open Offline Voice Input to add one.</string>
     <string name="voice_no_model">No speech model installed yet. Tap here to add one.</string>
     <string name="ime_no_model_hint">Open the app to add one</string>
 
     <string name="section_benchmark">Benchmark</string>
-    <string name="desc_benchmark">Measures how fast the active model transcribes on this device, using a built-in English test recording (11 s).</string>
     <string name="btn_benchmark">Run benchmark</string>
     <string name="bench_running">Running benchmark…</string>
-    <string name="bench_result">%1$s s of audio in %2$s s: %3$s× real time</string>
     <string name="bench_error">Benchmark failed: %1$s</string>
+    <string name="desc_benchmark">Tests Russian speech recognition and text cleaning. Uses a built-in 10.6 s recording. If cleaning is on, the recognised text goes to your configured server; audio stays on the phone.</string>
+    <string name="bench_source">Recording: Google FLEURS, CC BY 4.0 licence</string>
+    <string name="bench_result_base">%1$s s of audio in %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Cleaning: %1$s s</string>
+    <string name="bench_total_line">Total: %1$s s</string>
+    <string name="bench_skip_disabled">Cleaning is off, no text was sent</string>
+    <string name="bench_skip_unconfigured">Cleaning is not configured: set the address and model</string>
+    <string name="bench_no_text">The model recognised no text</string>
+    <string name="bench_cleaning_running">Sending the text for cleaning…</string>
+    <string name="bench_pp_failed">Cleaning failed: %1$s</string>
+    <string name="bench_pp_empty">Cleaning returned empty text</string>
+    <string name="bench_cancelled">Test interrupted</string>
+    <string name="bench_details">Details</string>
+    <string name="bench_details_title">Test texts</string>
+    <string name="bench_details_one">Recognised:&#10;%1$s</string>
+    <string name="bench_details_text">Recognised:&#10;%1$s&#10;&#10;After cleaning:&#10;%2$s</string>
 
     <string name="section_appearance">Appearance</string>
     <string name="theme_system">System default</string>
@@ -158,4 +172,52 @@
     <string name="subs_grant_overlay">Please allow “Display over other apps”</string>
     <string name="subs_overlay_required">Live subtitles need the “Display over other apps” permission</string>
     <string name="subs_capture_denied">Screen capture was denied</string>
+
+    <!-- Optional text post-processing (OpenAI-compatible server) -->
+    <string name="pp_section">Text clean-up (optional)</string>
+    <string name="pp_desc">Speech recognition still runs on this phone and audio never leaves it. When clean-up is on, only the recognised text is sent to the OpenAI-compatible server you configure here, and the cleaned text is typed into the field. When it is off, nothing is sent.</string>
+    <string name="pp_enable">Clean up recognised text</string>
+    <string name="pp_enable_desc">Send the transcript to your own language model before inserting it</string>
+    <string name="pp_status_off">Off: recognition stays fully offline.</string>
+    <string name="pp_status_on">On: only text is sent, never audio.</string>
+    <string name="pp_status_needs_config">On, but the server and model are not set yet. The original text is inserted.</string>
+    <string name="pp_endpoint">Server address</string>
+    <string name="pp_endpoint_hint">https://host/v1</string>
+    <string name="pp_model">Model</string>
+    <string name="pp_model_hint">model name</string>
+    <string name="pp_models_fetch">From list</string>
+    <string name="pp_models_cancel">Cancel</string>
+    <string name="pp_models_title">Server models</string>
+    <string name="pp_models_search">Filter models</string>
+    <string name="pp_models_loading">Fetching the model list…</string>
+    <string name="pp_models_empty">The server returned an empty model list. Enter the model name manually.</string>
+    <string name="pp_models_failed">Could not fetch models: %1$s</string>
+    <string name="pp_models_current">Current: %1$s</string>
+    <string name="pp_key">API key</string>
+    <string name="pp_key_hint">optional for local servers</string>
+    <string name="pp_key_note">The key is encrypted with the Android Keystore. Leave it empty if your server does not need one.</string>
+    <string name="pp_key_store_failed">The key could not be saved in the Android Keystore.</string>
+    <string name="pp_key_invalid">The key contains characters that are not allowed.</string>
+    <string name="pp_prompt_edit">Edit instruction</string>
+    <string name="pp_prompt_title">Clean-up instruction</string>
+    <string name="pp_prompt_note">${output} is replaced with the recognised text. If you remove it, the text is appended at the end.</string>
+    <string name="pp_prompt_reset">Restore default</string>
+    <string name="pp_prompt_saved">Instruction saved</string>
+    <string name="pp_test">Test connection</string>
+    <string name="pp_testing">Testing…</string>
+    <string name="pp_test_title">Clean-up test</string>
+    <string name="pp_test_ok">Raw text:\n%1$s\n\nCleaned text:\n%2$s</string>
+    <string name="pp_test_empty">The server returned an empty result. The original text would be inserted.</string>
+    <string name="pp_test_failed">Test failed: %1$s</string>
+    <string name="pp_cleartext_warning">This address uses http://: the text travels unencrypted. Use HTTPS or a trusted local network.</string>
+    <string name="pp_processing">Cleaning up…</string>
+    <string name="pp_processing_hint">Sending recognised text to your server</string>
+    <string name="pp_failed_fallback">Clean-up failed (%1$s). Inserted the original transcript.</string>
+    <string name="pp_not_configured">Clean-up is on but the server and model are not set. Inserted the original transcript.</string>
+    <string name="pp_empty_fallback">The model returned an empty answer. Inserted the original transcript.</string>
+    <string name="pp_field_changed">The text field changed. The transcript was not inserted.</string>
+    <string name="pp_deferred">The text will be inserted when the same field is active again.</string>
+    <string name="pp_invalid_address">Enter a full http:// or https:// address</string>
+    <string name="pp_model_required">Enter a model name</string>
+    <string name="pp_test_sample">um, this is a clean-up check: we need two servers, no, three servers, version 0.10.2.</string>
 </resources>

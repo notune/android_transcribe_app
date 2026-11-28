@@ -1,0 +1,29 @@
+{
+  "childNodeId": "node:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3A4fc60b4f-a508-4edf-b756-75c9a92d53a5",
+  "childRunId": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A7500edfd-5402-4049-8c91-58969f9887ba%253Adelegate-task%253A4fc60b4f-a508-4edf-b756-75c9a92d53a5:ordinal:1",
+  "childThreadId": "thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3A4fc60b4f-a508-4edf-b756-75c9a92d53a5",
+  "executedModel": null,
+  "hasPendingChildRuns": false,
+  "hasPendingQuestion": false,
+  "latestTerminalResultContextTransferId": null,
+  "latestTerminalRunId": null,
+  "latestTerminalStatus": null,
+  "latestTerminalSummary": null,
+  "link": "[OVI-001 independent review qa-1](t3-thread://v2/fb58430f-20d6-4530-98d7-7ba564f4a87e/thread:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3A4fc60b4f-a508-4edf-b756-75c9a92d53a5)",
+  "model": "gpt-6.1-sol",
+  "next": "Completion wakes this thread. Do not wait on it or poll it. Continue other work, and end your turn when none is left.",
+  "options": [
+    {
+      "id": "reasoningEffort",
+      "value": "high"
+    }
+  ],
+  "pendingApproval": null,
+  "providerInstanceId": "codex",
+  "resultContextTransferId": null,
+  "status": "starting",
+  "summary": null,
+  "taskId": "node:delegated-task:command%3Amcp%3A7500edfd-5402-4049-8c91-58969f9887ba%3Adelegate-task%3A4fc60b4f-a508-4edf-b756-75c9a92d53a5",
+  "waitTimedOut": false,
+  "workState": "working"
+}

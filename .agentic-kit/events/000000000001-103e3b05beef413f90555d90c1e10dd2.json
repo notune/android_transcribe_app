@@ -1,0 +1,13 @@
+{
+  "actor": "agent",
+  "at": "2026-11-24T21:53:17.030001+00:00",
+  "id": "103e3b05beef413f90555d90c1e10dd2",
+  "payload": {
+    "operation_id": "6278b1fb44664147a5306ad836ea201d",
+    "plan_id": "f257b323cda470213edd863b"
+  },
+  "schema_version": 1,
+  "sequence": 1,
+  "subject": "environment",
+  "type": "environment.lock.started"
+}

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Архитектура Offline Voice Input</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; }
+  body { color: var(--foreground); font-family: var(--font-sans); }
+  .page { max-width: 100%; }
+  h1 { font-size: 22px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lead { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; opacity: 0.72; max-width: 72ch; }
+  h2 { font-size: 15px; line-height: 1.3; margin: 26px 0 10px; }
+  h2 .num { display: inline-block; min-width: 24px; font-size: 11px; letter-spacing: 0.06em; opacity: 0.55; }
+  p { font-size: 13px; line-height: 1.55; margin: 8px 0; }
+  .small { font-size: 11.5px; line-height: 1.45; opacity: 0.65; }
+  code { font-family: var(--font-mono); font-size: 11.5px; background: var(--code-background); padding: 1px 5px; border-radius: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .chip { font-size: 11px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--secondary); white-space: nowrap; }
+  .diagram { display: flex; flex-direction: column; gap: 6px; }
+  .layer { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 11px 12px; }
+  .layer-head { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.55; margin-bottom: 8px; }
+  .nodes { display: grid; gap: 8px; }
+  .nodes.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nodes.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .box { border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); padding: 9px 11px; background: var(--background); min-width: 0; }
+  .box .t { font-weight: 600; font-size: 12.5px; line-height: 1.35; }
+  .box .s { font-size: 11px; line-height: 1.45; opacity: 0.64; margin-top: 3px; }
+  .box.new { border-color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
+  .box.keep { box-shadow: inset 3px 0 0 var(--success); }
+  .box.warn { box-shadow: inset 3px 0 0 var(--warning); }
+  .box.drop { box-shadow: inset 3px 0 0 var(--destructive); }
+  .arrow { display: flex; justify-content: center; align-items: center; gap: 8px; min-height: 17px; font-size: 10.5px; opacity: 0.58; }
+  .arrow .a { font-size: 14px; line-height: 1; }
+  .badge { display: inline-block; font-size: 10px; line-height: 1.4; padding: 1px 6px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground, var(--background)); margin-left: 6px; vertical-align: 1px; }
+  .badge.neutral { background: var(--secondary); color: var(--foreground); border: 1px solid var(--border); }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mode { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--card); }
+  .mode h3 { font-size: 12.5px; margin: 0 0 8px; }
+  .mode .path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11.5px; line-height: 1.5; }
+  .pill { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; background: var(--secondary); white-space: nowrap; }
+  .pill.on { border-color: var(--primary); }
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
+  .step:last-child { border-bottom: 0; }
+  .step .n { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--secondary); font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .step .h { font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+  .step .d { font-size: 11.5px; line-height: 1.5; opacity: 0.68; margin-top: 2px; }
+  .branches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .branch { font-size: 11px; line-height: 1.4; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); }
+  .branch.ok { border-color: var(--success); }
+  .branch.warn { border-color: var(--warning); }
+  .branch.no { border-color: var(--destructive); }
+  .boundary { display: grid; grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr); gap: 8px; align-items: stretch; }
+  .side { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 12px; }
+  .side h3 { font-size: 12.5px; margin: 0 0 8px; }
+  .side ul { margin: 0; padding-left: 17px; }
+  .side li { font-size: 11.5px; line-height: 1.65; }
+  .cross { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 10px; opacity: 0.65; text-align: center; }
+  .cross .line { width: 1px; flex: 1; background: var(--border); }
+  .cross .txt { writing-mode: vertical-rl; transform: rotate(180deg); background: var(--background); padding: 4px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; background: var(--secondary); }
+  tr:last-child td { border-bottom: 0; }
+  .status { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 12px 14px; }
+  .status .row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; line-height: 1.6; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); display: inline-block; }
+  .status .next { font-size: 11.5px; opacity: 0.68; margin-top: 6px; }
+  @media (max-width: 620px) {
+    .nodes.three, .nodes.two, .split { grid-template-columns: 1fr; }
+    .boundary { grid-template-columns: 1fr; }
+    .cross { flex-direction: row; min-height: 26px; }
+    .cross .line { width: auto; height: 1px; }
+    .cross .txt { writing-mode: horizontal-tb; transform: none; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Offline Voice Input: архитектура до и после</h1>
+  <p class="lead">Сначала то, что уже есть: локальное распознавание. Затем один необязательный слой: очистка текста. Аудио остаётся на телефоне в обоих состояниях.</p>
+
+  <div class="chips">
+    <span class="chip">база v0.2.3</span>
+    <span class="chip">ветка feature/handy-post-processing</span>
+    <span class="chip">Android + Rust + JNI</span>
+    <span class="chip">без публикации</span>
+  </div>
+
+  <h2><span class="num">01</span>Что было в v0.2.3</h2>
+
+  <div class="diagram">
+    <div class="layer">
+      <div class="layer-head">Источники</div>
+      <div class="nodes two">
+        <div class="box"><div class="t">Микрофон</div><div class="s">AudioRecord, PCM-буфер, авто-стоп</div></div>
+        <div class="box"><div class="t">Модель распознавания</div><div class="s">GGUF GigaAM v3 e2e RNNT Q6_K, лежит на телефоне</div></div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="a">↓</span><span>аудио</span></div>
+
+    <div class="layer">
+      <div class="layer-head">Rust-ядро</div>
+      <div class="nodes three">
+        <div class="box"><div class="t">voice_session.rs</div><div class="s">запись, остановка, запуск распознавания в фоне</div></div>
+        <div class="box"><div class="t">engine.rs</div><div class="s">загрузка модели и вывод</div></div>
+        <div class="box"><div class="t">audio.rs, models.rs</div><div class="s">микрофон, ресурсы, выбор модели</div></div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="a">↕</span><span>JNI, libandroid_transcribe_app.so</span></div>
+
+    <div class="layer">
+      <div class="layer-head">Android, Java</div>
+      <div class="nodes three">
+        <div class="box"><div class="t">RustInputMethodService</div><div class="s">клавиатура, основной путь</div></div>
+        <div class="box"><div class="t">RecognizeActivity</div><div class="s">панель для RecognizeIntent</div></div>
+        <div class="box"><div class="t">VoiceRecognitionService</div><div class="s">служба для сторонних клавиатур</div></div>
+      </div>
+      <div class="nodes two" style="margin-top:8px">
+        <div class="box"><div class="t">MainActivity, ModelsActivity</div><div class="s">разрешения, настройки, выбор модели</div></div>
+        <div class="box"><div class="t">ModelStore</div><div class="s">встроенная модель или файл пользователя</div></div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="a">↓</span><span>текст</span></div>
+
+    <div class="layer">
+      <div class="layer-head">Результат</div>
+      <div class="nodes">
+        <div class="box keep"><div class="t">Целевое поле</div><div class="s">InputConnection.commitText, результат Intent или Callback.results</div></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="small">Три точки входа важны: если менять только клавиатуру, на телефоне можно проверять не тот путь, которым вы пользуетесь. Это историческая база: встроенная модель теперь GigaAM, а <code>transcribe.cpp</code> остаётся движком.</p>
+
+  <h2><span class="num">02</span>Что добавлено</h2>
+
+  <div class="split">
+    <div class="mode">
+      <h3>Очистка выключена</h3>
+      <div class="path">
+        <span class="pill">локальный текст</span> <span>→</span> <span class="pill">поле</span>
+      </div>
+      <p class="small">Поведение v0.2.3. Сеть не используется.</p>
+    </div>
+    <div class="mode">
+      <h3>Очистка включена</h3>
+      <div class="path">
+        <span class="pill">локальный текст</span> <span>→</span> <span class="pill on">PostProcessor</span> <span>→</span> <span class="pill on">сервер</span> <span>→</span> <span class="pill on">проверка</span> <span>→</span> <span class="pill">поле</span>
+      </div>
+      <p class="small">Наружу уходит только текст. При сбое вставляется исходный.</p>
+    </div>
+  </div>
+
+  <div class="diagram" style="margin-top:10px">
+    <div class="layer">
+      <div class="layer-head">Новый необязательный слой</div>
+      <div class="nodes three">
+        <div class="box new"><div class="t">PostProcessingSettings</div><div class="s">адрес, модель cowork-hard, инструкция Handy</div></div>
+        <div class="box new"><div class="t">SecretStore</div><div class="s">ключ API в Android Keystore, AES/GCM</div></div>
+        <div class="box new"><div class="t">PostProcessor</div><div class="s">фон, тайм-аут 20 с, отмена, сторожевой таймер</div></div>
+      </div>
+      <div class="nodes three" style="margin-top:8px">
+        <div class="box new"><div class="t">OpenAiCompatibleClient</div><div class="s">POST /v1/chat/completions, GET /v1/models, ответ до 1 МБ</div></div>
+        <div class="box new"><div class="t">PostProcessingLogic</div><div class="s">URL, JSON, разбор ответа, междометия</div></div>
+        <div class="box new"><div class="t">EditorTarget</div><div class="s">пакет, id поля, тип, имя, подсказка</div></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="small">Инструкция взята из Handy без изменений и лежит в <code>assets/post_processing_prompt.txt</code>. Ключ выдаётся для провайдера, на котором работает <code>cowork-hard</code>; базовый адрес вводит пользователь, в коде его нет.</p>
+
+  <h2><span class="num">03</span>Замена модели: GigaAM вместо Parakeet</h2>
+
+  <p>Считать русскую речь должна GigaAM v3 от Сбера, локально на телефоне. Новый рантайм не нужен: <code>transcribe.cpp</code> версии 0.4.0 уже содержит архитектуру <code>gigaam</code>. Меняется модель и настройки, а не движок.</p>
+
+  <div class="diagram">
+    <div class="layer">
+      <div class="layer-head">Движок</div>
+      <div class="nodes two">
+        <div class="box keep"><div class="t">transcribe.cpp 0.4.0</div><div class="s">тот же нативный движок, JNI и ABI не меняются</div></div>
+        <div class="box new"><div class="t">GigaAM v3 e2e RNNT Q6_K</div><div class="s">228 МБ, GGUF, MIT, русский с пунктуацией и регистром</div></div>
+      </div>
+    </div>
+    <div class="arrow"><span class="a">↓</span><span>один и тот же текст для трёх путей вставки</span></div>
+    <div class="layer">
+      <div class="layer-head">Дальше без изменений</div>
+      <div class="nodes two">
+        <div class="box"><div class="t">PostProcessor</div><div class="s">если очистка включена</div></div>
+        <div class="box"><div class="t">Целевое поле</div><div class="s">та же проверка сессии и поля</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split" style="margin-top:10px">
+    <div class="mode">
+      <h3>Что даёт</h3>
+      <p class="small">Русский с пунктуацией и регистром, WER FLEURS ru 5.37 процента, MIT, размер 228 МБ вместо 485 МБ у Parakeet. Новых зависимостей и нативного кода нет.</p>
+    </div>
+    <div class="mode">
+      <h3>Что стоит</h3>
+      <p class="small">Модель понимает только русский. Для других языков остаются импорт GGUF и список моделей. Задержка и память на телефоне не измерены.</p>
+    </div>
+  </div>
+
+  <div class="mode" style="margin-top:10px">
+    <h3>Что меняется в коде</h3>
+    <p class="small">Файл встроенной модели и его SHA-256 в <code>app/build.gradle.kts</code>, ссылка и подписи в <code>ModelStore.java</code>, строки списка моделей в семи переводах. Экран выбора модели, импорт GGUF и сборка <code>fdroid</code> остаются как были.</p>
+  </div>
+
+  <p class="small">Проверено: <code>transcribe-cpp-sys 0.4.0</code> содержит <code>src/arch/gigaam</code> с вариантами <code>e2e_rnnt</code>, <code>e2e_ctc</code>, <code>rnnt</code>, <code>ctc</code>; файл модели опубликован с указанным SHA-256 и размером. Не проверено: задержка, память и качество на реальном микрофоне телефона. Это остаётся задачей проверки на устройстве.</p>
+
+  <h2><span class="num">04</span>Один цикл диктовки</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="n">1</div>
+      <div>
+        <div class="h">Старт</div>
+        <div class="d">Новая запись увеличивает номер сессии и запоминает поле, в котором началась диктовка.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="n">2</div>
+      <div>
+        <div class="h">Запись и локальное распознавание</div>
+        <div class="d">Аудио и модель остаются на телефоне. Наружу пока ничего не уходит.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="n">3</div>
+      <div>
+        <div class="h">Развилка: очистка включена?</div>
+        <div class="branches">
+          <span class="branch">нет → сразу вставить исходный текст</span>
+          <span class="branch">да, но адрес или модель пусты → вставить исходный и показать причину</span>
+          <span class="branch ok">да, всё задано → отправить текст на сервер</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="n">4</div>
+      <div>
+        <div class="h">Ответ сервера</div>
+        <div class="branches">
+          <span class="branch ok">текст → очищенный вариант</span>
+          <span class="branch warn">ошибка, тайм-аут, обрезка → исходный текст</span>
+          <span class="branch no">пусто или только «эээ, ммм» → ничего не вставлять</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="n">5</div>
+      <div>
+        <div class="h">Проверка доставки</div>
+        <div class="branches">
+          <span class="branch ok">номер сессии и поле совпали → вставить</span>
+          <span class="branch warn">поле потеряло фокус → отложить до возврата в то же поле</span>
+          <span class="branch no">другое поле, отмена или новая запись → отбросить</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="small">Именно шаг 5 не даёт запоздавшему ответу попасть в другое поле или вставиться повторно.</p>
+
+  <h2><span class="num">05</span>Граница данных</h2>
+
+  <div class="boundary">
+    <div class="side">
+      <h3>Остаётся на телефоне</h3>
+      <ul>
+        <li>аудио и буфер записи;</li>
+        <li>GigaAM Q6_K GGUF;</li>
+        <li>распознанный и очищенный текст в памяти;</li>
+        <li>ключ API в зашифрованном виде.</li>
+      </ul>
+    </div>
+    <div class="cross">
+      <div class="line"></div>
+      <div class="txt">только текст</div>
+      <div class="line"></div>
+    </div>
+    <div class="side">
+      <h3>Уходит провайдеру cowork-hard</h3>
+      <ul>
+        <li>распознанный текст;</li>
+        <li>инструкция Handy с <code>${output}</code>;</li>
+        <li>имя модели <code>cowork-hard</code>;</li>
+        <li>ключ в заголовке Authorization, если задан.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2><span class="num">06</span>Где это в коде</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Слой</th><th>Файл</th><th>Роль</th></tr></thead>
+      <tbody>
+        <tr><td>IME</td><td><code>RustInputMethodService.java</code></td><td>основной путь, сессии, вставка, откат</td></tr>
+        <tr><td>Панель</td><td><code>RecognizeActivity.java</code></td><td>второй путь, результат через Intent</td></tr>
+        <tr><td>Служба</td><td><code>VoiceRecognitionService.java</code></td><td>третий путь, результат через Callback</td></tr>
+        <tr><td>Сеть</td><td><code>OpenAiCompatibleClient.java</code></td><td>HTTP-запрос, тайм-аут, ошибки</td></tr>
+        <tr><td>Логика</td><td><code>PostProcessingLogic.java</code></td><td>URL, JSON, ответ, очистка, междометия</td></tr>
+        <tr><td>Потоки</td><td><code>PostProcessor.java</code></td><td>фон, сторожевой таймер, отмена</td></tr>
+        <tr><td>Поле</td><td><code>EditorTarget.java</code></td><td>идентичность поля для безопасной вставки</td></tr>
+        <tr><td>Секреты</td><td><code>SecretStore.java</code></td><td>ключ в Android Keystore</td></tr>
+        <tr><td>Инструкция</td><td><code>assets/post_processing_prompt.txt</code></td><td>промт Handy без изменений</td></tr>
+        <tr><td>Модель</td><td><code>assets/builtin-model</code></td><td>GigaAM v3 e2e RNNT Q6_K</td></tr>
+        <tr><td>Модели</td><td><code>ModelsActivity.java</code></td><td>список моделей для скачивания и импорт GGUF</td></tr>
+        <tr><td>Модели</td><td><code>ModelStore.java</code></td><td>встроенная GigaAM или файл пользователя</td></tr>
+        <tr><td>Сборка</td><td><code>app/build.gradle.kts</code></td><td>скачивание GigaAM с проверкой SHA-256</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2><span class="num">07</span>Где мы сейчас по AEK</h2>
+
+  <div class="status">
+    <div class="row"><span class="dot"></span><strong>Задача OVI-001 закрыта в AEK</strong></div>
+    <div class="row small">Кит 2.2.2, профиль <code>standard</code>, задача <code>OVI-001</code>: восемь кругов независимой проверки, последний вердикт <code>approved</code> без находок.</div>
+    <div class="row small">Ветка <code>feature/handy-post-processing</code>: результат OVI-001 принят на коммите <code>600a4b68</code>. Документы синхронизированы отдельной задачей <code>OVI-002</code>.</div>
+    <div class="row small">Сделаны необязательная очистка текста и встроенная модель GigaAM v3 e2e RNNT Q6_K.</div>
+    <div class="row small">Задача <code>OVI-003</code>: рядом с полем модели появилась кнопка «Из списка», она запрашивает <code>GET /v1/models</code> и даёт выбрать модель с фильтром. Ручной ввод сохранён.</div>
+    <div class="next">Проверка на телефоне остаётся за пользователем: устройства и эмулятора в среде нет. Публикация и выпуск не планируются.</div>
+  </div>
+
+</div>
+</body>
+</html>

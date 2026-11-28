@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Which speech models the app can use: the bundled Parakeet model (absent in
+ * Which speech models the app can use: the bundled GigaAM model (absent in
  * F-Droid builds) and GGUF files imported into {@code files/models/}. The
  * selection is the {@code active_model} marker file read by the Rust engine
  * loader: the file name of an imported model, absent/empty = bundled model.
@@ -27,10 +27,10 @@ public final class ModelStore {
     public static final String NO_MODEL_STATUS = "Error: no speech model installed";
 
     /** The bundled model, offered as the first download when it isn't bundled. */
-    public static final String RECOMMENDED_NAME = "Parakeet TDT 0.6B v3";
-    public static final String RECOMMENDED_SIZE = "485 MB";
+    public static final String RECOMMENDED_NAME = "GigaAM v3 E2E RNNT";
+    public static final String RECOMMENDED_SIZE = "228 MB";
     public static final String RECOMMENDED_URL =
-            "https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v3-gguf/resolve/main/parakeet-tdt-0.6b-v3-Q4_K_M.gguf";
+            "https://huggingface.co/handy-computer/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q6_K.gguf";
 
     private static Boolean builtin;
 

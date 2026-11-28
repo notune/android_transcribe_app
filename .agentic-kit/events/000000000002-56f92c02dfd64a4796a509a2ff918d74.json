@@ -1,0 +1,16 @@
+{
+  "actor": "agent",
+  "at": "2026-11-24T21:53:17.075235+00:00",
+  "id": "56f92c02dfd64a4796a509a2ff918d74",
+  "payload": {
+    "backup_id": null,
+    "operation_id": "6278b1fb44664147a5306ad836ea201d",
+    "plan_id": "f257b323cda470213edd863b",
+    "recovery_id": null,
+    "state": null
+  },
+  "schema_version": 1,
+  "sequence": 2,
+  "subject": "environment",
+  "type": "environment.lock.completed"
+}

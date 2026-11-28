@@ -37,11 +37,12 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_
 pub unsafe extern "system" fn Java_dev_notune_transcribe_RustInputMethodService_startRecording(
     env: JNIEnv,
     _class: JClass,
+    capture_id: jni::sys::jint,
 ) {
     let mut guard = IME_STATE.lock().unwrap();
     if let Some(state) = guard.as_mut() {
         // The IME keyboard is manual tap-to-stop; no silence auto-stop.
-        voice_session::start_recording(env, state, false);
+        voice_session::start_recording(env, state, false, capture_id);
     }
 }
 

@@ -1,0 +1,15 @@
+{
+  "actor": "agent",
+  "at": "2026-11-25T23:44:43.205208+00:00",
+  "id": "fab864d80daf48df83c5418a0aa9f332",
+  "payload": {
+    "key": "routes_confirmed",
+    "revision": 16,
+    "stage": "planning",
+    "status": "active"
+  },
+  "schema_version": 1,
+  "sequence": 18,
+  "subject": "OVI-001",
+  "type": "evidence.recorded"
+}

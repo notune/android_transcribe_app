@@ -1,0 +1,32 @@
+{
+  "id": "knowledge-base",
+  "opt_in": true,
+  "source": "OntoShip GitMark",
+  "license": "MIT",
+  "external_install": false,
+  "requires_network_permission_for_gitmark": true,
+  "gitmark_execution_automatic": false,
+  "open_spec_authority": "requirements remain in OpenSpec",
+  "upstream": {
+    "repository": "vakovalskii/ontoship",
+    "commit": "cb5de9a4bb6b30654e04777fa2461bf39f9433db",
+    "path": "skills/kb-search/gitmark.py",
+    "blob_sha1": "2fac8f1b979bd5b50df73e5f6a9309b54204b9e1"
+  },
+  "skills": [
+    "aek-kb-search",
+    "aek-kb-curate",
+    "aek-kb-audit"
+  ],
+  "excluded_upstream": [
+    "dev-flow",
+    "/ship",
+    "destructive-guard"
+  ],
+  "not_automatically_created": [
+    ".gitignore",
+    ".gitmarkignore",
+    ".gitmark/index.db"
+  ],
+  "status": "pilot-ready, real environment validation still required"
+}

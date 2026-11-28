@@ -135,7 +135,10 @@ public class VoiceRecognitionService extends RecognitionService {
      * the new one (it would replace what the user just said).
      */
     final class Session {
-        private Callback callback;
+        // Native code calls onResults from its own thread while the main
+        // thread can cancel the session at any moment.
+        private volatile Callback callback;
+        private volatile PostProcessor.Task postProcessingTask;
 
         Session(Callback callback) {
             this.callback = callback;
@@ -144,6 +147,10 @@ public class VoiceRecognitionService extends RecognitionService {
         /** Main thread only. */
         void end() {
             callback = null;
+            if (postProcessingTask != null) {
+                postProcessingTask.cancel();
+                postProcessingTask = null;
+            }
         }
 
         private void post(Call call, boolean last) {
@@ -180,6 +187,50 @@ public class VoiceRecognitionService extends RecognitionService {
         }
 
         public void onResults(String text) {
+            // Native code calls this from its own thread. Do the callback check
+            // and the task publication on the main thread, where end() also
+            // runs, so a cancellation cannot slip between them and leave an
+            // uncancellable request behind.
+            mainHandler.post(() -> handleResultsOnMain(text));
+        }
+
+        /** Main thread only. */
+        private void handleResultsOnMain(String text) {
+            if (callback == null) return;
+            if (!PostProcessingSettings.isEnabled(VoiceRecognitionService.this)
+                    || !PostProcessingSettings.isConfigured(VoiceRecognitionService.this)) {
+                deliverResults(text);
+                return;
+            }
+
+            if (postProcessingTask != null) {
+                postProcessingTask.cancel();
+            }
+            postProcessingTask = PostProcessor.run(VoiceRecognitionService.this, text,
+                    (cleaned, error) -> {
+                        postProcessingTask = null;
+                        if (callback == null) return; // cancelled or replaced session
+
+                        if (error != null) {
+                            Log.w(TAG, "Post-processing failed, returning the raw transcript");
+                            deliverResults(text);
+                            return;
+                        }
+                        boolean usable = cleaned != null && !cleaned.trim().isEmpty()
+                                && !PostProcessingLogic.isFillerOnly(cleaned);
+                        if (!usable) {
+                            if (PostProcessingLogic.isFillerOnly(text)) {
+                                post(cb -> cb.error(SpeechRecognizer.ERROR_NO_MATCH), true);
+                            } else {
+                                deliverResults(text);
+                            }
+                            return;
+                        }
+                        deliverResults(cleaned.trim());
+                    });
+        }
+
+        private void deliverResults(String text) {
             post(cb -> {
                 ArrayList<String> hypotheses = new ArrayList<>();
                 hypotheses.add(text);

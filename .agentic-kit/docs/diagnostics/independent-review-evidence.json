@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "kind": "evidence_index_not_authenticated_attestation",
+  "date": "2026-11-15",
+  "availability": "Исходные архивы находятся в локальных лабораториях и T3; в GitHub сохранена только эта сводка. Хеш не удостоверяет автора или факт запуска.",
+  "laboratory_archive_commit": "2f35329b1179a36cead49011c33b02cd4ac09fdf",
+  "autonomous_evidence_commit": "1b01c2a5c04f2473d4cbaf182781c16d51312325",
+  "artifacts": [
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-delegation-lab/docs/experiments/AEK-INDEPENDENT-REVIEW-001.tools.json",
+      "sha256": "b7c0655db012e60171be939f32c475d9fc6ceea01d0a1caef1ffbb67cc2c8ee5"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-delegation-lab/docs/experiments/AEK-INDEPENDENT-REVIEW-002.tools.json",
+      "sha256": "285ebe215fd507b02aa56a573370a2d1b8fc65dd55b3c1ea9ffc57730629b7e9"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-delegation-lab/docs/experiments/AEK-REVIEW-GATE-002/matrix.results.json",
+      "sha256": "14b8b08109164ae155125d2f3e3ad855b97f2f80155af4758c51229f795ca950"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-delegation-lab/docs/experiments/AEK-REVIEW-GATE-002/observations/acceptance.json",
+      "sha256": "0ef9ce67128d0ca928dd254451bf46f851e3d927e4d4791c3c55d7983450904d"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/docs/preparation/RESULT.md",
+      "sha256": "6d58d4dda98bc8d58aad919c7d5d404a46924c3d5a977a11ce006191ba25699c"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/docs/preparation/checks-py311.json",
+      "sha256": "b5237905d3d06b7c282c038b3d318908f11159d919f76661a589120522916603"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/docs/preparation/source-correspondence.json",
+      "sha256": "a621d38b7a0977e3f2bdc52953c2e1a7671741d75e2c72499e92fba0b5ab3cc7"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/.agentic-kit/tasks/SHIPPING-001.json",
+      "sha256": "6caae1d79a1807923e84a345f2d44bd052c7c612f7bab63e0471a5614bfa40aa"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/.agentic-kit/evidence/SHIPPING-001/launch.json",
+      "sha256": "9d569036ce4b3799b3f3194a1315d95bfa19b0022f65f49e681befb583088ad7"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/.agentic-kit/evidence/SHIPPING-001/result.json",
+      "sha256": "ca7dc6cf51de4500574d9578738feda41c5eb54149618c550648150291adb126"
+    },
+    {
+      "path": "/Users/e.klimov/.t3/projects/aek-autonomous-delegation-002/.agentic-kit/evidence/SHIPPING-001/verify.json",
+      "sha256": "03248ca3b7a0153a176f312c5ede20fbc2225ddf6bdede6c6bf80bf86ae88aaf"
+    }
+  ],
+  "synthetic_matrix": [
+    {
+      "profile": "standard",
+      "case": "A",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "standard",
+      "case": "B",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "standard",
+      "case": "C",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "standard",
+      "case": "D",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "standard",
+      "case": "E",
+      "passed": false,
+      "import_error": "Expected t3_thread_read response, not an agent assertion"
+    },
+    {
+      "profile": "standard",
+      "case": "F",
+      "passed": true,
+      "import_error": null
+    },
+    {
+      "profile": "standard",
+      "case": "F_declared_fixture",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "critical",
+      "case": "A",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "critical",
+      "case": "B",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "critical",
+      "case": "C",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "critical",
+      "case": "D",
+      "passed": false,
+      "import_error": null
+    },
+    {
+      "profile": "critical",
+      "case": "E",
+      "passed": false,
+      "import_error": "Expected t3_thread_read response, not an agent assertion"
+    },
+    {
+      "profile": "critical",
+      "case": "F",
+      "passed": true,
+      "import_error": null
+    },
+    {
+      "profile": "critical",
+      "case": "F_declared_fixture",
+      "passed": false,
+      "import_error": null
+    }
+  ]
+}

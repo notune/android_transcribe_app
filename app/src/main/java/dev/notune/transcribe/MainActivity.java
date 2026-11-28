@@ -5,17 +5,29 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.Filter;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
@@ -23,10 +35,13 @@ import androidx.core.widget.ImageViewCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -51,8 +66,33 @@ public class MainActivity extends AppCompatActivity {
     private Button startSubsButton;
     private Button benchButton;
     private TextView benchResultText;
+    private Button benchDetailsButton;
     private Button modelsButton;
     private boolean benchRunning;
+    /** Bumped on every run and on screen exit; stale callbacks are dropped. */
+    private int benchGeneration;
+    private PostProcessor.Task benchPostTask;
+    private long benchPostStartedAt;
+    private String benchTranscript;
+    private String benchCleanedText;
+    /** Whether the fields at run start could be persisted; the key may not. */
+    private boolean benchSettingsSaved;
+    /** Settings frozen at run start; later edits cannot change this run. */
+    private PostProcessor.Config benchConfig;
+
+    private CompoundButton postProcessingSwitch;
+    private TextInputEditText ppEndpoint;
+    private TextInputEditText ppModel;
+    private TextInputEditText ppKey;
+    private TextInputLayout ppEndpointLayout;
+    private TextInputLayout ppModelLayout;
+    private TextInputLayout ppKeyLayout;
+    private TextView ppStatus;
+    private TextView ppWarning;
+    private Button ppTestButton;
+    private Button ppModelsButton;
+    private PostProcessor.Task ppTestTask;
+    private PostProcessor.Task ppModelsTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,7 +142,9 @@ public class MainActivity extends AppCompatActivity {
 
         benchButton = findViewById(R.id.btn_benchmark);
         benchResultText = findViewById(R.id.text_bench_result);
+        benchDetailsButton = findViewById(R.id.btn_bench_details);
         benchButton.setOnClickListener(v -> runBenchmark());
+        benchDetailsButton.setOnClickListener(v -> showBenchDetails());
 
         // Settings stored as marker files in filesDir (readable from the
         // keyboard service and native code).
@@ -112,6 +154,8 @@ public class MainActivity extends AppCompatActivity {
         // Record-in-background defaults to ON; its marker file is the opt-out.
         bindMarkerSwitch(R.id.switch_record_background, "stop_on_hide", true);
         bindMarkerSwitch(R.id.switch_auto_stop, "auto_stop", false);
+
+        bindPostProcessingSettings();
 
         // Live subtitle line limit: 2 (default), 4, or 0 = unlimited.
         RadioGroup subsLinesGroup = findViewById(R.id.rg_subtitle_lines);
@@ -157,6 +201,36 @@ public class MainActivity extends AppCompatActivity {
 
         // Initial check
         updateVoiceInputStatus();
+    }
+
+    @Override
+    protected void onPause() {
+        // The keyboard service reads these settings from the same process'
+        // preferences, so flush edits before the user switches to a field.
+        savePostProcessingSettings();
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        // The screen is no longer visible: drop any model-list request so a
+        // late answer cannot open a dialog or change the saved model.
+        cancelModelList();
+        // Same for the speed test: a late answer must not update the card
+        // after the user has left.
+        cancelBenchmark();
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (ppTestTask != null) {
+            ppTestTask.cancel();
+            ppTestTask = null;
+        }
+        cancelModelList();
+        cancelBenchmark();
+        super.onDestroy();
     }
 
     @Override
@@ -314,6 +388,372 @@ public class MainActivity extends AppCompatActivity {
         Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show();
     }
 
+    // --- Optional text post-processing ---------------------------------------
+
+    private void bindPostProcessingSettings() {
+        postProcessingSwitch = findViewById(R.id.switch_post_processing);
+        ppEndpoint = findViewById(R.id.input_pp_endpoint);
+        ppModel = findViewById(R.id.input_pp_model);
+        ppKey = findViewById(R.id.input_pp_key);
+        ppEndpointLayout = findViewById(R.id.layout_pp_endpoint);
+        ppModelLayout = findViewById(R.id.layout_pp_model);
+        ppKeyLayout = findViewById(R.id.layout_pp_key);
+        ppStatus = findViewById(R.id.text_pp_status);
+        ppWarning = findViewById(R.id.text_pp_warning);
+        ppTestButton = findViewById(R.id.btn_pp_test);
+
+        ppEndpoint.setText(PostProcessingSettings.getEndpoint(this));
+        ppModel.setText(PostProcessingSettings.getModel(this));
+        String key = PostProcessingSettings.getApiKey(this);
+        ppKey.setText(key == null ? "" : key);
+
+        postProcessingSwitch.setChecked(PostProcessingSettings.isEnabled(this));
+        postProcessingSwitch.setOnCheckedChangeListener((button, checked) -> {
+            PostProcessingSettings.setEnabled(this, checked);
+            updatePostProcessingUi();
+        });
+        TextWatcher watcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                ppEndpointLayout.setError(null);
+                ppModelLayout.setError(null);
+                updatePostProcessingUi();
+            }
+        };
+        ppEndpoint.addTextChangedListener(watcher);
+        ppModel.addTextChangedListener(watcher);
+
+        findViewById(R.id.btn_pp_prompt).setOnClickListener(v -> showPromptDialog());
+        ppTestButton.setOnClickListener(v -> testPostProcessing());
+        ppModelsButton = findViewById(R.id.btn_pp_models);
+        ppModelsButton.setOnClickListener(v -> fetchModelList());
+        updatePostProcessingUi();
+    }
+
+    /** Persists the fields. The API key goes to the Keystore, not to prefs. */
+    private boolean savePostProcessingSettings() {
+        if (ppEndpoint == null) return true;
+        PostProcessingSettings.setEndpoint(this, ppEndpoint.getText() == null
+                ? "" : ppEndpoint.getText().toString());
+        PostProcessingSettings.setModel(this, ppModel.getText() == null
+                ? "" : ppModel.getText().toString());
+        int keyState = PostProcessingSettings.setApiKey(this, ppKey.getText() == null
+                ? "" : ppKey.getText().toString());
+        if (ppKeyLayout != null) {
+            if (keyState == PostProcessingSettings.KEY_INVALID) {
+                ppKeyLayout.setError(getString(R.string.pp_key_invalid));
+            } else if (keyState == PostProcessingSettings.KEY_STORE_FAILED) {
+                ppKeyLayout.setError(getString(R.string.pp_key_store_failed));
+            } else {
+                ppKeyLayout.setError(null);
+            }
+        }
+        return keyState == PostProcessingSettings.KEY_SAVED;
+    }
+
+    private void updatePostProcessingUi() {
+        if (ppStatus == null) return;
+        boolean enabled = postProcessingSwitch != null && postProcessingSwitch.isChecked();
+        String endpoint = ppEndpoint == null || ppEndpoint.getText() == null
+                ? "" : ppEndpoint.getText().toString().trim();
+        String model = ppModel == null || ppModel.getText() == null
+                ? "" : ppModel.getText().toString().trim();
+
+        if (!enabled) {
+            ppStatus.setText(R.string.pp_status_off);
+        } else if (endpoint.isEmpty() || model.isEmpty()) {
+            ppStatus.setText(R.string.pp_status_needs_config);
+        } else {
+            ppStatus.setText(R.string.pp_status_on);
+        }
+        ppWarning.setVisibility(enabled && PostProcessingLogic.isCleartextEndpoint(endpoint)
+                ? View.VISIBLE : View.GONE);
+    }
+
+    private void showPromptDialog() {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(getResources().getDisplayMetrics().density * 20);
+        container.setPadding(pad, Math.round(getResources().getDisplayMetrics().density * 8), pad, 0);
+
+        TextView note = new TextView(this);
+        note.setText(R.string.pp_prompt_note);
+        note.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        note.setTextColor(themeColor(com.google.android.material.R.attr.colorOnSurfaceVariant));
+        container.addView(note);
+
+        EditText edit = new EditText(this);
+        edit.setText(PostProcessingSettings.getPrompt(this));
+        edit.setGravity(Gravity.TOP | Gravity.START);
+        edit.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        edit.setMinLines(14);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(edit, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT));
+        container.addView(scroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Math.round(getResources().getDisplayMetrics().density * 360)));
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pp_prompt_title)
+                .setView(container)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    PostProcessingSettings.setPrompt(this, edit.getText().toString());
+                    snackbar(getString(R.string.pp_prompt_saved));
+                })
+                .setNeutralButton(R.string.pp_prompt_reset, (dialog, which) -> {
+                    edit.setText(PostProcessingSettings.defaultPrompt(this));
+                    PostProcessingSettings.resetPrompt(this);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /**
+     * Sends one synthetic phrase through the configured server. Proves the
+     * address, key and model work without dictating into someone's field.
+     */
+    private void testPostProcessing() {
+        if (!savePostProcessingSettings()) {
+            return;
+        }
+        String endpoint = PostProcessingSettings.getEndpoint(this);
+        String model = PostProcessingSettings.getModel(this);
+
+        if (endpoint.isEmpty()) {
+            ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
+            return;
+        }
+        if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
+            ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
+            return;
+        }
+        if (model.isEmpty()) {
+            ppModelLayout.setError(getString(R.string.pp_model_required));
+            return;
+        }
+
+        ppTestButton.setEnabled(false);
+        ppTestButton.setText(R.string.pp_testing);
+        final String sample = getString(R.string.pp_test_sample);
+        ppTestTask = PostProcessor.run(this, sample, (text, error) -> {
+            ppTestTask = null;
+            ppTestButton.setEnabled(true);
+            ppTestButton.setText(R.string.pp_test);
+            if (error != null) {
+                showPostProcessingDialog(getString(R.string.pp_test_failed,
+                        PostProcessingLogic.shortError(error)));
+            } else if (text == null || text.trim().isEmpty()
+                    || PostProcessingLogic.isFillerOnly(text)) {
+                showPostProcessingDialog(getString(R.string.pp_test_empty));
+            } else {
+                showPostProcessingDialog(getString(R.string.pp_test_ok, sample, text));
+            }
+        });
+    }
+
+    /**
+     * Fetches the server's model list and lets the user pick one. The manual
+     * field stays the source of truth; the list only fills it.
+     *
+     * <p>The same button cancels a request in flight, so the user always has a
+     * visible way out without leaving the screen.
+     */
+    private void fetchModelList() {
+        if (ppModelsTask != null) {
+            cancelModelList();
+            return;
+        }
+        if (!savePostProcessingSettings()) {
+            return;
+        }
+        String endpoint = PostProcessingSettings.getEndpoint(this);
+        if (endpoint.isEmpty()
+                || (!endpoint.startsWith("http://") && !endpoint.startsWith("https://"))) {
+            ppEndpointLayout.setError(getString(R.string.pp_invalid_address));
+            return;
+        }
+        ppStatus.setText(R.string.pp_models_loading);
+        ppModelsButton.setText(R.string.pp_models_cancel);
+        ppModelsTask = PostProcessor.listModels(this, (models, error) -> {
+            ppModelsTask = null;
+            ppModelsButton.setText(R.string.pp_models_fetch);
+            updatePostProcessingUi();
+            if (error != null) {
+                showPostProcessingDialog(getString(R.string.pp_models_failed,
+                        PostProcessingLogic.shortError(error)));
+                return;
+            }
+            if (models == null || models.isEmpty()) {
+                showPostProcessingDialog(getString(R.string.pp_models_empty));
+                return;
+            }
+            if (models.size() == 1) {
+                applyModel(models.get(0));
+                return;
+            }
+            showModelDialog(models);
+        });
+    }
+
+    /**
+     * Cancels a model-list request and restores the button. Safe when no
+     * request is running and safe to call twice, as onStop and onDestroy may
+     * both run.
+     */
+    private void cancelModelList() {
+        if (ppModelsTask != null) {
+            ppModelsTask.cancel();
+            ppModelsTask = null;
+        }
+        if (ppModelsButton != null) {
+            ppModelsButton.setText(R.string.pp_models_fetch);
+        }
+        updatePostProcessingUi();
+    }
+
+    private void applyModel(String model) {
+        ppModel.setText(model);
+        PostProcessingSettings.setModel(this, model);
+        ppModelLayout.setError(null);
+        updatePostProcessingUi();
+    }
+
+    private void showModelDialog(List<String> models) {
+        float density = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(density * 20);
+        container.setPadding(pad, Math.round(density * 8), pad, 0);
+
+        EditText filter = new EditText(this);
+        filter.setHint(R.string.pp_models_search);
+        filter.setSingleLine(true);
+        filter.setInputType(InputType.TYPE_CLASS_TEXT);
+        container.addView(filter);
+
+        List<ModelEntry> entries = new ArrayList<>();
+        String current = PostProcessingSettings.getModel(this);
+        if (!current.isEmpty() && !models.contains(current)) {
+            entries.add(new ModelEntry(current,
+                    getString(R.string.pp_models_current, current)));
+        }
+        for (String model : models) {
+            entries.add(new ModelEntry(model, model));
+        }
+        final List<ModelEntry> allEntries = new ArrayList<>(entries);
+        ArrayAdapter<ModelEntry> adapter = new ArrayAdapter<ModelEntry>(this,
+                android.R.layout.simple_list_item_1, new ArrayList<>(allEntries)) {
+            private final Filter substringFilter = new Filter() {
+                @Override
+                protected FilterResults performFiltering(CharSequence constraint) {
+                    String query = constraint == null ? "" : constraint.toString();
+                    List<ModelEntry> matched = new ArrayList<>();
+                    for (ModelEntry entry : allEntries) {
+                        // The default ArrayAdapter filter matches only the start
+                        // of a word, so "alpha" would miss "vendor/alpha-chat".
+                        if (PostProcessingLogic.matchesModelQuery(entry.id, query)) {
+                            matched.add(entry);
+                        }
+                    }
+                    FilterResults results = new FilterResults();
+                    results.values = matched;
+                    results.count = matched.size();
+                    return results;
+                }
+
+                @Override
+                protected void publishResults(CharSequence constraint, FilterResults results) {
+                    setNotifyOnChange(false);
+                    clear();
+                    if (results.values instanceof List) {
+                        for (Object item : (List<?>) results.values) {
+                            if (item instanceof ModelEntry) {
+                                add((ModelEntry) item);
+                            }
+                        }
+                    }
+                    notifyDataSetChanged();
+                }
+            };
+
+            @Override
+            public Filter getFilter() {
+                return substringFilter;
+            }
+        };
+        ListView list = new ListView(this);
+        list.setAdapter(adapter);
+        container.addView(list, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Math.round(density * 320)));
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pp_models_title)
+                .setView(container)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+
+        filter.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                adapter.getFilter().filter(s == null ? "" : s.toString());
+            }
+        });
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            Object item = parent.getItemAtPosition(position);
+            if (item instanceof ModelEntry) {
+                applyModel(((ModelEntry) item).id);
+            }
+            dialog.dismiss();
+        });
+        dialog.show();
+    }
+
+    /** One row in the model dialog: the label may differ from the value. */
+    private static final class ModelEntry {
+        final String id;
+        private final String label;
+
+        ModelEntry(String id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private void showPostProcessingDialog(String message) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pp_test_title)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
     /**
      * Binds a switch to a marker file in filesDir. With {@code inverted}, the
      * file's presence means the switch is OFF (used for default-on settings).
@@ -352,14 +792,28 @@ public class MainActivity extends AppCompatActivity {
     // --- Benchmark ----------------------------------------------------------
 
     /**
-     * Transcribes the bundled test clip through the active model and shows the
-     * speed as a real-time factor. The clip is a fixed English recording so
-     * results are comparable across models and devices; the run uses the
-     * current model settings (language hint, translate).
+     * Runs the bundled Russian clip through the active model and, when text
+     * cleaning is switched on and configured, through the same post-processor
+     * the normal dictation uses. Shows recognition time, real-time factor,
+     * cleaning time and the total.
+     *
+     * <p>Audio never leaves the device. Only the recognised text is sent, and
+     * only when cleaning is on, exactly as in a normal dictation.
      */
     private void runBenchmark() {
+        if (benchRunning) return;
+        // Judge the fields as they are right now. Endpoint, model and key are
+        // otherwise persisted only when the screen pauses, so a freshly typed
+        // address would be ignored and a cleared one would still be used.
+        benchSettingsSaved = savePostProcessingSettings();
+        benchConfig = PostProcessor.Config.freeze(this);
+        cancelBenchmark();
+        int generation = benchGeneration;
         benchRunning = true;
+        benchTranscript = null;
+        benchCleanedText = null;
         benchButton.setEnabled(false);
+        benchDetailsButton.setVisibility(View.GONE);
         benchResultText.setVisibility(View.VISIBLE);
         benchResultText.setText(R.string.bench_running);
 
@@ -370,32 +824,153 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 Log.e(TAG, "Failed to read benchmark clip", e);
                 runOnUiThread(() -> {
-                    benchResultText.setText(getString(R.string.bench_error, e.getMessage()));
-                    benchRunning = false;
-                    benchButton.setEnabled(true);
+                    if (!benchRunning || generation != benchGeneration) return;
+                    finishBenchmarkError(getString(R.string.bench_error, e.getMessage()));
                 });
                 return;
             }
-            benchmarkNative(this, samples, samples.length);
+            benchmarkNative(this, samples, samples.length, generation);
         }, "benchmark-load").start();
     }
 
-    // Called from Rust when the benchmark run finishes.
-    public void onBenchmarkResult(float audioSecs, float computeSecs, String error) {
+    /**
+     * Called from Rust when recognition finishes. {@code generation} is the
+     * run that produced the answer: a late result from a cancelled run is
+     * dropped instead of overwriting a newer one.
+     */
+    public void onBenchmarkResult(float audioSecs, float computeSecs, String transcript,
+                                  String error, long generation) {
         runOnUiThread(() -> {
-            benchRunning = false;
-            benchButton.setEnabled(true);
+            if (!benchRunning || generation != benchGeneration) return;
             benchResultText.setVisibility(View.VISIBLE);
             if (error != null && !error.isEmpty()) {
-                benchResultText.setText(getString(R.string.bench_error, error));
-            } else {
-                benchResultText.setText(getString(R.string.bench_result,
-                        String.format(java.util.Locale.getDefault(), "%.1f", audioSecs),
-                        String.format(java.util.Locale.getDefault(), "%.1f", computeSecs),
-                        String.format(java.util.Locale.getDefault(), "%.1f",
-                                computeSecs > 0 ? audioSecs / computeSecs : 0)));
+                finishBenchmarkError(getString(R.string.bench_error, error));
+                return;
             }
+
+            benchTranscript = transcript == null ? "" : transcript.trim();
+            String base = getString(R.string.bench_result_base,
+                    seconds(audioSecs), seconds(computeSecs),
+                    seconds(BenchmarkLogic.realTimeFactor(audioSecs, computeSecs)));
+
+            if (!BenchmarkLogic.hasTranscript(benchTranscript)) {
+                finishBenchmark(base + "\n" + getString(R.string.bench_no_text));
+                return;
+            }
+
+            // The key field changed but could not be stored: do not send the
+            // text with the previous key still in the Keystore.
+            if (!benchSettingsSaved && benchConfig.enabled) {
+                finishBenchmark(base + "\n" + getString(R.string.pp_key_store_failed));
+                return;
+            }
+
+            // The run keeps the settings it started with, even if the fields
+            // or the switch change while recognition is still running.
+            int stage = BenchmarkLogic.cleaningStage(
+                    benchConfig.enabled, benchConfig.endpoint, benchConfig.model);
+            if (stage == BenchmarkLogic.CLEANING_DISABLED) {
+                finishBenchmark(base + "\n" + getString(R.string.bench_skip_disabled));
+                return;
+            }
+            if (stage == BenchmarkLogic.CLEANING_NOT_CONFIGURED) {
+                finishBenchmark(base + "\n" + getString(R.string.bench_skip_unconfigured));
+                return;
+            }
+
+            benchResultText.setText(base + "\n" + getString(R.string.bench_cleaning_running));
+            benchPostStartedAt = SystemClock.elapsedRealtime();
+            benchPostTask = PostProcessor.run(benchTranscript, benchConfig,
+                    (text, postError) -> {
+                benchPostTask = null;
+                if (!benchRunning || generation != benchGeneration) return;
+                double postSecs =
+                        (SystemClock.elapsedRealtime() - benchPostStartedAt) / 1000.0;
+                String withCleaning = base + "\n"
+                        + getString(R.string.bench_cleaning_line, seconds(postSecs));
+                if (postError != null) {
+                    finishBenchmark(withCleaning + "\n"
+                            + getString(R.string.bench_pp_failed,
+                                    PostProcessingLogic.shortError(postError)));
+                    return;
+                }
+                if (text == null || text.trim().isEmpty()) {
+                    finishBenchmark(withCleaning + "\n" + getString(R.string.bench_pp_empty));
+                    return;
+                }
+                benchCleanedText = text;
+                finishBenchmark(withCleaning + "\n"
+                        + getString(R.string.bench_total_line,
+                                seconds(BenchmarkLogic.totalSeconds(computeSecs, postSecs))));
+            });
         });
+    }
+
+    /** Ends a run normally: recognition succeeded, cleaning may have been skipped. */
+    private void finishBenchmark(String result) {
+        benchRunning = false;
+        benchPostTask = null;
+        benchButton.setEnabled(ModelStore.hasAnyModel(this));
+        benchResultText.setVisibility(View.VISIBLE);
+        benchResultText.setText(result);
+        benchDetailsButton.setVisibility(
+                BenchmarkLogic.hasTranscript(benchTranscript) ? View.VISIBLE : View.GONE);
+    }
+
+    /** Ends a run with a short reason; no texts are offered. */
+    private void finishBenchmarkError(String message) {
+        benchRunning = false;
+        benchButton.setEnabled(ModelStore.hasAnyModel(this));
+        benchResultText.setVisibility(View.VISIBLE);
+        benchResultText.setText(message);
+        benchDetailsButton.setVisibility(View.GONE);
+    }
+
+    /**
+     * Drops a run in flight. The native recognition cannot be interrupted, so
+     * its late answer is filtered by {@code benchGeneration}; the cleaning
+     * request is disconnected and its callback suppressed by PostProcessor.
+     */
+    private void cancelBenchmark() {
+        benchGeneration++;
+        if (benchPostTask != null) {
+            benchPostTask.cancel();
+            benchPostTask = null;
+        }
+        if (benchRunning) {
+            benchRunning = false;
+            benchResultText.setVisibility(View.VISIBLE);
+            benchResultText.setText(R.string.bench_cancelled);
+            benchButton.setEnabled(ModelStore.hasAnyModel(this));
+            benchDetailsButton.setVisibility(View.GONE);
+        }
+    }
+
+    private static String seconds(double value) {
+        return String.format(java.util.Locale.getDefault(), "%.1f", value);
+    }
+
+    /** Shows the recognised and cleaned texts in a selectable dialog. */
+    private void showBenchDetails() {
+        if (!BenchmarkLogic.hasTranscript(benchTranscript)) return;
+        String message = benchCleanedText == null
+                ? getString(R.string.bench_details_one, benchTranscript)
+                : getString(R.string.bench_details_text, benchTranscript, benchCleanedText);
+
+        TextView text = new TextView(this);
+        text.setText(message);
+        text.setTextIsSelectable(true);
+        int pad = Math.round(getResources().getDisplayMetrics().density * 20);
+        text.setPadding(pad, 0, pad, 0);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(text);
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.bench_details_title)
+                .setView(scroll)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     /**
@@ -449,5 +1024,6 @@ public class MainActivity extends AppCompatActivity {
 
     private native void initNative(MainActivity activity);
 
-    private native void benchmarkNative(MainActivity activity, float[] samples, int length);
+    private native void benchmarkNative(MainActivity activity, float[] samples, int length,
+                                        long generation);
 }

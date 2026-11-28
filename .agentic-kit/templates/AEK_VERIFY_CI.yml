@@ -1,0 +1,49 @@
+# Template: copy into a product repository AFTER reviewing its stack and permissions.
+# AEK does not install or activate this workflow automatically.
+# Branch convention for this example: feature/TASK-001, where TASK-001 is an
+# existing, reviewed .agentic-kit/tasks/TASK-001.json (commit task metadata).
+# For UI/HTTP projects add trusted browser/server jobs and generate their own
+# evidence in the CI runner. The installed AEK scripts are still PR-controlled:
+# protect the workflow and review changes to .agentic-kit/tools and CI.
+name: AEK verification (example)
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Configure dependencies
+        run: |
+          # Replace with the project's reviewed, pinned installation method.
+          python3 --version
+      - name: Run tests and verify the current commit
+        env:
+          BRANCH: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          TASK_ID="${BRANCH##*/}"
+          [[ "$TASK_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
+          test -f ".agentic-kit/tasks/${TASK_ID}.json"
+          # Adapt the test command to the project; in protected CI do not take
+          # commands from untrusted PR descriptions.
+          python3 .agentic-kit/tools/aek.py record --target . --task "$TASK_ID" \
+            --key tests --run "python3 -m unittest discover -s tests"
+          # Rebind only an already-passed verification step to the new executed
+          # proof. Never auto-finish an incomplete process or enable waivers.
+          PROCESS_STEP_STATE="$(python3 -c 'import json,sys; from pathlib import Path; task=json.loads(Path(".agentic-kit/tasks", sys.argv[1]+".json").read_text()); print(task.get("process", {}).get("steps", {}).get("verification", {}).get("state", "absent"))' "$TASK_ID")"
+          if [ "$PROCESS_STEP_STATE" = "passed" ]; then
+            python3 .agentic-kit/tools/aek.py process refresh-step --target . --task "$TASK_ID" \
+              --step verification --reason "CI repeated the required tests"
+          fi
+          python3 .agentic-kit/tools/aek.py verify --target . --task "$TASK_ID" \
+            --base "origin/$BASE" --required-profile standard \
+            --require-command "tests=python3 -m unittest discover -s tests"
+# Mark this job as required in branch protection. This template is insufficient
+# for UI/HTTP tasks until browser and runtime checks are added to this same job.
+# Separately secure the source of the validator and the approval process.

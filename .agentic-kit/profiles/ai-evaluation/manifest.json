@@ -1,0 +1,17 @@
+{
+  "id": "ai-evaluation",
+  "opt_in": true,
+  "skills": [
+    "aek-ai-evaluation"
+  ],
+  "sources": [
+    {
+      "repository": "promptfoo/promptfoo",
+      "path": ".claude/skills/promptfoo-evals/SKILL.md",
+      "reviewed_commit": "841036f4fde86b4258b9357cba4288c963b3a647"
+    }
+  ],
+  "external_install": false,
+  "requires_provider_approval": true,
+  "red_team_separate_approval": true
+}

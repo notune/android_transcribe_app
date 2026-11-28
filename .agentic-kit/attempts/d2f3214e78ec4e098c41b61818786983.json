@@ -1,0 +1,11 @@
+{
+  "error": "ValueError",
+  "id": "d2f3214e78ec4e098c41b61818786983",
+  "key": "tests",
+  "schema_version": 1,
+  "started_at": "2026-11-25T23:46:41.327265+00:00",
+  "state": "failed",
+  "task": "OVI-001",
+  "task_revision": 30,
+  "updated_at": "2026-11-25T23:46:41.335862+00:00"
+}

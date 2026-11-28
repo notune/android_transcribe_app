@@ -1,0 +1,50 @@
+{
+  "profile": "web-development",
+  "opt_in": true,
+  "version": 1,
+  "external_skills": [
+    {
+      "name": "modern-web-guidance",
+      "source": "https://github.com/GoogleChrome/modern-web-guidance",
+      "upstream_review_ref": "4dd968349e54ca45a05dd5c818fb035c9054b022",
+      "license": "Apache-2.0",
+      "npm_package": "modern-web-guidance",
+      "npm_version": "1.0.0",
+      "skill_version": "2026_11_09-5bcc021b",
+      "install": "not installed automatically",
+      "telemetry_opt_out": "DISABLE_TELEMETRY=1",
+      "allowed_for": [
+        "web-frontend",
+        "client-side-javascript",
+        "forms",
+        "accessibility",
+        "web-performance",
+        "web-platform-security"
+      ],
+      "excluded_for": [
+        "backend-only",
+        "infra",
+        "ci",
+        "native-mobile",
+        "trivial-text-only"
+      ],
+      "external_command_requires_approval": true
+    }
+  ],
+  "optional_extra": {
+    "name": "chrome-extensions",
+    "status": "not installed; separately review for Chrome Extension projects"
+  },
+  "recommended_react_stack": {
+    "name": "shadcn/ui + Base UI + Tailwind CSS",
+    "repository": "shadcn-ui/ui",
+    "reviewed_commit": "e62c9435fff729a175f38983dee73b2cb4f6a069",
+    "installed_automatically": false,
+    "applies_to": "new React projects after design and owner approval",
+    "existing_apps": "preserve selected UI system"
+  },
+  "alternative": {
+    "name": "Mantine",
+    "applies_to": "internal dashboard/admin app when its component coverage is better"
+  }
+}
