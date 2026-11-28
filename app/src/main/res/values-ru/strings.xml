@@ -93,11 +93,25 @@
     <string name="ime_no_model_hint">Откройте приложение, чтобы добавить её</string>
 
     <string name="section_benchmark">Тест скорости</string>
-    <string name="desc_benchmark">Измеряет скорость распознавания активной модели на этом устройстве по встроенной тестовой записи на английском (11 с).</string>
     <string name="btn_benchmark">Запустить тест</string>
     <string name="bench_running">Идёт тест…</string>
-    <string name="bench_result">%1$s с аудио за %2$s с: %3$s× реального времени</string>
     <string name="bench_error">Тест не выполнен: %1$s</string>
+    <string name="desc_benchmark">Проверяет распознавание русской речи и очистку текста. Используется встроенная запись 10,6 с. Если очистка включена, распознанный текст уйдёт на настроенный сервер; аудио останется на телефоне.</string>
+    <string name="bench_source">Запись: Google FLEURS, лицензия CC BY 4.0</string>
+    <string name="bench_result_base">%1$s с аудио за %2$s с (%3$s×)</string>
+    <string name="bench_cleaning_line">Очистка: %1$s с</string>
+    <string name="bench_total_line">Всего: %1$s с</string>
+    <string name="bench_skip_disabled">Очистка выключена, текст не отправлялся</string>
+    <string name="bench_skip_unconfigured">Очистка не настроена: укажите адрес и модель</string>
+    <string name="bench_no_text">Модель не распознала текст</string>
+    <string name="bench_cleaning_running">Отправляю текст на очистку…</string>
+    <string name="bench_pp_failed">Очистка не удалась: %1$s</string>
+    <string name="bench_pp_empty">Очистка вернула пустой текст</string>
+    <string name="bench_cancelled">Тест прерван</string>
+    <string name="bench_details">Подробнее</string>
+    <string name="bench_details_title">Тексты теста</string>
+    <string name="bench_details_one">Распознано:&#10;%1$s</string>
+    <string name="bench_details_text">Распознано:&#10;%1$s&#10;&#10;После очистки:&#10;%2$s</string>
 
     <string name="section_appearance">Оформление</string>
     <string name="theme_system">Как в системе</string>

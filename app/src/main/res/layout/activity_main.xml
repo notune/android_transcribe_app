@@ -901,6 +901,15 @@
                         android:text="@string/desc_benchmark"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_marginBottom="4dp"/>
+
+                    <TextView
+                        android:id="@+id/text_bench_source"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/bench_source"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:layout_marginBottom="16dp"/>
 
                     <TextView
@@ -909,6 +918,16 @@
                         android:layout_height="wrap_content"
                         android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:layout_marginBottom="8dp"
+                        android:visibility="gone"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_bench_details"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/bench_details"
                         android:visibility="gone"/>
 
                     <com.google.android.material.button.MaterialButton

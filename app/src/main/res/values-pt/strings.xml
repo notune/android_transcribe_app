@@ -93,11 +93,25 @@
     <string name="ime_no_model_hint">Abra o app para adicionar um</string>
 
     <string name="section_benchmark">Teste de desempenho</string>
-    <string name="desc_benchmark">Mede a velocidade de transcrição do modelo ativo neste aparelho usando uma gravação de teste em inglês integrada (11 s).</string>
     <string name="btn_benchmark">Iniciar teste</string>
     <string name="bench_running">Executando teste…</string>
-    <string name="bench_result">%1$s s de áudio em %2$s s: %3$s× tempo real</string>
     <string name="bench_error">Falha no teste: %1$s</string>
+    <string name="desc_benchmark">Verifica o reconhecimento de fala em russo e a limpeza do texto. Usa uma gravação integrada de 10,6 s. Se a limpeza estiver ativada, o texto reconhecido é enviado ao servidor configurado; o áudio fica no aparelho.</string>
+    <string name="bench_source">Gravação: Google FLEURS, licença CC BY 4.0</string>
+    <string name="bench_result_base">%1$s s de áudio em %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Limpeza: %1$s s</string>
+    <string name="bench_total_line">Total: %1$s s</string>
+    <string name="bench_skip_disabled">A limpeza está desativada, nenhum texto foi enviado</string>
+    <string name="bench_skip_unconfigured">A limpeza não está configurada: informe o endereço e o modelo</string>
+    <string name="bench_no_text">O modelo não reconheceu texto</string>
+    <string name="bench_cleaning_running">Enviando o texto para limpeza…</string>
+    <string name="bench_pp_failed">Falha na limpeza: %1$s</string>
+    <string name="bench_pp_empty">A limpeza retornou texto vazio</string>
+    <string name="bench_cancelled">Teste interrompido</string>
+    <string name="bench_details">Detalhes</string>
+    <string name="bench_details_title">Textos do teste</string>
+    <string name="bench_details_one">Reconhecido:&#10;%1$s</string>
+    <string name="bench_details_text">Reconhecido:&#10;%1$s&#10;&#10;Após a limpeza:&#10;%2$s</string>
 
     <string name="section_appearance">Aparência</string>
     <string name="theme_system">Padrão do sistema</string>

@@ -93,11 +93,25 @@
     <string name="ime_no_model_hint">Apri l\'app per aggiungerne uno</string>
 
     <string name="section_benchmark">Benchmark</string>
-    <string name="desc_benchmark">Misura la velocità di trascrizione del modello attivo su questo dispositivo usando una registrazione di prova in inglese integrata (11 s).</string>
     <string name="btn_benchmark">Avvia benchmark</string>
     <string name="bench_running">Benchmark in corso…</string>
-    <string name="bench_result">%1$s s di audio in %2$s s: %3$s× tempo reale</string>
     <string name="bench_error">Benchmark non riuscito: %1$s</string>
+    <string name="desc_benchmark">Verifica il riconoscimento della lingua russa e la pulizia del testo. Usa una registrazione integrata di 10,6 s. Se la pulizia è attiva, il testo riconosciuto viene inviato al server configurato; l\'audio resta sul telefono.</string>
+    <string name="bench_source">Registrazione: Google FLEURS, licenza CC BY 4.0</string>
+    <string name="bench_result_base">%1$s s di audio in %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Pulizia: %1$s s</string>
+    <string name="bench_total_line">Totale: %1$s s</string>
+    <string name="bench_skip_disabled">La pulizia è disattivata, nessun testo è stato inviato</string>
+    <string name="bench_skip_unconfigured">La pulizia non è configurata: indica indirizzo e modello</string>
+    <string name="bench_no_text">Il modello non ha riconosciuto testo</string>
+    <string name="bench_cleaning_running">Invio il testo per la pulizia…</string>
+    <string name="bench_pp_failed">Pulizia non riuscita: %1$s</string>
+    <string name="bench_pp_empty">La pulizia ha restituito un testo vuoto</string>
+    <string name="bench_cancelled">Test interrotto</string>
+    <string name="bench_details">Dettagli</string>
+    <string name="bench_details_title">Testi del test</string>
+    <string name="bench_details_one">Riconosciuto:&#10;%1$s</string>
+    <string name="bench_details_text">Riconosciuto:&#10;%1$s&#10;&#10;Dopo la pulizia:&#10;%2$s</string>
 
     <string name="section_appearance">Aspetto</string>
     <string name="theme_system">Predefinito di sistema</string>

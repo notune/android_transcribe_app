@@ -98,11 +98,25 @@
     <string name="ime_no_model_hint">Open the app to add one</string>
 
     <string name="section_benchmark">Benchmark</string>
-    <string name="desc_benchmark">Measures how fast the active model transcribes on this device, using a built-in English test recording (11 s).</string>
     <string name="btn_benchmark">Run benchmark</string>
     <string name="bench_running">Running benchmark…</string>
-    <string name="bench_result">%1$s s of audio in %2$s s: %3$s× real time</string>
     <string name="bench_error">Benchmark failed: %1$s</string>
+    <string name="desc_benchmark">Tests Russian speech recognition and text cleaning. Uses a built-in 10.6 s recording. If cleaning is on, the recognised text goes to your configured server; audio stays on the phone.</string>
+    <string name="bench_source">Recording: Google FLEURS, CC BY 4.0 licence</string>
+    <string name="bench_result_base">%1$s s of audio in %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Cleaning: %1$s s</string>
+    <string name="bench_total_line">Total: %1$s s</string>
+    <string name="bench_skip_disabled">Cleaning is off, no text was sent</string>
+    <string name="bench_skip_unconfigured">Cleaning is not configured: set the address and model</string>
+    <string name="bench_no_text">The model recognised no text</string>
+    <string name="bench_cleaning_running">Sending the text for cleaning…</string>
+    <string name="bench_pp_failed">Cleaning failed: %1$s</string>
+    <string name="bench_pp_empty">Cleaning returned empty text</string>
+    <string name="bench_cancelled">Test interrupted</string>
+    <string name="bench_details">Details</string>
+    <string name="bench_details_title">Test texts</string>
+    <string name="bench_details_one">Recognised:&#10;%1$s</string>
+    <string name="bench_details_text">Recognised:&#10;%1$s&#10;&#10;After cleaning:&#10;%2$s</string>
 
     <string name="section_appearance">Appearance</string>
     <string name="theme_system">System default</string>

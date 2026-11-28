@@ -93,11 +93,25 @@
     <string name="ime_no_model_hint">Öffne die App, um eines hinzuzufügen</string>
 
     <string name="section_benchmark">Benchmark</string>
-    <string name="desc_benchmark">Misst, wie schnell das aktive Modell auf diesem Gerät transkribiert, anhand einer integrierten englischen Testaufnahme (11 s).</string>
     <string name="btn_benchmark">Benchmark starten</string>
     <string name="bench_running">Benchmark läuft…</string>
-    <string name="bench_result">%1$s s Audio in %2$s s: %3$s× Echtzeit</string>
     <string name="bench_error">Benchmark fehlgeschlagen: %1$s</string>
+    <string name="desc_benchmark">Prüft die Erkennung russischer Sprache und die Textbereinigung. Verwendet eine integrierte Aufnahme von 10,6 s. Ist die Bereinigung aktiv, geht der erkannte Text an den eingerichteten Server; das Audio bleibt auf dem Telefon.</string>
+    <string name="bench_source">Aufnahme: Google FLEURS, Lizenz CC BY 4.0</string>
+    <string name="bench_result_base">%1$s s Audio in %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Bereinigung: %1$s s</string>
+    <string name="bench_total_line">Gesamt: %1$s s</string>
+    <string name="bench_skip_disabled">Bereinigung ist aus, es wurde kein Text gesendet</string>
+    <string name="bench_skip_unconfigured">Bereinigung ist nicht eingerichtet: Adresse und Modell angeben</string>
+    <string name="bench_no_text">Das Modell hat keinen Text erkannt</string>
+    <string name="bench_cleaning_running">Text wird zur Bereinigung gesendet…</string>
+    <string name="bench_pp_failed">Bereinigung fehlgeschlagen: %1$s</string>
+    <string name="bench_pp_empty">Bereinigung lieferte leeren Text</string>
+    <string name="bench_cancelled">Test abgebrochen</string>
+    <string name="bench_details">Details</string>
+    <string name="bench_details_title">Testtexte</string>
+    <string name="bench_details_one">Erkannt:&#10;%1$s</string>
+    <string name="bench_details_text">Erkannt:&#10;%1$s&#10;&#10;Nach der Bereinigung:&#10;%2$s</string>
 
     <string name="section_appearance">Darstellung</string>
     <string name="theme_system">Systemstandard</string>

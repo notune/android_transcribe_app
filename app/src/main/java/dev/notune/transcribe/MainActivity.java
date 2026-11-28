@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
 import android.text.Editable;
@@ -65,8 +66,15 @@ public class MainActivity extends AppCompatActivity {
     private Button startSubsButton;
     private Button benchButton;
     private TextView benchResultText;
+    private Button benchDetailsButton;
     private Button modelsButton;
     private boolean benchRunning;
+    /** Bumped on every run and on screen exit; stale callbacks are dropped. */
+    private int benchGeneration;
+    private PostProcessor.Task benchPostTask;
+    private long benchPostStartedAt;
+    private String benchTranscript;
+    private String benchCleanedText;
 
     private CompoundButton postProcessingSwitch;
     private TextInputEditText ppEndpoint;
@@ -130,7 +138,9 @@ public class MainActivity extends AppCompatActivity {
 
         benchButton = findViewById(R.id.btn_benchmark);
         benchResultText = findViewById(R.id.text_bench_result);
+        benchDetailsButton = findViewById(R.id.btn_bench_details);
         benchButton.setOnClickListener(v -> runBenchmark());
+        benchDetailsButton.setOnClickListener(v -> showBenchDetails());
 
         // Settings stored as marker files in filesDir (readable from the
         // keyboard service and native code).
@@ -202,6 +212,9 @@ public class MainActivity extends AppCompatActivity {
         // The screen is no longer visible: drop any model-list request so a
         // late answer cannot open a dialog or change the saved model.
         cancelModelList();
+        // Same for the speed test: a late answer must not update the card
+        // after the user has left.
+        cancelBenchmark();
         super.onStop();
     }
 
@@ -212,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
             ppTestTask = null;
         }
         cancelModelList();
+        cancelBenchmark();
         super.onDestroy();
     }
 
@@ -774,14 +788,23 @@ public class MainActivity extends AppCompatActivity {
     // --- Benchmark ----------------------------------------------------------
 
     /**
-     * Transcribes the bundled test clip through the active model and shows the
-     * speed as a real-time factor. The clip is a fixed English recording so
-     * results are comparable across models and devices; the run uses the
-     * current model settings (language hint, translate).
+     * Runs the bundled Russian clip through the active model and, when text
+     * cleaning is switched on and configured, through the same post-processor
+     * the normal dictation uses. Shows recognition time, real-time factor,
+     * cleaning time and the total.
+     *
+     * <p>Audio never leaves the device. Only the recognised text is sent, and
+     * only when cleaning is on, exactly as in a normal dictation.
      */
     private void runBenchmark() {
+        if (benchRunning) return;
+        cancelBenchmark();
+        int generation = benchGeneration;
         benchRunning = true;
+        benchTranscript = null;
+        benchCleanedText = null;
         benchButton.setEnabled(false);
+        benchDetailsButton.setVisibility(View.GONE);
         benchResultText.setVisibility(View.VISIBLE);
         benchResultText.setText(R.string.bench_running);
 
@@ -792,32 +815,145 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 Log.e(TAG, "Failed to read benchmark clip", e);
                 runOnUiThread(() -> {
-                    benchResultText.setText(getString(R.string.bench_error, e.getMessage()));
-                    benchRunning = false;
-                    benchButton.setEnabled(true);
+                    if (!benchRunning || generation != benchGeneration) return;
+                    finishBenchmarkError(getString(R.string.bench_error, e.getMessage()));
                 });
                 return;
             }
-            benchmarkNative(this, samples, samples.length);
+            benchmarkNative(this, samples, samples.length, generation);
         }, "benchmark-load").start();
     }
 
-    // Called from Rust when the benchmark run finishes.
-    public void onBenchmarkResult(float audioSecs, float computeSecs, String error) {
+    /**
+     * Called from Rust when recognition finishes. {@code generation} is the
+     * run that produced the answer: a late result from a cancelled run is
+     * dropped instead of overwriting a newer one.
+     */
+    public void onBenchmarkResult(float audioSecs, float computeSecs, String transcript,
+                                  String error, long generation) {
         runOnUiThread(() -> {
-            benchRunning = false;
-            benchButton.setEnabled(true);
+            if (!benchRunning || generation != benchGeneration) return;
             benchResultText.setVisibility(View.VISIBLE);
             if (error != null && !error.isEmpty()) {
-                benchResultText.setText(getString(R.string.bench_error, error));
-            } else {
-                benchResultText.setText(getString(R.string.bench_result,
-                        String.format(java.util.Locale.getDefault(), "%.1f", audioSecs),
-                        String.format(java.util.Locale.getDefault(), "%.1f", computeSecs),
-                        String.format(java.util.Locale.getDefault(), "%.1f",
-                                computeSecs > 0 ? audioSecs / computeSecs : 0)));
+                finishBenchmarkError(getString(R.string.bench_error, error));
+                return;
             }
+
+            benchTranscript = transcript == null ? "" : transcript.trim();
+            String base = getString(R.string.bench_result_base,
+                    seconds(audioSecs), seconds(computeSecs),
+                    seconds(BenchmarkLogic.realTimeFactor(audioSecs, computeSecs)));
+
+            if (!BenchmarkLogic.hasTranscript(benchTranscript)) {
+                finishBenchmark(base + "\n" + getString(R.string.bench_no_text));
+                return;
+            }
+
+            int stage = BenchmarkLogic.cleaningStage(
+                    PostProcessingSettings.isEnabled(this),
+                    PostProcessingSettings.getEndpoint(this),
+                    PostProcessingSettings.getModel(this));
+            if (stage == BenchmarkLogic.CLEANING_DISABLED) {
+                finishBenchmark(base + "\n" + getString(R.string.bench_skip_disabled));
+                return;
+            }
+            if (stage == BenchmarkLogic.CLEANING_NOT_CONFIGURED) {
+                finishBenchmark(base + "\n" + getString(R.string.bench_skip_unconfigured));
+                return;
+            }
+
+            benchResultText.setText(base + "\n" + getString(R.string.bench_cleaning_running));
+            benchPostStartedAt = SystemClock.elapsedRealtime();
+            benchPostTask = PostProcessor.run(this, benchTranscript, (text, postError) -> {
+                benchPostTask = null;
+                if (!benchRunning || generation != benchGeneration) return;
+                double postSecs =
+                        (SystemClock.elapsedRealtime() - benchPostStartedAt) / 1000.0;
+                String withCleaning = base + "\n"
+                        + getString(R.string.bench_cleaning_line, seconds(postSecs));
+                if (postError != null) {
+                    finishBenchmark(withCleaning + "\n"
+                            + getString(R.string.bench_pp_failed,
+                                    PostProcessingLogic.shortError(postError)));
+                    return;
+                }
+                if (text == null || text.trim().isEmpty()) {
+                    finishBenchmark(withCleaning + "\n" + getString(R.string.bench_pp_empty));
+                    return;
+                }
+                benchCleanedText = text;
+                finishBenchmark(withCleaning + "\n"
+                        + getString(R.string.bench_total_line,
+                                seconds(BenchmarkLogic.totalSeconds(computeSecs, postSecs))));
+            });
         });
+    }
+
+    /** Ends a run normally: recognition succeeded, cleaning may have been skipped. */
+    private void finishBenchmark(String result) {
+        benchRunning = false;
+        benchPostTask = null;
+        benchButton.setEnabled(ModelStore.hasAnyModel(this));
+        benchResultText.setVisibility(View.VISIBLE);
+        benchResultText.setText(result);
+        benchDetailsButton.setVisibility(
+                BenchmarkLogic.hasTranscript(benchTranscript) ? View.VISIBLE : View.GONE);
+    }
+
+    /** Ends a run with a short reason; no texts are offered. */
+    private void finishBenchmarkError(String message) {
+        benchRunning = false;
+        benchButton.setEnabled(ModelStore.hasAnyModel(this));
+        benchResultText.setVisibility(View.VISIBLE);
+        benchResultText.setText(message);
+        benchDetailsButton.setVisibility(View.GONE);
+    }
+
+    /**
+     * Drops a run in flight. The native recognition cannot be interrupted, so
+     * its late answer is filtered by {@code benchGeneration}; the cleaning
+     * request is disconnected and its callback suppressed by PostProcessor.
+     */
+    private void cancelBenchmark() {
+        benchGeneration++;
+        if (benchPostTask != null) {
+            benchPostTask.cancel();
+            benchPostTask = null;
+        }
+        if (benchRunning) {
+            benchRunning = false;
+            benchResultText.setVisibility(View.VISIBLE);
+            benchResultText.setText(R.string.bench_cancelled);
+            benchButton.setEnabled(ModelStore.hasAnyModel(this));
+            benchDetailsButton.setVisibility(View.GONE);
+        }
+    }
+
+    private static String seconds(double value) {
+        return String.format(java.util.Locale.getDefault(), "%.1f", value);
+    }
+
+    /** Shows the recognised and cleaned texts in a selectable dialog. */
+    private void showBenchDetails() {
+        if (!BenchmarkLogic.hasTranscript(benchTranscript)) return;
+        String message = benchCleanedText == null
+                ? getString(R.string.bench_details_one, benchTranscript)
+                : getString(R.string.bench_details_text, benchTranscript, benchCleanedText);
+
+        TextView text = new TextView(this);
+        text.setText(message);
+        text.setTextIsSelectable(true);
+        int pad = Math.round(getResources().getDisplayMetrics().density * 20);
+        text.setPadding(pad, 0, pad, 0);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(text);
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.bench_details_title)
+                .setView(scroll)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     /**
@@ -871,5 +1007,6 @@ public class MainActivity extends AppCompatActivity {
 
     private native void initNative(MainActivity activity);
 
-    private native void benchmarkNative(MainActivity activity, float[] samples, int length);
+    private native void benchmarkNative(MainActivity activity, float[] samples, int length,
+                                        long generation);
 }

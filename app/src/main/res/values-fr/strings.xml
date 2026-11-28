@@ -93,11 +93,25 @@
     <string name="ime_no_model_hint">Ouvrez l\'application pour en ajouter un</string>
 
     <string name="section_benchmark">Test de performance</string>
-    <string name="desc_benchmark">Mesure la vitesse de transcription du modèle actif sur cet appareil à l\'aide d\'un enregistrement de test en anglais intégré (11 s).</string>
     <string name="btn_benchmark">Lancer le test</string>
     <string name="bench_running">Test en cours…</string>
-    <string name="bench_result">%1$s s d\'audio en %2$s s : %3$s× temps réel</string>
     <string name="bench_error">Échec du test : %1$s</string>
+    <string name="desc_benchmark">Vérifie la reconnaissance de la parole en russe et le nettoyage du texte. Utilise un enregistrement intégré de 10,6 s. Si le nettoyage est activé, le texte reconnu est envoyé au serveur configuré ; l\'audio reste sur le téléphone.</string>
+    <string name="bench_source">Enregistrement : Google FLEURS, licence CC BY 4.0</string>
+    <string name="bench_result_base">%1$s s d\'audio en %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Nettoyage : %1$s s</string>
+    <string name="bench_total_line">Total : %1$s s</string>
+    <string name="bench_skip_disabled">Le nettoyage est désactivé, aucun texte n\'a été envoyé</string>
+    <string name="bench_skip_unconfigured">Le nettoyage n\'est pas configuré : indiquez l\'adresse et le modèle</string>
+    <string name="bench_no_text">Le modèle n\'a reconnu aucun texte</string>
+    <string name="bench_cleaning_running">Envoi du texte pour nettoyage…</string>
+    <string name="bench_pp_failed">Échec du nettoyage : %1$s</string>
+    <string name="bench_pp_empty">Le nettoyage a renvoyé un texte vide</string>
+    <string name="bench_cancelled">Test interrompu</string>
+    <string name="bench_details">Détails</string>
+    <string name="bench_details_title">Textes du test</string>
+    <string name="bench_details_one">Reconnu :&#10;%1$s</string>
+    <string name="bench_details_text">Reconnu :&#10;%1$s&#10;&#10;Après nettoyage :&#10;%2$s</string>
 
     <string name="section_appearance">Apparence</string>
     <string name="theme_system">Valeur système</string>

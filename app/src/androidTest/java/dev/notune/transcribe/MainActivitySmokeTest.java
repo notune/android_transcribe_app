@@ -7,6 +7,8 @@ import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isEnabled;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility;
+import static androidx.test.espresso.matcher.ViewMatchers.Visibility.GONE;
 import static org.junit.Assert.assertNotNull;
 
 import android.app.Activity;
@@ -73,5 +75,19 @@ public class MainActivitySmokeTest {
                 .check(matches(isDisplayed()))
                 .check(matches(withText(R.string.pp_models_fetch)))
                 .check(matches(isEnabled()));
+    }
+
+    @Test
+    public void benchmarkCardShowsRussianClipAndNoDetailsBeforeRun() {
+        onView(withId(R.id.text_bench_source))
+                .perform(scrollTo())
+                .check(matches(isDisplayed()))
+                .check(matches(withText(R.string.bench_source)));
+        onView(withId(R.id.btn_benchmark))
+                .perform(scrollTo())
+                .check(matches(isDisplayed()))
+                .check(matches(withText(R.string.btn_benchmark)));
+        onView(withId(R.id.btn_bench_details))
+                .check(matches(withEffectiveVisibility(GONE)));
     }
 }

@@ -93,11 +93,25 @@
     <string name="ime_no_model_hint">Abre la app para añadir uno</string>
 
     <string name="section_benchmark">Prueba de rendimiento</string>
-    <string name="desc_benchmark">Mide la velocidad de transcripción del modelo activo en este dispositivo usando una grabación de prueba en inglés integrada (11 s).</string>
     <string name="btn_benchmark">Iniciar prueba</string>
     <string name="bench_running">Ejecutando prueba…</string>
-    <string name="bench_result">%1$s s de audio en %2$s s: %3$s× tiempo real</string>
     <string name="bench_error">La prueba falló: %1$s</string>
+    <string name="desc_benchmark">Comprueba el reconocimiento de voz en ruso y la limpieza del texto. Usa una grabación integrada de 10,6 s. Si la limpieza está activada, el texto reconocido se envía al servidor configurado; el audio permanece en el teléfono.</string>
+    <string name="bench_source">Grabación: Google FLEURS, licencia CC BY 4.0</string>
+    <string name="bench_result_base">%1$s s de audio en %2$s s (%3$s×)</string>
+    <string name="bench_cleaning_line">Limpieza: %1$s s</string>
+    <string name="bench_total_line">Total: %1$s s</string>
+    <string name="bench_skip_disabled">La limpieza está desactivada, no se envió ningún texto</string>
+    <string name="bench_skip_unconfigured">La limpieza no está configurada: indica la dirección y el modelo</string>
+    <string name="bench_no_text">El modelo no reconoció texto</string>
+    <string name="bench_cleaning_running">Enviando el texto para limpiarlo…</string>
+    <string name="bench_pp_failed">La limpieza falló: %1$s</string>
+    <string name="bench_pp_empty">La limpieza devolvió un texto vacío</string>
+    <string name="bench_cancelled">Prueba interrumpida</string>
+    <string name="bench_details">Detalles</string>
+    <string name="bench_details_title">Textos de la prueba</string>
+    <string name="bench_details_one">Reconocido:&#10;%1$s</string>
+    <string name="bench_details_text">Reconocido:&#10;%1$s&#10;&#10;Tras la limpieza:&#10;%2$s</string>
 
     <string name="section_appearance">Apariencia</string>
     <string name="theme_system">Predeterminado del sistema</string>

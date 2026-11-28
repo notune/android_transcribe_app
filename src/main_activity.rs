@@ -4,20 +4,29 @@ use jni::JNIEnv;
 use std::sync::Arc;
 
 /// Reports a finished benchmark run back to `MainActivity.onBenchmarkResult`.
-/// `error` is empty on success.
+/// `transcript` is the recognised text (empty on failure), `error` is empty on
+/// success. The text is passed to Java, never logged: it is dictation content.
 fn deliver_benchmark_result(
     env: &mut JNIEnv,
     activity: &JObject,
     audio_secs: f32,
     compute_secs: f32,
+    transcript: &str,
     error: &str,
+    generation: i64,
 ) {
-    if let Ok(jerr) = env.new_string(error) {
+    if let (Ok(jtext), Ok(jerr)) = (env.new_string(transcript), env.new_string(error)) {
         let _ = env.call_method(
             activity,
             "onBenchmarkResult",
-            "(FFLjava/lang/String;)V",
-            &[audio_secs.into(), compute_secs.into(), (&jerr).into()],
+            "(FFLjava/lang/String;Ljava/lang/String;J)V",
+            &[
+                audio_secs.into(),
+                compute_secs.into(),
+                (&jtext).into(),
+                (&jerr).into(),
+                generation.into(),
+            ],
         );
     }
 }
@@ -44,8 +53,9 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_initNative
 }
 
 /// Benchmark: transcribes the given samples once on a worker thread and calls
-/// back with audio seconds vs compute seconds. Engine loading (if it is still
-/// in progress) is waited for but not counted into the measured time.
+/// back with audio seconds, compute seconds, the recognised text and the run
+/// generation. Engine loading (if it is still in progress) is waited for but
+/// not counted into the measured time.
 #[no_mangle]
 pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkNative(
     mut env: JNIEnv,
@@ -53,6 +63,7 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkN
     activity: JObject,
     samples: jni::objects::JFloatArray,
     length: jni::sys::jint,
+    generation: jni::sys::jlong,
 ) {
     let len = length as usize;
     let mut buffer = vec![0.0f32; len];
@@ -77,7 +88,15 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkN
         let audio_secs = buffer.len() as f32 / 16_000.0;
 
         if let Err(e) = engine::ensure_loaded_from_thread(&vm, &activity_ref) {
-            deliver_benchmark_result(&mut env, &activity_ref.as_obj(), audio_secs, 0.0, &e);
+            deliver_benchmark_result(
+                &mut env,
+                &activity_ref.as_obj(),
+                audio_secs,
+                0.0,
+                "",
+                &e,
+                generation,
+            );
             return;
         }
         let engine_arc = match engine::get_engine() {
@@ -88,7 +107,9 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkN
                     &activity_ref.as_obj(),
                     audio_secs,
                     0.0,
+                    "",
                     "model not loaded",
+                    generation,
                 );
                 return;
             }
@@ -100,22 +121,33 @@ pub unsafe extern "system" fn Java_dev_notune_transcribe_MainActivity_benchmarkN
 
         match result {
             Ok(text) => {
+                // Only the timing goes to the journal; the text stays with the
+                // caller and may be dictation content.
                 log::info!(
-                    "benchmark: {:.1}s audio in {:.2}s -> {:?}",
+                    "benchmark: {:.1}s audio in {:.2}s",
                     audio_secs,
-                    compute_secs,
-                    text
+                    compute_secs
                 );
                 deliver_benchmark_result(
                     &mut env,
                     &activity_ref.as_obj(),
                     audio_secs,
                     compute_secs,
+                    &text,
                     "",
+                    generation,
                 );
             }
             Err(e) => {
-                deliver_benchmark_result(&mut env, &activity_ref.as_obj(), audio_secs, 0.0, &e);
+                deliver_benchmark_result(
+                    &mut env,
+                    &activity_ref.as_obj(),
+                    audio_secs,
+                    0.0,
+                    "",
+                    &e,
+                    generation,
+                );
             }
         }
     });
